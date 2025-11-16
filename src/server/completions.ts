@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { db, type TodoCompletion, type TimeslotCompletion } from "../db/schema";
 import { z } from "zod";
+import { updateStats } from "./statistics";
 
 const GetCompletionsSchema = z.object({
   date: z.string().optional(),
@@ -87,6 +88,9 @@ export const completeTodo = createServerFn({ method: "POST" })
           completionDate
         );
       }
+
+      // Update statistics and check achievements
+      await updateStats({ data: { member_id: data.member_id, completion_date: completionDate } });
 
       return completion;
     } catch {

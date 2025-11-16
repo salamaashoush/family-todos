@@ -4,8 +4,9 @@ import { getMembers } from '../server/members'
 import { getTimeslots } from '../server/timeslots'
 import { getTodos } from '../server/todos'
 import { getTodoCompletions, completeTodo, uncompleteTodo } from '../server/completions'
+import { getMemberStats, getMemberAchievements } from '../server/statistics'
 import { useState } from 'react'
-import type { Member, Timeslot, Todo, TodoCompletion } from '../db/schema'
+import type { Member, Timeslot, Todo, TodoCompletion, MemberStats, Achievement } from '../db/schema'
 
 export const Route = createFileRoute('/')({
   loader: async ({ context: { queryClient } }) => {
@@ -61,6 +62,8 @@ function Home() {
     mutationFn: completeTodo,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['completions', selectedDate] })
+      queryClient.invalidateQueries({ queryKey: ['memberStats'] })
+      queryClient.invalidateQueries({ queryKey: ['memberAchievements'] })
     },
   })
 
@@ -68,6 +71,8 @@ function Home() {
     mutationFn: uncompleteTodo,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['completions', selectedDate] })
+      queryClient.invalidateQueries({ queryKey: ['memberStats'] })
+      queryClient.invalidateQueries({ queryKey: ['memberAchievements'] })
     },
   })
 
@@ -168,6 +173,16 @@ interface MemberColumnProps {
 }
 
 function MemberColumn({ member, timeslots, todos, isTodoCompleted, onToggleTodo }: MemberColumnProps) {
+  const { data: stats } = useSuspenseQuery({
+    queryKey: ['memberStats', member.id],
+    queryFn: () => getMemberStats({ data: { member_id: member.id } }),
+  })
+
+  const { data: achievements } = useSuspenseQuery({
+    queryKey: ['memberAchievements', member.id],
+    queryFn: () => getMemberAchievements({ data: { member_id: member.id } }),
+  })
+
   return (
     <div className="bg-white rounded-2xl sm:rounded-3xl shadow-2xl overflow-hidden h-full flex flex-col">
       <div className="bg-gradient-to-r from-purple-400 to-pink-400 p-4 sm:p-6 text-center flex-shrink-0">
@@ -178,6 +193,8 @@ function MemberColumn({ member, timeslots, todos, isTodoCompleted, onToggleTodo 
         )}
         <h2 className="text-2xl sm:text-3xl font-bold text-white">{member.name}</h2>
       </div>
+
+      {stats && <StatsDisplay stats={stats} achievements={achievements || []} />}
 
       <div className="p-3 sm:p-4 space-y-3 sm:space-y-4 flex-1 overflow-y-auto">
         {timeslots.length === 0 && (
@@ -316,5 +333,114 @@ function TodoItem({ todo, isCompleted, onToggle }: TodoItemProps) {
         </div>
       </div>
     </button>
+  )
+}
+
+interface StatsDisplayProps {
+  stats: MemberStats
+  achievements: (Achievement & { earned_at: string | null })[]
+}
+
+function StatsDisplay({ stats, achievements }: StatsDisplayProps) {
+  const earnedAchievements = achievements.filter(a => a.earned_at)
+  const nextAchievements = achievements.filter(a => !a.earned_at).slice(0, 3)
+  const levelProgress = (stats.total_stars % 50) / 50 * 100
+
+  return (
+    <div className="bg-gradient-to-br from-yellow-50 to-orange-50 p-4 border-b-4 border-yellow-300 flex-shrink-0">
+      <div className="grid grid-cols-2 gap-3 mb-3">
+        <div className="bg-white rounded-xl p-3 shadow-md border-2 border-yellow-400">
+          <div className="flex items-center gap-2 mb-1">
+            <span className="text-2xl">⭐</span>
+            <span className="text-xs font-bold text-gray-600">Level {stats.level}</span>
+          </div>
+          <div className="text-2xl font-bold text-purple-600">{stats.total_stars}</div>
+          <div className="text-xs text-gray-500">Stars</div>
+          <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
+            <div
+              className="bg-gradient-to-r from-yellow-400 to-orange-500 h-2 rounded-full transition-all"
+              style={{ width: `${levelProgress}%` }}
+            />
+          </div>
+          <div className="text-xs text-gray-500 mt-1 text-center">
+            {50 - (stats.total_stars % 50)} to Level {stats.level + 1}
+          </div>
+        </div>
+
+        <div className="bg-white rounded-xl p-3 shadow-md border-2 border-orange-400">
+          <div className="flex items-center gap-2 mb-1">
+            <span className="text-2xl">{stats.current_streak > 0 ? '🔥' : '💤'}</span>
+            <span className="text-xs font-bold text-gray-600">Streak</span>
+          </div>
+          <div className="text-2xl font-bold text-orange-600">{stats.current_streak}</div>
+          <div className="text-xs text-gray-500">
+            {stats.current_streak === 1 ? 'Day' : 'Days'}
+          </div>
+          <div className="text-xs text-gray-600 mt-2">
+            Best: {stats.longest_streak}
+          </div>
+        </div>
+      </div>
+
+      <div className="bg-white rounded-xl p-3 shadow-md border-2 border-purple-400 mb-3">
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center gap-2">
+            <span className="text-xl">✅</span>
+            <span className="text-xs font-bold text-gray-600">Tasks Completed</span>
+          </div>
+          <span className="text-lg font-bold text-purple-600">{stats.total_tasks_completed}</span>
+        </div>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="text-xl">🎯</span>
+            <span className="text-xs font-bold text-gray-600">Timeslots Done</span>
+          </div>
+          <span className="text-lg font-bold text-green-600">{stats.total_timeslots_completed}</span>
+        </div>
+      </div>
+
+      {earnedAchievements.length > 0 && (
+        <div className="mb-3">
+          <div className="flex items-center gap-2 mb-2">
+            <span className="text-sm font-bold text-gray-700">Latest Achievements</span>
+          </div>
+          <div className="flex gap-2 overflow-x-auto pb-2">
+            {earnedAchievements.slice(0, 4).map(achievement => (
+              <div
+                key={achievement.id}
+                className="bg-gradient-to-br from-purple-500 to-pink-500 text-white rounded-lg p-2 min-w-[80px] text-center shadow-lg flex-shrink-0"
+                title={achievement.description}
+              >
+                <div className="text-3xl mb-1">{achievement.icon}</div>
+                <div className="text-xs font-bold leading-tight">{achievement.name}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {nextAchievements.length > 0 && (
+        <div>
+          <div className="flex items-center gap-2 mb-2">
+            <span className="text-sm font-bold text-gray-700">Next Goals</span>
+          </div>
+          <div className="space-y-2">
+            {nextAchievements.map(achievement => (
+              <div
+                key={achievement.id}
+                className="bg-white/60 rounded-lg p-2 flex items-center gap-2 border-2 border-gray-300"
+              >
+                <span className="text-2xl opacity-50">{achievement.icon}</span>
+                <div className="flex-1 min-w-0">
+                  <div className="text-xs font-bold text-gray-700 truncate">{achievement.name}</div>
+                  <div className="text-xs text-gray-500 truncate">{achievement.description}</div>
+                </div>
+                <span className="text-xs font-bold text-purple-600 flex-shrink-0">+{achievement.star_reward}⭐</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
   )
 }

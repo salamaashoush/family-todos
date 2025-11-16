@@ -127,6 +127,60 @@ export function initializeDatabase() {
     ON timeslot_completions(completion_date)
   `);
 
+  // Statistics and rewards tables
+  db.run(`
+    CREATE TABLE IF NOT EXISTS member_stats (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      member_id INTEGER NOT NULL,
+      total_stars INTEGER DEFAULT 0,
+      current_streak INTEGER DEFAULT 0,
+      longest_streak INTEGER DEFAULT 0,
+      total_tasks_completed INTEGER DEFAULT 0,
+      total_timeslots_completed INTEGER DEFAULT 0,
+      level INTEGER DEFAULT 1,
+      last_completion_date DATE,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (member_id) REFERENCES members(id) ON DELETE CASCADE,
+      UNIQUE(member_id)
+    )
+  `);
+
+  db.run(`
+    CREATE TABLE IF NOT EXISTS achievements (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL UNIQUE,
+      description TEXT NOT NULL,
+      icon TEXT NOT NULL,
+      requirement_type TEXT NOT NULL,
+      requirement_value INTEGER NOT NULL,
+      star_reward INTEGER DEFAULT 0,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  db.run(`
+    CREATE TABLE IF NOT EXISTS member_achievements (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      member_id INTEGER NOT NULL,
+      achievement_id INTEGER NOT NULL,
+      earned_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (member_id) REFERENCES members(id) ON DELETE CASCADE,
+      FOREIGN KEY (achievement_id) REFERENCES achievements(id) ON DELETE CASCADE,
+      UNIQUE(member_id, achievement_id)
+    )
+  `);
+
+  db.run(`
+    CREATE INDEX IF NOT EXISTS idx_member_stats_member
+    ON member_stats(member_id)
+  `);
+
+  db.run(`
+    CREATE INDEX IF NOT EXISTS idx_member_achievements_member
+    ON member_achievements(member_id)
+  `);
+
   seedInitialData();
 }
 
@@ -270,7 +324,52 @@ function seedInitialData() {
       }
     }
 
-    console.log('Database seeded with initial family members, timeslots, and todos');
+    // Seed achievements
+    const achievements = [
+      { name: 'First Steps', description: 'Complete your first task', icon: '🌟', requirement_type: 'tasks_completed', requirement_value: 1, star_reward: 5 },
+      { name: 'Getting Started', description: 'Complete 10 tasks', icon: '⭐', requirement_type: 'tasks_completed', requirement_value: 10, star_reward: 10 },
+      { name: 'Task Master', description: 'Complete 50 tasks', icon: '🏆', requirement_type: 'tasks_completed', requirement_value: 50, star_reward: 25 },
+      { name: 'Century Club', description: 'Complete 100 tasks', icon: '💯', requirement_type: 'tasks_completed', requirement_value: 100, star_reward: 50 },
+
+      { name: 'Morning Champion', description: 'Complete all morning tasks 7 days in a row', icon: '🌅', requirement_type: 'streak', requirement_value: 7, star_reward: 20 },
+      { name: 'Week Warrior', description: 'Maintain a 7-day streak', icon: '📅', requirement_type: 'streak', requirement_value: 7, star_reward: 15 },
+      { name: 'Unstoppable', description: 'Maintain a 30-day streak', icon: '🔥', requirement_type: 'streak', requirement_value: 30, star_reward: 100 },
+
+      { name: 'Perfect Day', description: 'Complete all tasks in one day', icon: '✨', requirement_type: 'perfect_day', requirement_value: 1, star_reward: 10 },
+      { name: 'Perfect Week', description: 'Complete all tasks for 7 days straight', icon: '🌈', requirement_type: 'perfect_week', requirement_value: 1, star_reward: 50 },
+
+      { name: 'Speed Demon', description: 'Complete 5 tasks before 8 AM', icon: '⚡', requirement_type: 'early_bird', requirement_value: 5, star_reward: 15 },
+      { name: 'Night Owl Pro', description: 'Complete bedtime routine 10 times', icon: '🦉', requirement_type: 'timeslots_completed', requirement_value: 10, star_reward: 20 },
+
+      { name: 'Star Collector', description: 'Earn 100 stars', icon: '🌠', requirement_type: 'stars', requirement_value: 100, star_reward: 25 },
+      { name: 'Super Star', description: 'Earn 500 stars', icon: '💫', requirement_type: 'stars', requirement_value: 500, star_reward: 50 },
+    ];
+
+    for (const achievement of achievements) {
+      try {
+        db.run(
+          `INSERT INTO achievements (name, description, icon, requirement_type, requirement_value, star_reward)
+           VALUES (?, ?, ?, ?, ?, ?)`,
+          [achievement.name, achievement.description, achievement.icon, achievement.requirement_type, achievement.requirement_value, achievement.star_reward]
+        );
+      } catch {
+        // Achievement might already exist
+      }
+    }
+
+    // Initialize stats for each member
+    for (const memberId of memberIds) {
+      try {
+        db.run(
+          `INSERT INTO member_stats (member_id) VALUES (?)`,
+          [memberId]
+        );
+      } catch {
+        // Stats might already exist
+      }
+    }
+
+    console.log('Database seeded with initial family members, timeslots, todos, and achievements');
   }
 }
 
@@ -335,6 +434,38 @@ export type TimeslotCompletion = {
   member_id: number;
   completed_at: string;
   completion_date: string;
+};
+
+export type MemberStats = {
+  id: number;
+  member_id: number;
+  total_stars: number;
+  current_streak: number;
+  longest_streak: number;
+  total_tasks_completed: number;
+  total_timeslots_completed: number;
+  level: number;
+  last_completion_date: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type Achievement = {
+  id: number;
+  name: string;
+  description: string;
+  icon: string;
+  requirement_type: string;
+  requirement_value: number;
+  star_reward: number;
+  created_at: string;
+};
+
+export type MemberAchievement = {
+  id: number;
+  member_id: number;
+  achievement_id: number;
+  earned_at: string;
 };
 
 initializeDatabase();
