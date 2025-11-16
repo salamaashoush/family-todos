@@ -128,11 +128,11 @@ export const uncompleteTodo = createServerFn({ method: "POST" })
 
     // Only decrement stats if something was actually deleted
     if (deleted.changes > 0) {
-      // Decrement stats
+      // Decrement stats (use MAX for SQLite compatibility)
       db.run(
         `UPDATE member_stats
-         SET total_stars = GREATEST(0, total_stars - 1),
-             total_tasks_completed = GREATEST(0, total_tasks_completed - 1),
+         SET total_stars = MAX(0, total_stars - 1),
+             total_tasks_completed = MAX(0, total_tasks_completed - 1),
              updated_at = CURRENT_TIMESTAMP
          WHERE member_id = ?`,
         [data.member_id]

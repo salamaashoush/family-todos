@@ -5,8 +5,9 @@ import { getTimeslots, createTimeslot, updateTimeslot, deleteTimeslot } from '..
 import { getTodos, createTodo, updateTodo, deleteTodo } from '../server/todos'
 import { uploadImage } from '../server/upload'
 import { checkAuth, logout } from '../server/auth'
+import { getAllAchievements } from '../server/statistics'
 import { useState } from 'react'
-import type { Member } from '../db/schema'
+import type { Member, Achievement } from '../db/schema'
 
 export const Route = createFileRoute('/admin')({
   beforeLoad: async () => {
@@ -21,7 +22,7 @@ export const Route = createFileRoute('/admin')({
 
 function AdminPanel() {
   const navigate = useNavigate()
-  const [activeTab, setActiveTab] = useState<'todos' | 'timeslots' | 'members'>('todos')
+  const [activeTab, setActiveTab] = useState<'todos' | 'timeslots' | 'members' | 'stats'>('todos')
 
   const handleLogout = async () => {
     await logout()
@@ -92,12 +93,23 @@ function AdminPanel() {
             >
               Family Members
             </button>
+            <button
+              onClick={() => setActiveTab('stats')}
+              className={`flex-1 px-4 sm:px-6 py-3 sm:py-4 font-bold transition-all text-sm sm:text-base ${
+                activeTab === 'stats'
+                  ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-lg'
+                  : 'bg-gray-50 text-gray-700 hover:bg-gray-100'
+              }`}
+            >
+              Statistics
+            </button>
           </div>
 
           <div className="p-4 sm:p-6 lg:p-8">
             {activeTab === 'members' && <MembersTab />}
             {activeTab === 'timeslots' && <TimeslotsTab />}
             {activeTab === 'todos' && <TodosTab />}
+            {activeTab === 'stats' && <StatisticsTab />}
           </div>
         </div>
       </div>
@@ -1089,6 +1101,127 @@ function TodosTab() {
             )}
           </div>
         ))}
+      </div>
+    </div>
+  )
+}
+
+function StatisticsTab() {
+  const { data: members } = useSuspenseQuery({
+    queryKey: ['members'],
+    queryFn: () => getMembers(),
+  })
+
+  const { data: achievements } = useSuspenseQuery({
+    queryKey: ['achievements'],
+    queryFn: () => getAllAchievements(),
+  })
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h2 className="text-2xl font-bold mb-4 text-gray-800">Statistics Overview</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {members?.map((member) => (
+            <MemberStatsCard key={member.id} member={member} />
+          ))}
+        </div>
+      </div>
+
+      <div>
+        <h2 className="text-2xl font-bold mb-4 text-gray-800">All Achievements</h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {achievements?.map((achievement) => (
+            <div
+              key={achievement.id}
+              className="bg-gradient-to-br from-purple-50 to-pink-50 border-2 border-purple-200 rounded-xl p-4 shadow-md"
+            >
+              <div className="flex items-start gap-3">
+                <div className="text-4xl">{achievement.icon}</div>
+                <div className="flex-1">
+                  <h3 className="font-bold text-gray-800">{achievement.name}</h3>
+                  <p className="text-sm text-gray-600 mb-2">{achievement.description}</p>
+                  <div className="flex items-center gap-2 text-sm">
+                    <span className="font-semibold text-purple-600">
+                      Requirement: {achievement.requirement_value} {achievement.requirement_type.replace('_', ' ')}
+                    </span>
+                  </div>
+                  <div className="mt-2 inline-block bg-yellow-100 border-2 border-yellow-400 rounded-full px-3 py-1 text-sm font-bold text-yellow-700">
+                    +{achievement.star_reward} Stars
+                  </div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+interface MemberStatsCardProps {
+  member: Member
+}
+
+function MemberStatsCard({ member }: MemberStatsCardProps) {
+  const { data: stats } = useSuspenseQuery({
+    queryKey: ['memberStats', member.id],
+    queryFn: async () => {
+      const { getMemberStats } = await import('../server/statistics')
+      return getMemberStats({ data: { member_id: member.id } })
+    },
+  })
+
+  const { data: achievements } = useSuspenseQuery({
+    queryKey: ['memberAchievements', member.id],
+    queryFn: async () => {
+      const { getMemberAchievements } = await import('../server/statistics')
+      return getMemberAchievements({ data: { member_id: member.id } })
+    },
+  })
+
+  const earnedCount = achievements?.filter(a => a.earned_at).length || 0
+
+  return (
+    <div className="bg-white rounded-xl shadow-lg overflow-hidden border-2 border-purple-200">
+      <div className="bg-gradient-to-r from-purple-400 to-pink-400 p-4 text-center">
+        {member.avatar && (
+          <div className="w-16 h-16 mx-auto mb-2 rounded-full overflow-hidden border-4 border-white shadow-lg">
+            <img src={member.avatar} alt={member.name} className="w-full h-full object-cover" />
+          </div>
+        )}
+        <h3 className="text-lg font-bold text-white">{member.name}</h3>
+      </div>
+
+      <div className="p-4 space-y-3">
+        <div className="flex items-center justify-between">
+          <span className="text-sm font-semibold text-gray-600">Level</span>
+          <span className="text-lg font-bold text-purple-600">{stats?.level || 1}</span>
+        </div>
+        <div className="flex items-center justify-between">
+          <span className="text-sm font-semibold text-gray-600">Total Stars</span>
+          <span className="text-lg font-bold text-yellow-600">{stats?.total_stars || 0}</span>
+        </div>
+        <div className="flex items-center justify-between">
+          <span className="text-sm font-semibold text-gray-600">Current Streak</span>
+          <span className="text-lg font-bold text-orange-600">{stats?.current_streak || 0} days</span>
+        </div>
+        <div className="flex items-center justify-between">
+          <span className="text-sm font-semibold text-gray-600">Longest Streak</span>
+          <span className="text-lg font-bold text-red-600">{stats?.longest_streak || 0} days</span>
+        </div>
+        <div className="flex items-center justify-between">
+          <span className="text-sm font-semibold text-gray-600">Tasks Done</span>
+          <span className="text-lg font-bold text-green-600">{stats?.total_tasks_completed || 0}</span>
+        </div>
+        <div className="flex items-center justify-between">
+          <span className="text-sm font-semibold text-gray-600">Timeslots Done</span>
+          <span className="text-lg font-bold text-blue-600">{stats?.total_timeslots_completed || 0}</span>
+        </div>
+        <div className="flex items-center justify-between pt-2 border-t-2 border-gray-200">
+          <span className="text-sm font-semibold text-gray-600">Achievements</span>
+          <span className="text-lg font-bold text-purple-600">{earnedCount}</span>
+        </div>
       </div>
     </div>
   )
