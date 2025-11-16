@@ -22,7 +22,6 @@ export function initializeDatabase() {
   db.run(`
     CREATE TABLE IF NOT EXISTS timeslots (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
-      member_id INTEGER NOT NULL,
       name TEXT NOT NULL,
       description TEXT,
       start_time TEXT,
@@ -31,23 +30,44 @@ export function initializeDatabase() {
       recurrence_days TEXT,
       is_active INTEGER DEFAULT 1,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      FOREIGN KEY (member_id) REFERENCES members(id) ON DELETE CASCADE
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  db.run(`
+    CREATE TABLE IF NOT EXISTS timeslot_members (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      timeslot_id INTEGER NOT NULL,
+      member_id INTEGER NOT NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (timeslot_id) REFERENCES timeslots(id) ON DELETE CASCADE,
+      FOREIGN KEY (member_id) REFERENCES members(id) ON DELETE CASCADE,
+      UNIQUE(timeslot_id, member_id)
     )
   `);
 
   db.run(`
     CREATE TABLE IF NOT EXISTS todos (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
-      timeslot_id INTEGER NOT NULL,
       title TEXT NOT NULL,
       description TEXT,
       image_url TEXT,
       symbol TEXT,
       position INTEGER DEFAULT 0,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      FOREIGN KEY (timeslot_id) REFERENCES timeslots(id) ON DELETE CASCADE
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  db.run(`
+    CREATE TABLE IF NOT EXISTS todo_timeslots (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      todo_id INTEGER NOT NULL,
+      timeslot_id INTEGER NOT NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (todo_id) REFERENCES todos(id) ON DELETE CASCADE,
+      FOREIGN KEY (timeslot_id) REFERENCES timeslots(id) ON DELETE CASCADE,
+      UNIQUE(todo_id, timeslot_id)
     )
   `);
 
@@ -78,13 +98,23 @@ export function initializeDatabase() {
   `);
 
   db.run(`
-    CREATE INDEX IF NOT EXISTS idx_timeslots_member
-    ON timeslots(member_id)
+    CREATE INDEX IF NOT EXISTS idx_timeslot_members_timeslot
+    ON timeslot_members(timeslot_id)
   `);
 
   db.run(`
-    CREATE INDEX IF NOT EXISTS idx_todos_timeslot
-    ON todos(timeslot_id)
+    CREATE INDEX IF NOT EXISTS idx_timeslot_members_member
+    ON timeslot_members(member_id)
+  `);
+
+  db.run(`
+    CREATE INDEX IF NOT EXISTS idx_todo_timeslots_todo
+    ON todo_timeslots(todo_id)
+  `);
+
+  db.run(`
+    CREATE INDEX IF NOT EXISTS idx_todo_timeslots_timeslot
+    ON todo_timeslots(timeslot_id)
   `);
 
   db.run(`
@@ -126,76 +156,58 @@ function seedInitialData() {
 
     const timeslots = [
       {
-        member_id: omarId,
         name: 'Morning Routine',
         description: 'Get ready for the day',
         start_time: '07:00',
-        end_time: '08:00',
+        end_time: '08:30',
         recurrence_type: 'daily' as const,
         recurrence_days: null,
+        member_ids: [omarId, aliId],
       },
       {
-        member_id: omarId,
         name: 'Homework Time',
         description: 'Complete school assignments',
         start_time: '16:00',
         end_time: '17:00',
         recurrence_type: 'weekly' as const,
         recurrence_days: 'Mon,Tue,Wed,Thu,Sun',
+        member_ids: [omarId],
       },
       {
-        member_id: omarId,
         name: 'Bedtime Routine',
         description: 'Prepare for sleep',
-        start_time: '20:00',
+        start_time: '19:30',
         end_time: '20:30',
         recurrence_type: 'daily' as const,
         recurrence_days: null,
+        member_ids: [omarId, aliId],
       },
       {
-        member_id: aliId,
-        name: 'Morning Routine',
-        description: 'Get ready for the day',
-        start_time: '08:00',
-        end_time: '09:00',
-        recurrence_type: 'daily' as const,
-        recurrence_days: null,
-      },
-      {
-        member_id: aliId,
         name: 'Nap Time',
         description: 'Afternoon rest',
         start_time: '14:00',
         end_time: '15:30',
         recurrence_type: 'daily' as const,
         recurrence_days: null,
+        member_ids: [aliId],
       },
       {
-        member_id: aliId,
-        name: 'Bedtime Routine',
-        description: 'Prepare for sleep',
-        start_time: '19:30',
-        end_time: '20:00',
-        recurrence_type: 'daily' as const,
-        recurrence_days: null,
-      },
-      {
-        member_id: salamaId,
         name: 'Weekly Planning',
         description: 'Plan the week ahead',
         start_time: '09:00',
         end_time: '10:00',
         recurrence_type: 'weekly' as const,
         recurrence_days: 'Fri',
+        member_ids: [salamaId, faridaId],
       },
       {
-        member_id: faridaId,
         name: 'Grocery Shopping',
         description: 'Weekly grocery run',
         start_time: '10:00',
         end_time: '12:00',
         recurrence_type: 'weekly' as const,
         recurrence_days: 'Thu',
+        member_ids: [faridaId],
       },
     ];
 
@@ -203,10 +215,9 @@ function seedInitialData() {
     for (const timeslot of timeslots) {
       const result = db.run(
         `INSERT INTO timeslots
-        (member_id, name, description, start_time, end_time, recurrence_type, recurrence_days)
-        VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        (name, description, start_time, end_time, recurrence_type, recurrence_days)
+        VALUES (?, ?, ?, ?, ?, ?)`,
         [
-          timeslot.member_id,
           timeslot.name,
           timeslot.description,
           timeslot.start_time,
@@ -215,45 +226,48 @@ function seedInitialData() {
           timeslot.recurrence_days,
         ]
       );
-      timeslotIds.push(result.lastInsertRowid as number);
+      const timeslotId = result.lastInsertRowid as number;
+      timeslotIds.push(timeslotId);
+
+      for (const memberId of timeslot.member_ids) {
+        db.run(
+          `INSERT INTO timeslot_members (timeslot_id, member_id) VALUES (?, ?)`,
+          [timeslotId, memberId]
+        );
+      }
     }
 
-    const omarMorningId = timeslotIds[0];
-    const omarHomeworkId = timeslotIds[1];
-    const omarBedtimeId = timeslotIds[2];
-    const aliMorningId = timeslotIds[3];
-    const aliBedtimeId = timeslotIds[5];
+    const morningRoutineId = timeslotIds[0];
+    const homeworkId = timeslotIds[1];
+    const bedtimeId = timeslotIds[2];
+    const napTimeId = timeslotIds[3];
 
     const todos = [
-      { timeslot_id: omarMorningId, title: 'Brush Teeth', symbol: '🦷', position: 1 },
-      { timeslot_id: omarMorningId, title: 'Get Dressed', symbol: '👕', position: 2 },
-      { timeslot_id: omarMorningId, title: 'Eat Breakfast', symbol: '🍳', position: 3 },
-      { timeslot_id: omarMorningId, title: 'Pack School Bag', symbol: '🎒', position: 4 },
-
-      { timeslot_id: omarHomeworkId, title: 'Reading Practice', symbol: '📖', position: 1 },
-      { timeslot_id: omarHomeworkId, title: 'Math Exercises', symbol: '🔢', position: 2 },
-      { timeslot_id: omarHomeworkId, title: 'Writing Practice', symbol: '✏️', position: 3 },
-
-      { timeslot_id: omarBedtimeId, title: 'Put Toys Away', symbol: '🧸', position: 1 },
-      { timeslot_id: omarBedtimeId, title: 'Brush Teeth', symbol: '🦷', position: 2 },
-      { timeslot_id: omarBedtimeId, title: 'Change into Pajamas', symbol: '👔', position: 3 },
-      { timeslot_id: omarBedtimeId, title: 'Read Story', symbol: '📚', position: 4 },
-
-      { timeslot_id: aliMorningId, title: 'Brush Teeth', symbol: '🦷', position: 1 },
-      { timeslot_id: aliMorningId, title: 'Get Dressed', symbol: '👕', position: 2 },
-      { timeslot_id: aliMorningId, title: 'Eat Breakfast', symbol: '🥣', position: 3 },
-
-      { timeslot_id: aliBedtimeId, title: 'Put Toys Away', symbol: '🧸', position: 1 },
-      { timeslot_id: aliBedtimeId, title: 'Brush Teeth', symbol: '🦷', position: 2 },
-      { timeslot_id: aliBedtimeId, title: 'Change into Pajamas', symbol: '👔', position: 3 },
+      { title: 'Brush Teeth', symbol: '🦷', position: 1, timeslot_ids: [morningRoutineId, bedtimeId] },
+      { title: 'Get Dressed', symbol: '👕', position: 2, timeslot_ids: [morningRoutineId] },
+      { title: 'Eat Breakfast', symbol: '🍳', position: 3, timeslot_ids: [morningRoutineId] },
+      { title: 'Pack School Bag', symbol: '🎒', position: 4, timeslot_ids: [morningRoutineId] },
+      { title: 'Reading Practice', symbol: '📖', position: 1, timeslot_ids: [homeworkId] },
+      { title: 'Math Exercises', symbol: '🔢', position: 2, timeslot_ids: [homeworkId] },
+      { title: 'Writing Practice', symbol: '✏️', position: 3, timeslot_ids: [homeworkId] },
+      { title: 'Put Toys Away', symbol: '🧸', position: 1, timeslot_ids: [bedtimeId, napTimeId] },
+      { title: 'Change into Pajamas', symbol: '👔', position: 3, timeslot_ids: [bedtimeId] },
+      { title: 'Read Story', symbol: '📚', position: 4, timeslot_ids: [bedtimeId] },
     ];
 
     for (const todo of todos) {
-      db.run(
-        `INSERT INTO todos (timeslot_id, title, symbol, position)
-        VALUES (?, ?, ?, ?)`,
-        [todo.timeslot_id, todo.title, todo.symbol, todo.position]
+      const result = db.run(
+        `INSERT INTO todos (title, symbol, position) VALUES (?, ?, ?)`,
+        [todo.title, todo.symbol, todo.position]
       );
+      const todoId = result.lastInsertRowid as number;
+
+      for (const timeslotId of todo.timeslot_ids) {
+        db.run(
+          `INSERT INTO todo_timeslots (todo_id, timeslot_id) VALUES (?, ?)`,
+          [todoId, timeslotId]
+        );
+      }
     }
 
     console.log('Database seeded with initial family members, timeslots, and todos');
@@ -271,7 +285,6 @@ export type Member = {
 
 export type Timeslot = {
   id: number;
-  member_id: number;
   name: string;
   description: string | null;
   start_time: string | null;
@@ -283,9 +296,15 @@ export type Timeslot = {
   updated_at: string;
 };
 
-export type Todo = {
+export type TimeslotMember = {
   id: number;
   timeslot_id: number;
+  member_id: number;
+  created_at: string;
+};
+
+export type Todo = {
+  id: number;
   title: string;
   description: string | null;
   image_url: string | null;
@@ -293,6 +312,13 @@ export type Todo = {
   position: number;
   created_at: string;
   updated_at: string;
+};
+
+export type TodoTimeslot = {
+  id: number;
+  todo_id: number;
+  timeslot_id: number;
+  created_at: string;
 };
 
 export type TodoCompletion = {

@@ -1,35 +1,47 @@
 import { createServerFn } from "@tanstack/react-start";
-import { db, type Todo } from "../db/schema";
+import { db, type Todo, type TodoTimeslot } from "../db/schema";
 import { z } from "zod";
 
 const GetTodosSchema = z.object({
   timeslot_id: z.number().optional(),
 });
 
+type TodoWithTimeslots = Todo & {
+  timeslot_ids: number[];
+};
+
 export const getTodos = createServerFn({ method: "GET" })
   .inputValidator(GetTodosSchema)
   .handler(async ({ data }) => {
-    let query = "SELECT * FROM todos";
-    const params: number[] = [];
+    let query = "SELECT * FROM todos ORDER BY position, created_at";
+
+    const todos = db.query<Todo, []>(query).all();
+
+    const todosWithTimeslots: TodoWithTimeslots[] = todos.map(todo => {
+      const timeslots = db.query<TodoTimeslot, [number]>(
+        "SELECT * FROM todo_timeslots WHERE todo_id = ?"
+      ).all(todo.id);
+
+      return {
+        ...todo,
+        timeslot_ids: timeslots.map(t => t.timeslot_id)
+      };
+    });
 
     if (data.timeslot_id) {
-      query += " WHERE timeslot_id = ?";
-      params.push(data.timeslot_id);
+      return todosWithTimeslots.filter(t => t.timeslot_ids.includes(data.timeslot_id!));
     }
 
-    query += " ORDER BY position, created_at";
-
-    const todos = db.query<Todo, number[]>(query).all(...params);
-    return todos;
+    return todosWithTimeslots;
   });
 
 const CreateTodoSchema = z.object({
-  timeslot_id: z.number(),
   title: z.string().min(1),
   description: z.string().optional(),
   image_url: z.string().optional(),
   symbol: z.string().optional(),
   position: z.number().optional(),
+  timeslot_ids: z.array(z.number()).min(1),
 });
 
 export const createTodo = createServerFn({ method: "POST" })
@@ -37,10 +49,9 @@ export const createTodo = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const result = db.run(
       `INSERT INTO todos
-      (timeslot_id, title, description, image_url, symbol, position)
-      VALUES (?, ?, ?, ?, ?, ?)`,
+      (title, description, image_url, symbol, position)
+      VALUES (?, ?, ?, ?, ?)`,
       [
-        data.timeslot_id,
         data.title,
         data.description || null,
         data.image_url || null,
@@ -49,9 +60,18 @@ export const createTodo = createServerFn({ method: "POST" })
       ]
     );
 
+    const todoId = result.lastInsertRowid as number;
+
+    for (const timeslotId of data.timeslot_ids) {
+      db.run(
+        `INSERT INTO todo_timeslots (todo_id, timeslot_id) VALUES (?, ?)`,
+        [todoId, timeslotId]
+      );
+    }
+
     const todo = db
       .query<Todo, [number]>("SELECT * FROM todos WHERE id = ?")
-      .get(result.lastInsertRowid as number);
+      .get(todoId);
 
     return todo;
   });
@@ -63,6 +83,7 @@ const UpdateTodoSchema = z.object({
   image_url: z.string().optional(),
   symbol: z.string().optional(),
   position: z.number().optional(),
+  timeslot_ids: z.array(z.number()).optional(),
 });
 
 export const updateTodo = createServerFn({ method: "POST" })
@@ -96,6 +117,17 @@ export const updateTodo = createServerFn({ method: "POST" })
     values.push(data.id);
 
     db.run(`UPDATE todos SET ${updates.join(", ")} WHERE id = ?`, values);
+
+    if (data.timeslot_ids !== undefined) {
+      db.run("DELETE FROM todo_timeslots WHERE todo_id = ?", [data.id]);
+
+      for (const timeslotId of data.timeslot_ids) {
+        db.run(
+          `INSERT INTO todo_timeslots (todo_id, timeslot_id) VALUES (?, ?)`,
+          [data.id, timeslotId]
+        );
+      }
+    }
 
     const todo = db
       .query<Todo, [number]>("SELECT * FROM todos WHERE id = ?")

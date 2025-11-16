@@ -1,30 +1,9 @@
 import { createServerFn } from "@tanstack/react-start";
-import { useSession } from "@tanstack/react-start/server";
 import { z } from "zod";
+import { useAppSession } from "~/utils/session";
 
 const ADMIN_USERNAME = process.env.ADMIN_USERNAME || "admin";
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "changeme123";
-const SESSION_SECRET =
-  process.env.SESSION_SECRET ||
-  "change-this-secret-to-at-least-32-characters-long";
-
-type SessionData = {
-  username?: string;
-  isAuthenticated?: boolean;
-};
-
-export function useAppSession() {
-  return useSession<SessionData>({
-    name: "admin-session",
-    password: SESSION_SECRET,
-    cookie: {
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      httpOnly: true,
-      maxAge: 60 * 60 * 24 * 7, // 7 days
-    },
-  });
-}
 
 const LoginSchema = z.object({
   username: z.string().min(1),

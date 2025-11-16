@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "start": "bun run server.ts",
+    "start": "bun run .output/server/index.mjs",
     "dev": "bun --bun vite dev",
     "build": "bun --bun vite build",
     "serve": "bun --bun vite preview",

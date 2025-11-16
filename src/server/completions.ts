@@ -71,16 +71,18 @@ export const completeTodo = createServerFn({ method: "POST" })
         >("SELECT * FROM todo_completions WHERE id = ?")
         .get(result.lastInsertRowid as number);
 
-      const todo = db
+      // Get all timeslots associated with this todo
+      const timeslots = db
         .query<
           { timeslot_id: number },
           [number]
-        >("SELECT timeslot_id FROM todos WHERE id = ?")
-        .get(data.todo_id);
+        >("SELECT timeslot_id FROM todo_timeslots WHERE todo_id = ?")
+        .all(data.todo_id);
 
-      if (todo) {
+      // Check and complete each associated timeslot
+      for (const { timeslot_id } of timeslots) {
         checkAndCompleteTimeslot(
-          todo.timeslot_id,
+          timeslot_id,
           data.member_id,
           completionDate
         );
@@ -109,17 +111,19 @@ export const uncompleteTodo = createServerFn({ method: "POST" })
       [data.todo_id, data.member_id, completionDate]
     );
 
-    const todo = db
+    // Get all timeslots associated with this todo
+    const timeslots = db
       .query<
         { timeslot_id: number },
         [number]
-      >("SELECT timeslot_id FROM todos WHERE id = ?")
-      .get(data.todo_id);
+      >("SELECT timeslot_id FROM todo_timeslots WHERE todo_id = ?")
+      .all(data.todo_id);
 
-    if (todo) {
+    // Remove timeslot completions for each associated timeslot
+    for (const { timeslot_id } of timeslots) {
       db.run(
         "DELETE FROM timeslot_completions WHERE timeslot_id = ? AND member_id = ? AND completion_date = ?",
-        [todo.timeslot_id, data.member_id, completionDate]
+        [timeslot_id, data.member_id, completionDate]
       );
     }
 
@@ -131,19 +135,21 @@ function checkAndCompleteTimeslot(
   memberId: number,
   completionDate: string
 ) {
+  // Get total todos for this timeslot via the junction table
   const totalTodos = db
     .query<
       { count: number },
       [number]
-    >("SELECT COUNT(*) as count FROM todos WHERE timeslot_id = ?")
+    >("SELECT COUNT(*) as count FROM todo_timeslots WHERE timeslot_id = ?")
     .get(timeslotId);
 
+  // Get completed todos for this timeslot
   const completedTodos = db
     .query<{ count: number }, [number, number, string]>(
       `SELECT COUNT(*) as count
      FROM todo_completions tc
-     JOIN todos t ON tc.todo_id = t.id
-     WHERE t.timeslot_id = ? AND tc.member_id = ? AND tc.completion_date = ?`
+     JOIN todo_timeslots tt ON tc.todo_id = tt.todo_id
+     WHERE tt.timeslot_id = ? AND tc.member_id = ? AND tc.completion_date = ?`
     )
     .get(timeslotId, memberId, completionDate);
 
