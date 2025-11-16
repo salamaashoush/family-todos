@@ -58,6 +58,17 @@ export const completeTodo = createServerFn({ method: "POST" })
     const completionDate =
       data.completion_date || new Date().toISOString().split("T")[0];
 
+    // Check if already completed
+    const existing = db
+      .query<TodoCompletion, [number, number, string]>(
+        "SELECT * FROM todo_completions WHERE todo_id = ? AND member_id = ? AND completion_date = ?"
+      )
+      .get(data.todo_id, data.member_id, completionDate);
+
+    if (existing) {
+      return existing;
+    }
+
     try {
       const result = db.run(
         `INSERT INTO todo_completions (todo_id, member_id, completion_date)
@@ -110,10 +121,23 @@ export const uncompleteTodo = createServerFn({ method: "POST" })
     const completionDate =
       data.completion_date || new Date().toISOString().split("T")[0];
 
-    db.run(
+    const deleted = db.run(
       "DELETE FROM todo_completions WHERE todo_id = ? AND member_id = ? AND completion_date = ?",
       [data.todo_id, data.member_id, completionDate]
     );
+
+    // Only decrement stats if something was actually deleted
+    if (deleted.changes > 0) {
+      // Decrement stats
+      db.run(
+        `UPDATE member_stats
+         SET total_stars = GREATEST(0, total_stars - 1),
+             total_tasks_completed = GREATEST(0, total_tasks_completed - 1),
+             updated_at = CURRENT_TIMESTAMP
+         WHERE member_id = ?`,
+        [data.member_id]
+      );
+    }
 
     // Get all timeslots associated with this todo
     const timeslots = db
