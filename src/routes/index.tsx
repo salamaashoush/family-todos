@@ -5,7 +5,9 @@ import { getTimeslots } from '../server/timeslots'
 import { getTodos } from '../server/todos'
 import { getTodoCompletions, completeTodo, uncompleteTodo } from '../server/completions'
 import { getMemberStats, getMemberAchievements } from '../server/statistics'
-import { useState } from 'react'
+import { getWeeklyProgress } from '../server/progress'
+import { useState, useEffect } from 'react'
+import confetti from 'canvas-confetti'
 import type { Member, Timeslot, Todo, TodoCompletion, MemberStats, Achievement } from '../db/schema'
 
 export const Route = createFileRoute('/')({
@@ -249,6 +251,22 @@ function TimeslotCard({ timeslot, todos, memberId, isTodoCompleted, onToggleTodo
   const completedCount = todos.filter(t => isTodoCompleted(t.id, memberId)).length
   const totalCount = todos.length
   const allCompleted = totalCount > 0 && completedCount === totalCount
+  const [wasCompleted, setWasCompleted] = useState(allCompleted)
+
+  useEffect(() => {
+    if (allCompleted && !wasCompleted) {
+      // Timeslot just completed - celebrate!
+      confetti({
+        particleCount: 100,
+        spread: 70,
+        origin: { y: 0.6 },
+        colors: ['#9333ea', '#ec4899', '#f59e0b']
+      })
+      setWasCompleted(true)
+    } else if (!allCompleted) {
+      setWasCompleted(false)
+    }
+  }, [allCompleted, wasCompleted])
 
   return (
     <div className={`rounded-xl sm:rounded-2xl p-3 sm:p-4 transition-all ${allCompleted ? 'bg-green-100 border-4 border-green-400' : 'bg-gray-50 border-4 border-gray-200'}`}>
@@ -362,6 +380,58 @@ function StatsDisplay({ stats, achievements }: StatsDisplayProps) {
   const earnedAchievements = achievements.filter(a => a.earned_at)
   const nextAchievements = achievements.filter(a => !a.earned_at).slice(0, 3)
   const levelProgress = (stats.total_stars % 50) / 50 * 100
+  const [prevLevel, setPrevLevel] = useState(stats.level)
+  const [prevAchievementCount, setPrevAchievementCount] = useState(earnedAchievements.length)
+  const [showWeeklyView, setShowWeeklyView] = useState(false)
+
+  // Get start of current week (Monday)
+  const getWeekStart = () => {
+    const today = new Date()
+    const day = today.getDay()
+    const diff = today.getDate() - day + (day === 0 ? -6 : 1)
+    const monday = new Date(today.setDate(diff))
+    return monday.toISOString().split('T')[0]
+  }
+
+  const { data: weeklyProgress } = useSuspenseQuery({
+    queryKey: ['weeklyProgress', stats.member_id, getWeekStart()],
+    queryFn: () => getWeeklyProgress({ data: { member_id: stats.member_id, start_date: getWeekStart() } }),
+    enabled: showWeeklyView
+  })
+
+  useEffect(() => {
+    // Level up celebration
+    if (stats.level > prevLevel) {
+      confetti({
+        particleCount: 200,
+        spread: 180,
+        origin: { y: 0.5 },
+        colors: ['#ffd700', '#ffed4e', '#ffa500'],
+        startVelocity: 45,
+        gravity: 0.8,
+      })
+      setPrevLevel(stats.level)
+    }
+
+    // Achievement unlock celebration
+    if (earnedAchievements.length > prevAchievementCount) {
+      confetti({
+        particleCount: 150,
+        angle: 60,
+        spread: 55,
+        origin: { x: 0 },
+        colors: ['#9333ea', '#ec4899', '#f59e0b']
+      })
+      confetti({
+        particleCount: 150,
+        angle: 120,
+        spread: 55,
+        origin: { x: 1 },
+        colors: ['#9333ea', '#ec4899', '#f59e0b']
+      })
+      setPrevAchievementCount(earnedAchievements.length)
+    }
+  }, [stats.level, earnedAchievements.length, prevLevel, prevAchievementCount])
 
   return (
     <div className="bg-gradient-to-br from-yellow-50 to-orange-50 p-4 border-b-4 border-yellow-300 flex-shrink-0">
@@ -458,6 +528,57 @@ function StatsDisplay({ stats, achievements }: StatsDisplayProps) {
           </div>
         </div>
       )}
+
+      <div className="mt-3 pt-3 border-t-2 border-yellow-200">
+        <button
+          onClick={() => setShowWeeklyView(!showWeeklyView)}
+          className="w-full bg-white rounded-lg p-2 flex items-center justify-between border-2 border-purple-300 hover:border-purple-500 transition-all"
+        >
+          <span className="text-sm font-bold text-gray-700">Weekly Progress</span>
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            className={`h-5 w-5 transition-transform ${showWeeklyView ? 'rotate-180' : ''}`}
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+          </svg>
+        </button>
+
+        {showWeeklyView && weeklyProgress && (
+          <div className="mt-3 grid grid-cols-7 gap-1">
+            {weeklyProgress.map((day, index) => {
+              const dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+              const today = new Date().toISOString().split('T')[0]
+              const isToday = day.date === today
+              const hasActivity = day.task_count > 0
+
+              return (
+                <div
+                  key={day.date}
+                  className={`flex flex-col items-center p-2 rounded-lg border-2 ${
+                    isToday ? 'border-purple-500 bg-purple-50' : 'border-gray-200 bg-white'
+                  }`}
+                >
+                  <span className="text-xs font-bold text-gray-600">{dayNames[index]}</span>
+                  <span className="text-xs text-gray-500">{new Date(day.date).getDate()}</span>
+                  <div className={`mt-1 w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${
+                    hasActivity ? 'bg-green-500 text-white' : 'bg-gray-100 text-gray-400'
+                  }`}>
+                    {day.task_count}
+                  </div>
+                  {day.timeslot_count > 0 && (
+                    <div className="mt-1 text-xs text-green-600 font-bold">
+                      🎯{day.timeslot_count}
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        )}
+      </div>
     </div>
   )
 }

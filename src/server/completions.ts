@@ -60,9 +60,10 @@ export const completeTodo = createServerFn({ method: "POST" })
 
     // Check if already completed
     const existing = db
-      .query<TodoCompletion, [number, number, string]>(
-        "SELECT * FROM todo_completions WHERE todo_id = ? AND member_id = ? AND completion_date = ?"
-      )
+      .query<
+        TodoCompletion,
+        [number, number, string]
+      >("SELECT * FROM todo_completions WHERE todo_id = ? AND member_id = ? AND completion_date = ?")
       .get(data.todo_id, data.member_id, completionDate);
 
     if (existing) {
@@ -93,15 +94,13 @@ export const completeTodo = createServerFn({ method: "POST" })
 
       // Check and complete each associated timeslot
       for (const { timeslot_id } of timeslots) {
-        checkAndCompleteTimeslot(
-          timeslot_id,
-          data.member_id,
-          completionDate
-        );
+        checkAndCompleteTimeslot(timeslot_id, data.member_id, completionDate);
       }
 
       // Update statistics and check achievements
-      await updateStats({ data: { member_id: data.member_id, completion_date: completionDate } });
+      await updateStats({
+        data: { member_id: data.member_id, completion_date: completionDate },
+      });
 
       return completion;
     } catch {
@@ -149,10 +148,21 @@ export const uncompleteTodo = createServerFn({ method: "POST" })
 
     // Remove timeslot completions for each associated timeslot
     for (const { timeslot_id } of timeslots) {
-      db.run(
+      const deleted = db.run(
         "DELETE FROM timeslot_completions WHERE timeslot_id = ? AND member_id = ? AND completion_date = ?",
         [timeslot_id, data.member_id, completionDate]
       );
+
+      // Decrement timeslot completion count if something was deleted
+      if (deleted.changes > 0) {
+        db.run(
+          `UPDATE member_stats
+           SET total_timeslots_completed = MAX(0, total_timeslots_completed - 1),
+               updated_at = CURRENT_TIMESTAMP
+           WHERE member_id = ?`,
+          [data.member_id]
+        );
+      }
     }
 
     return { success: true };
@@ -188,11 +198,22 @@ function checkAndCompleteTimeslot(
     totalTodos.count === completedTodos.count
   ) {
     try {
-      db.run(
+      const result = db.run(
         `INSERT INTO timeslot_completions (timeslot_id, member_id, completion_date)
          VALUES (?, ?, ?)`,
         [timeslotId, memberId, completionDate]
       );
+
+      // Update timeslot completion stats if this is a new completion
+      if (result.changes > 0) {
+        db.run(
+          `UPDATE member_stats
+           SET total_timeslots_completed = total_timeslots_completed + 1,
+               updated_at = CURRENT_TIMESTAMP
+           WHERE member_id = ?`,
+          [memberId]
+        );
+      }
     } catch {
       // Ignore duplicate errors
     }
