@@ -66,6 +66,7 @@ function Home() {
       queryClient.invalidateQueries({ queryKey: ['completions', selectedDate] })
       queryClient.invalidateQueries({ queryKey: ['memberStats'] })
       queryClient.invalidateQueries({ queryKey: ['memberAchievements'] })
+      queryClient.invalidateQueries({ queryKey: ['weeklyProgress'] })
     },
   })
 
@@ -75,6 +76,7 @@ function Home() {
       queryClient.invalidateQueries({ queryKey: ['completions', selectedDate] })
       queryClient.invalidateQueries({ queryKey: ['memberStats'] })
       queryClient.invalidateQueries({ queryKey: ['memberAchievements'] })
+      queryClient.invalidateQueries({ queryKey: ['weeklyProgress'] })
     },
   })
 
@@ -186,6 +188,16 @@ function MemberColumn({ member, timeslots, todos, isTodoCompleted, onToggleTodo 
     queryFn: () => getMemberAchievements({ data: { member_id: member.id } }),
   })
 
+  // Calculate member's daily completion percentage
+  const memberTimeslots = timeslots.filter((t: any) => t.member_ids?.includes(member.id))
+  const totalTimeslots = memberTimeslots.length
+  const completedTimeslots = memberTimeslots.filter((timeslot: any) => {
+    const timeslotTodos = todos.filter((t: any) => t.timeslot_ids?.includes(timeslot.id))
+    const completedCount = timeslotTodos.filter(t => isTodoCompleted(t.id, member.id)).length
+    return timeslotTodos.length > 0 && completedCount === timeslotTodos.length
+  }).length
+  const completionPercentage = totalTimeslots > 0 ? (completedTimeslots / totalTimeslots) * 100 : 0
+
   return (
     <div className="bg-white rounded-2xl sm:rounded-3xl shadow-2xl overflow-hidden h-full flex flex-col relative">
       <div className="bg-gradient-to-r from-purple-400 to-pink-400 p-4 sm:p-6 text-center flex-shrink-0">
@@ -231,6 +243,9 @@ function MemberColumn({ member, timeslots, todos, isTodoCompleted, onToggleTodo 
               memberId={member.id}
               isTodoCompleted={isTodoCompleted}
               onToggleTodo={onToggleTodo}
+              completionPercentage={completionPercentage}
+              totalTimeslots={totalTimeslots}
+              completedTimeslotsCount={completedTimeslots}
             />
           )
         })}
@@ -245,9 +260,12 @@ interface TimeslotCardProps {
   memberId: number
   isTodoCompleted: (todoId: number, memberId: number) => boolean
   onToggleTodo: (todoId: number, memberId: number, isCompleted: boolean) => void
+  completionPercentage: number
+  totalTimeslots: number
+  completedTimeslotsCount: number
 }
 
-function TimeslotCard({ timeslot, todos, memberId, isTodoCompleted, onToggleTodo }: TimeslotCardProps) {
+function TimeslotCard({ timeslot, todos, memberId, isTodoCompleted, onToggleTodo, completionPercentage, totalTimeslots, completedTimeslotsCount }: TimeslotCardProps) {
   const completedCount = todos.filter(t => isTodoCompleted(t.id, memberId)).length
   const totalCount = todos.length
   const allCompleted = totalCount > 0 && completedCount === totalCount
@@ -255,18 +273,68 @@ function TimeslotCard({ timeslot, todos, memberId, isTodoCompleted, onToggleTodo
 
   useEffect(() => {
     if (allCompleted && !wasCompleted) {
-      // Timeslot just completed - celebrate!
-      confetti({
-        particleCount: 100,
-        spread: 70,
-        origin: { y: 0.6 },
-        colors: ['#9333ea', '#ec4899', '#f59e0b']
-      })
+      // Progressive celebration based on daily completion
+      const newCompletedCount = completedTimeslotsCount + 1
+      const newPercentage = totalTimeslots > 0 ? (newCompletedCount / totalTimeslots) * 100 : 0
+
+      if (newPercentage >= 100) {
+        // PERFECT DAY! Epic celebration
+        const duration = 5000
+        const end = Date.now() + duration
+
+        const frame = () => {
+          confetti({
+            particleCount: 7,
+            angle: 60,
+            spread: 55,
+            origin: { x: 0 },
+            colors: ['#ffd700', '#ffed4e', '#ffa500', '#ff69b4', '#9333ea']
+          })
+          confetti({
+            particleCount: 7,
+            angle: 120,
+            spread: 55,
+            origin: { x: 1 },
+            colors: ['#ffd700', '#ffed4e', '#ffa500', '#ff69b4', '#9333ea']
+          })
+
+          if (Date.now() < end) {
+            requestAnimationFrame(frame)
+          }
+        }
+        frame()
+      } else if (newPercentage >= 75) {
+        // 75%+ - Big celebration
+        confetti({
+          particleCount: 200,
+          spread: 100,
+          origin: { y: 0.6 },
+          colors: ['#9333ea', '#ec4899', '#f59e0b', '#10b981'],
+          startVelocity: 50,
+        })
+      } else if (newPercentage >= 50) {
+        // 50%+ - Medium celebration
+        confetti({
+          particleCount: 150,
+          spread: 80,
+          origin: { y: 0.6 },
+          colors: ['#9333ea', '#ec4899', '#f59e0b']
+        })
+      } else {
+        // First timeslots - Small celebration
+        confetti({
+          particleCount: 100,
+          spread: 70,
+          origin: { y: 0.6 },
+          colors: ['#9333ea', '#ec4899', '#f59e0b']
+        })
+      }
+
       setWasCompleted(true)
     } else if (!allCompleted) {
       setWasCompleted(false)
     }
-  }, [allCompleted, wasCompleted])
+  }, [allCompleted, wasCompleted, completionPercentage, totalTimeslots, completedTimeslotsCount])
 
   return (
     <div className={`rounded-xl sm:rounded-2xl p-3 sm:p-4 transition-all ${allCompleted ? 'bg-green-100 border-4 border-green-400' : 'bg-gray-50 border-4 border-gray-200'}`}>
