@@ -75,12 +75,14 @@ export function initializeDatabase() {
     CREATE TABLE IF NOT EXISTS todo_completions (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       todo_id INTEGER NOT NULL,
+      timeslot_id INTEGER NOT NULL,
       member_id INTEGER NOT NULL,
       completed_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       completion_date DATE NOT NULL,
       FOREIGN KEY (todo_id) REFERENCES todos(id) ON DELETE CASCADE,
+      FOREIGN KEY (timeslot_id) REFERENCES timeslots(id) ON DELETE CASCADE,
       FOREIGN KEY (member_id) REFERENCES members(id) ON DELETE CASCADE,
-      UNIQUE(todo_id, member_id, completion_date)
+      UNIQUE(todo_id, timeslot_id, member_id, completion_date)
     )
   `);
 
@@ -423,6 +425,7 @@ export type TodoTimeslot = {
 export type TodoCompletion = {
   id: number;
   todo_id: number;
+  timeslot_id: number;
   member_id: number;
   completed_at: string;
   completion_date: string;

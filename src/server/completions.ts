@@ -48,6 +48,7 @@ export const getTimeslotCompletions = createServerFn({ method: "GET" })
 
 const CompleteTodoSchema = z.object({
   todo_id: z.number(),
+  timeslot_id: z.number(),
   member_id: z.number(),
   completion_date: z.string().optional(),
 });
@@ -62,9 +63,9 @@ export const completeTodo = createServerFn({ method: "POST" })
     const existing = db
       .query<
         TodoCompletion,
-        [number, number, string]
-      >("SELECT * FROM todo_completions WHERE todo_id = ? AND member_id = ? AND completion_date = ?")
-      .get(data.todo_id, data.member_id, completionDate);
+        [number, number, number, string]
+      >("SELECT * FROM todo_completions WHERE todo_id = ? AND timeslot_id = ? AND member_id = ? AND completion_date = ?")
+      .get(data.todo_id, data.timeslot_id, data.member_id, completionDate);
 
     if (existing) {
       return existing;
@@ -72,9 +73,9 @@ export const completeTodo = createServerFn({ method: "POST" })
 
     try {
       const result = db.run(
-        `INSERT INTO todo_completions (todo_id, member_id, completion_date)
-         VALUES (?, ?, ?)`,
-        [data.todo_id, data.member_id, completionDate]
+        `INSERT INTO todo_completions (todo_id, timeslot_id, member_id, completion_date)
+         VALUES (?, ?, ?, ?)`,
+        [data.todo_id, data.timeslot_id, data.member_id, completionDate]
       );
 
       const completion = db
@@ -84,18 +85,8 @@ export const completeTodo = createServerFn({ method: "POST" })
         >("SELECT * FROM todo_completions WHERE id = ?")
         .get(result.lastInsertRowid as number);
 
-      // Get all timeslots associated with this todo
-      const timeslots = db
-        .query<
-          { timeslot_id: number },
-          [number]
-        >("SELECT timeslot_id FROM todo_timeslots WHERE todo_id = ?")
-        .all(data.todo_id);
-
-      // Check and complete each associated timeslot
-      for (const { timeslot_id } of timeslots) {
-        checkAndCompleteTimeslot(timeslot_id, data.member_id, completionDate);
-      }
+      // Check and complete the timeslot this todo belongs to
+      checkAndCompleteTimeslot(data.timeslot_id, data.member_id, completionDate);
 
       // Update statistics and check achievements
       await updateStats({
@@ -110,6 +101,7 @@ export const completeTodo = createServerFn({ method: "POST" })
 
 const UncompleteTodoSchema = z.object({
   todo_id: z.number(),
+  timeslot_id: z.number(),
   member_id: z.number(),
   completion_date: z.string().optional(),
 });
@@ -121,8 +113,8 @@ export const uncompleteTodo = createServerFn({ method: "POST" })
       data.completion_date || new Date().toISOString().split("T")[0];
 
     const deleted = db.run(
-      "DELETE FROM todo_completions WHERE todo_id = ? AND member_id = ? AND completion_date = ?",
-      [data.todo_id, data.member_id, completionDate]
+      "DELETE FROM todo_completions WHERE todo_id = ? AND timeslot_id = ? AND member_id = ? AND completion_date = ?",
+      [data.todo_id, data.timeslot_id, data.member_id, completionDate]
     );
 
     // Only decrement stats if something was actually deleted
@@ -138,31 +130,21 @@ export const uncompleteTodo = createServerFn({ method: "POST" })
       );
     }
 
-    // Get all timeslots associated with this todo
-    const timeslots = db
-      .query<
-        { timeslot_id: number },
-        [number]
-      >("SELECT timeslot_id FROM todo_timeslots WHERE todo_id = ?")
-      .all(data.todo_id);
+    // Remove timeslot completion if this was the last task
+    const deletedTimeslot = db.run(
+      "DELETE FROM timeslot_completions WHERE timeslot_id = ? AND member_id = ? AND completion_date = ?",
+      [data.timeslot_id, data.member_id, completionDate]
+    );
 
-    // Remove timeslot completions for each associated timeslot
-    for (const { timeslot_id } of timeslots) {
-      const deleted = db.run(
-        "DELETE FROM timeslot_completions WHERE timeslot_id = ? AND member_id = ? AND completion_date = ?",
-        [timeslot_id, data.member_id, completionDate]
+    // Decrement timeslot completion count if something was deleted
+    if (deletedTimeslot.changes > 0) {
+      db.run(
+        `UPDATE member_stats
+         SET total_timeslots_completed = MAX(0, total_timeslots_completed - 1),
+             updated_at = CURRENT_TIMESTAMP
+         WHERE member_id = ?`,
+        [data.member_id]
       );
-
-      // Decrement timeslot completion count if something was deleted
-      if (deleted.changes > 0) {
-        db.run(
-          `UPDATE member_stats
-           SET total_timeslots_completed = MAX(0, total_timeslots_completed - 1),
-               updated_at = CURRENT_TIMESTAMP
-           WHERE member_id = ?`,
-          [data.member_id]
-        );
-      }
     }
 
     return { success: true };

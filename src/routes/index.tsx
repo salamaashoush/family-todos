@@ -80,16 +80,16 @@ function Home() {
     },
   })
 
-  const handleToggleTodo = (todoId: number, memberId: number, isCompleted: boolean) => {
+  const handleToggleTodo = (todoId: number, timeslotId: number, memberId: number, isCompleted: boolean) => {
     if (isCompleted) {
-      uncompleteMutation.mutate({ data: { todo_id: todoId, member_id: memberId, completion_date: selectedDate } })
+      uncompleteMutation.mutate({ data: { todo_id: todoId, timeslot_id: timeslotId, member_id: memberId, completion_date: selectedDate } })
     } else {
-      completeMutation.mutate({ data: { todo_id: todoId, member_id: memberId, completion_date: selectedDate } })
+      completeMutation.mutate({ data: { todo_id: todoId, timeslot_id: timeslotId, member_id: memberId, completion_date: selectedDate } })
     }
   }
 
-  const isTodoCompleted = (todoId: number, memberId: number) => {
-    return completions?.some(c => c.todo_id === todoId && c.member_id === memberId) || false
+  const isTodoCompleted = (todoId: number, timeslotId: number, memberId: number) => {
+    return completions?.some(c => c.todo_id === todoId && c.timeslot_id === timeslotId && c.member_id === memberId) || false
   }
 
   return (
@@ -172,8 +172,8 @@ interface MemberColumnProps {
   timeslots: Timeslot[]
   todos: Todo[]
   completions: TodoCompletion[]
-  isTodoCompleted: (todoId: number, memberId: number) => boolean
-  onToggleTodo: (todoId: number, memberId: number, isCompleted: boolean) => void
+  isTodoCompleted: (todoId: number, timeslotId: number, memberId: number) => boolean
+  onToggleTodo: (todoId: number, timeslotId: number, memberId: number, isCompleted: boolean) => void
 }
 
 function MemberColumn({ member, timeslots, todos, isTodoCompleted, onToggleTodo }: MemberColumnProps) {
@@ -193,7 +193,7 @@ function MemberColumn({ member, timeslots, todos, isTodoCompleted, onToggleTodo 
   const totalTimeslots = memberTimeslots.length
   const completedTimeslots = memberTimeslots.filter((timeslot: any) => {
     const timeslotTodos = todos.filter((t: any) => t.timeslot_ids?.includes(timeslot.id))
-    const completedCount = timeslotTodos.filter(t => isTodoCompleted(t.id, member.id)).length
+    const completedCount = timeslotTodos.filter(t => isTodoCompleted(t.id, timeslot.id, member.id)).length
     return timeslotTodos.length > 0 && completedCount === timeslotTodos.length
   }).length
   const completionPercentage = totalTimeslots > 0 ? (completedTimeslots / totalTimeslots) * 100 : 0
@@ -258,15 +258,15 @@ interface TimeslotCardProps {
   timeslot: Timeslot
   todos: Todo[]
   memberId: number
-  isTodoCompleted: (todoId: number, memberId: number) => boolean
-  onToggleTodo: (todoId: number, memberId: number, isCompleted: boolean) => void
+  isTodoCompleted: (todoId: number, timeslotId: number, memberId: number) => boolean
+  onToggleTodo: (todoId: number, timeslotId: number, memberId: number, isCompleted: boolean) => void
   completionPercentage: number
   totalTimeslots: number
   completedTimeslotsCount: number
 }
 
 function TimeslotCard({ timeslot, todos, memberId, isTodoCompleted, onToggleTodo, completionPercentage, totalTimeslots, completedTimeslotsCount }: TimeslotCardProps) {
-  const completedCount = todos.filter(t => isTodoCompleted(t.id, memberId)).length
+  const completedCount = todos.filter(t => isTodoCompleted(t.id, timeslot.id, memberId)).length
   const totalCount = todos.length
   const allCompleted = totalCount > 0 && completedCount === totalCount
   const [wasCompleted, setWasCompleted] = useState(allCompleted)
@@ -279,19 +279,19 @@ function TimeslotCard({ timeslot, todos, memberId, isTodoCompleted, onToggleTodo
 
       if (newPercentage >= 100) {
         // PERFECT DAY! Epic celebration
-        const duration = 5000
+        const duration = 2000 // Shortened from 5000ms to 2000ms
         const end = Date.now() + duration
 
         const frame = () => {
           confetti({
-            particleCount: 7,
+            particleCount: 5,
             angle: 60,
             spread: 55,
             origin: { x: 0 },
             colors: ['#ffd700', '#ffed4e', '#ffa500', '#ff69b4', '#9333ea']
           })
           confetti({
-            particleCount: 7,
+            particleCount: 5,
             angle: 120,
             spread: 55,
             origin: { x: 1 },
@@ -306,25 +306,25 @@ function TimeslotCard({ timeslot, todos, memberId, isTodoCompleted, onToggleTodo
       } else if (newPercentage >= 75) {
         // 75%+ - Big celebration
         confetti({
-          particleCount: 200,
-          spread: 100,
+          particleCount: 120,
+          spread: 90,
           origin: { y: 0.6 },
           colors: ['#9333ea', '#ec4899', '#f59e0b', '#10b981'],
-          startVelocity: 50,
+          startVelocity: 40,
         })
       } else if (newPercentage >= 50) {
         // 50%+ - Medium celebration
         confetti({
-          particleCount: 150,
-          spread: 80,
+          particleCount: 80,
+          spread: 70,
           origin: { y: 0.6 },
           colors: ['#9333ea', '#ec4899', '#f59e0b']
         })
       } else {
         // First timeslots - Small celebration
         confetti({
-          particleCount: 100,
-          spread: 70,
+          particleCount: 60,
+          spread: 60,
           origin: { y: 0.6 },
           colors: ['#9333ea', '#ec4899', '#f59e0b']
         })
@@ -362,8 +362,8 @@ function TimeslotCard({ timeslot, todos, memberId, isTodoCompleted, onToggleTodo
             key={todo.id}
             todo={todo}
             memberId={memberId}
-            isCompleted={isTodoCompleted(todo.id, memberId)}
-            onToggle={(isCompleted) => onToggleTodo(todo.id, memberId, isCompleted)}
+            isCompleted={isTodoCompleted(todo.id, timeslot.id, memberId)}
+            onToggle={(isCompleted) => onToggleTodo(todo.id, timeslot.id, memberId, isCompleted)}
           />
         ))}
       </div>
