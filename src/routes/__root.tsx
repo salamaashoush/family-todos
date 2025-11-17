@@ -8,6 +8,7 @@ import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
 import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
 import type { QueryClient } from '@tanstack/react-query'
 import appCss from '../styles.css?url'
+import { ThemeProvider } from 'next-themes'
 
 export const Route = createRootRouteWithContext<{
   queryClient: QueryClient
@@ -38,7 +39,9 @@ export const Route = createRootRouteWithContext<{
 function RootComponent() {
   return (
     <RootDocument>
-      <Outlet />
+      <ThemeProvider attribute="data-theme" defaultTheme="default" themes={['default', 'ocean', 'sunset', 'forest', 'candy']}>
+        <Outlet />
+      </ThemeProvider>
     </RootDocument>
   )
 }

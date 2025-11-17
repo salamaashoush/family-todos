@@ -9,6 +9,10 @@ import { getWeeklyProgress } from '../server/progress'
 import { useState, useEffect } from 'react'
 import confetti from 'canvas-confetti'
 import type { Member, Timeslot, Todo, TodoCompletion, MemberStats, Achievement } from '../db/schema'
+import { ThemeSwitcher } from '../components/ThemeSwitcher'
+import { useRealtime } from '../hooks/useRealtime'
+import { Toast, showToast } from '../components/Toast'
+import type { RealtimeEvent } from '../server/realtime'
 
 export const Route = createFileRoute('/')({
   loader: async ({ context: { queryClient } }) => {
@@ -92,28 +96,40 @@ function Home() {
     return completions?.some(c => c.todo_id === todoId && c.timeslot_id === timeslotId && c.member_id === memberId) || false
   }
 
+  const handleRealtimeEvent = (event: RealtimeEvent) => {
+    if (event.type === 'task_completed') {
+      showToast(`${event.memberName} completed a task!`, 'success')
+    } else if (event.type === 'task_uncompleted') {
+      showToast(`${event.memberName} uncompleted a task`, 'info')
+    }
+  }
+
+  useRealtime(selectedDate, handleRealtimeEvent)
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-100 via-purple-100 to-pink-100">
-      <header className="bg-white/90 backdrop-blur-md shadow-lg sticky top-0 z-10 border-b-4 border-purple-300">
+    <div className="min-h-screen bg-gradient-to-br from-theme-bg-from via-theme-bg-via to-theme-bg-to">
+      <Toast />
+      <header className="bg-white/90 backdrop-blur-md shadow-lg sticky top-0 z-10 border-b-4 border-theme-primary">
         <div className="max-w-[1920px] mx-auto px-3 sm:px-6 py-3 sm:py-4 flex items-center justify-between gap-3">
           <div className="flex items-center gap-2 sm:gap-3">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 sm:h-8 sm:w-8 text-purple-600 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 sm:h-8 sm:w-8 text-theme-primary flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
             </svg>
-            <h1 className="text-lg sm:text-xl lg:text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-pink-600 whitespace-nowrap">
+            <h1 className="text-lg sm:text-xl lg:text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-theme-primary to-theme-secondary whitespace-nowrap">
               Family Todos
             </h1>
           </div>
 
           <div className="flex items-center gap-2 sm:gap-3">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 sm:h-6 sm:w-6 text-purple-600 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <ThemeSwitcher />
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 sm:h-6 sm:w-6 text-theme-primary flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
             </svg>
             <input
               type="date"
               value={selectedDate}
               onChange={(e) => setSelectedDate(e.target.value)}
-              className="px-3 sm:px-4 py-2 sm:py-2.5 text-sm sm:text-base font-semibold rounded-lg sm:rounded-xl border-3 border-purple-300 focus:border-purple-500 focus:ring-2 focus:ring-purple-200 focus:outline-none min-h-[44px] w-auto shadow-md transition-all hover:shadow-lg bg-white"
+              className="px-3 sm:px-4 py-2 sm:py-2.5 text-sm sm:text-base font-semibold rounded-lg sm:rounded-xl border-3 border-theme-primary focus:border-theme-primary focus:ring-2 focus:ring-theme-primary/20 focus:outline-none min-h-[44px] w-auto shadow-md transition-all hover:shadow-lg bg-white"
             />
           </div>
         </div>
@@ -142,7 +158,7 @@ function Home() {
             <p className="text-xl sm:text-2xl text-gray-600 mb-4">No family members yet!</p>
             <Link
               to="/admin"
-              className="inline-block px-6 sm:px-8 py-4 sm:py-3 bg-purple-600 hover:bg-purple-700 active:bg-purple-800 text-white font-semibold rounded-xl transition-colors min-h-[48px]"
+              className="inline-block px-6 sm:px-8 py-4 sm:py-3 bg-theme-primary hover:bg-theme-primary active:bg-theme-primary text-white font-semibold rounded-xl transition-colors min-h-[48px]"
             >
               Add Members in Admin Panel
             </Link>
@@ -152,7 +168,7 @@ function Home() {
 
       <Link
         to="/admin"
-        className="fixed bottom-6 right-6 sm:bottom-8 sm:right-8 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 active:from-purple-800 active:to-pink-800 text-white p-4 sm:p-5 rounded-full shadow-2xl hover:shadow-purple-500/50 transition-all transform hover:scale-110 active:scale-95 z-50 group min-w-[56px] min-h-[56px] sm:min-w-[64px] sm:min-h-[64px] flex items-center justify-center"
+        className="fixed bottom-6 right-6 sm:bottom-8 sm:right-8 bg-gradient-to-r from-theme-primary to-theme-secondary hover:from-theme-primary hover:to-pink-700 active:from-theme-primary active:to-pink-800 text-white p-4 sm:p-5 rounded-full shadow-2xl hover:shadow-theme-primary/50 transition-all transform hover:scale-110 active:scale-95 z-50 group min-w-[56px] min-h-[56px] sm:min-w-[64px] sm:min-h-[64px] flex items-center justify-center"
         aria-label="Admin Panel"
       >
         <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 sm:h-7 sm:w-7 group-hover:rotate-90 transition-transform duration-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -200,7 +216,7 @@ function MemberColumn({ member, timeslots, todos, isTodoCompleted, onToggleTodo 
 
   return (
     <div className="bg-white rounded-2xl sm:rounded-3xl shadow-2xl overflow-hidden h-full flex flex-col relative">
-      <div className="bg-gradient-to-r from-purple-400 to-pink-400 p-4 sm:p-6 text-center flex-shrink-0">
+      <div className="bg-gradient-to-r from-theme-primary to-theme-secondary p-4 sm:p-6 text-center flex-shrink-0">
         {member.avatar && (
           <div className="w-20 h-20 sm:w-24 sm:h-24 mx-auto mb-3 sm:mb-4 rounded-full overflow-hidden border-4 border-white shadow-lg">
             <img src={member.avatar} alt={member.name} className="w-full h-full object-cover" />
@@ -372,13 +388,13 @@ function TimeslotCard({ timeslot, todos, memberId, isTodoCompleted, onToggleTodo
         <div className="mt-3 pt-3 border-t-2 border-gray-300">
           <div className="flex items-center justify-between text-sm sm:text-base font-semibold">
             <span className="text-gray-700">Progress:</span>
-            <span className={allCompleted ? 'text-green-600' : 'text-purple-600'}>
+            <span className={allCompleted ? 'text-green-600' : 'text-theme-primary'}>
               {completedCount} / {totalCount}
             </span>
           </div>
           <div className="w-full bg-gray-200 rounded-full h-4 mt-2">
             <div
-              className={`h-4 rounded-full transition-all ${allCompleted ? 'bg-green-500' : 'bg-purple-500'}`}
+              className={`h-4 rounded-full transition-all ${allCompleted ? 'bg-green-500' : 'bg-theme-primary'}`}
               style={{ width: `${(completedCount / totalCount) * 100}%` }}
             />
           </div>
@@ -402,12 +418,12 @@ function TodoItem({ todo, isCompleted, onToggle }: TodoItemProps) {
       className={`w-full p-4 sm:p-5 rounded-xl text-left transition-all transform active:scale-95 touch-manipulation min-h-[64px] ${
         isCompleted
           ? 'bg-green-200 border-4 border-green-500 shadow-md'
-          : 'bg-white border-4 border-purple-300 hover:border-purple-500 active:border-purple-600 shadow-lg hover:shadow-xl'
+          : 'bg-white border-4 border-theme-primary hover:border-theme-primary active:border-theme-primary shadow-lg hover:shadow-xl'
       }`}
     >
       <div className="flex items-center gap-3 sm:gap-4">
         <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-full border-4 flex items-center justify-center flex-shrink-0 ${
-          isCompleted ? 'bg-green-500 border-green-600' : 'bg-white border-purple-400'
+          isCompleted ? 'bg-green-500 border-green-600' : 'bg-white border-theme-primary'
         }`}>
           {isCompleted && <span className="text-white text-2xl sm:text-3xl font-bold">✓</span>}
         </div>
@@ -509,7 +525,7 @@ function StatsDisplay({ stats, achievements }: StatsDisplayProps) {
             <span className="text-2xl">⭐</span>
             <span className="text-xs font-bold text-gray-600">Level {stats.level}</span>
           </div>
-          <div className="text-2xl font-bold text-purple-600">{stats.total_stars}</div>
+          <div className="text-2xl font-bold text-theme-primary">{stats.total_stars}</div>
           <div className="text-xs text-gray-500">Stars</div>
           <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
             <div
@@ -537,13 +553,13 @@ function StatsDisplay({ stats, achievements }: StatsDisplayProps) {
         </div>
       </div>
 
-      <div className="bg-white rounded-xl p-3 shadow-md border-2 border-purple-400 mb-3">
+      <div className="bg-white rounded-xl p-3 shadow-md border-2 border-theme-primary mb-3">
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-2">
             <span className="text-xl">✅</span>
             <span className="text-xs font-bold text-gray-600">Tasks Completed</span>
           </div>
-          <span className="text-lg font-bold text-purple-600">{stats.total_tasks_completed}</span>
+          <span className="text-lg font-bold text-theme-primary">{stats.total_tasks_completed}</span>
         </div>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -563,7 +579,7 @@ function StatsDisplay({ stats, achievements }: StatsDisplayProps) {
             {earnedAchievements.slice(0, 4).map(achievement => (
               <div
                 key={achievement.id}
-                className="bg-gradient-to-br from-purple-500 to-pink-500 text-white rounded-lg p-2 min-w-[80px] text-center shadow-lg flex-shrink-0"
+                className="bg-gradient-to-br from-theme-primary to-theme-secondary text-white rounded-lg p-2 min-w-[80px] text-center shadow-lg flex-shrink-0"
                 title={achievement.description}
               >
                 <div className="text-3xl mb-1">{achievement.icon}</div>
@@ -590,7 +606,7 @@ function StatsDisplay({ stats, achievements }: StatsDisplayProps) {
                   <div className="text-xs font-bold text-gray-700 truncate">{achievement.name}</div>
                   <div className="text-xs text-gray-500 truncate">{achievement.description}</div>
                 </div>
-                <span className="text-xs font-bold text-purple-600 flex-shrink-0">+{achievement.star_reward}⭐</span>
+                <span className="text-xs font-bold text-theme-primary flex-shrink-0">+{achievement.star_reward}⭐</span>
               </div>
             ))}
           </div>
@@ -600,7 +616,7 @@ function StatsDisplay({ stats, achievements }: StatsDisplayProps) {
       <div className="mt-3 pt-3 border-t-2 border-yellow-200">
         <button
           onClick={() => setShowWeeklyView(!showWeeklyView)}
-          className="w-full bg-white rounded-lg p-2 flex items-center justify-between border-2 border-purple-300 hover:border-purple-500 transition-all"
+          className="w-full bg-white rounded-lg p-2 flex items-center justify-between border-2 border-theme-primary hover:border-theme-primary transition-all"
         >
           <span className="text-sm font-bold text-gray-700">Weekly Progress</span>
           <svg
@@ -626,7 +642,7 @@ function StatsDisplay({ stats, achievements }: StatsDisplayProps) {
                 <div
                   key={day.date}
                   className={`flex flex-col items-center p-2 rounded-lg border-2 ${
-                    isToday ? 'border-purple-500 bg-purple-50' : 'border-gray-200 bg-white'
+                    isToday ? 'border-theme-primary bg-purple-50' : 'border-gray-200 bg-white'
                   }`}
                 >
                   <span className="text-xs font-bold text-gray-600">{dayNames[index]}</span>

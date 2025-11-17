@@ -31,14 +31,14 @@ function AdminPanel() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-100 via-purple-100 to-pink-100">
-      <header className="bg-white/90 backdrop-blur-md shadow-lg sticky top-0 z-10 border-b-4 border-purple-300">
+      <header className="bg-white/90 backdrop-blur-md shadow-lg sticky top-0 z-10 border-b-4 border-theme-primary">
         <div className="max-w-[1920px] mx-auto px-3 sm:px-6 py-3 sm:py-4 flex items-center justify-between">
           <div className="flex items-center gap-2 sm:gap-3">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 sm:h-8 sm:w-8 text-purple-600 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 sm:h-8 sm:w-8 text-theme-primary flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
             </svg>
-            <h1 className="text-lg sm:text-xl lg:text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-pink-600 whitespace-nowrap">
+            <h1 className="text-lg sm:text-xl lg:text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-theme-primary to-theme-secondary whitespace-nowrap">
               Admin Panel
             </h1>
           </div>
@@ -46,7 +46,7 @@ function AdminPanel() {
           <div className="flex gap-2 sm:gap-3">
             <Link
               to="/"
-              className="px-3 sm:px-4 py-2 bg-purple-600 hover:bg-purple-700 active:bg-purple-800 text-white font-semibold rounded-lg transition-colors text-sm sm:text-base"
+              className="px-3 sm:px-4 py-2 bg-theme-primary hover:bg-theme-primary active:bg-theme-primary text-white font-semibold rounded-lg transition-colors text-sm sm:text-base"
             >
               Board
             </Link>
@@ -62,12 +62,12 @@ function AdminPanel() {
 
       <div className="max-w-[1400px] mx-auto p-3 sm:p-6 lg:p-8">
         <div className="bg-white rounded-2xl shadow-2xl overflow-hidden">
-          <div className="flex border-b-4 border-purple-200">
+          <div className="flex border-b-4 border-theme-primary/20">
             <button
               onClick={() => setActiveTab('todos')}
               className={`flex-1 px-4 sm:px-6 py-3 sm:py-4 font-bold transition-all text-sm sm:text-base ${
                 activeTab === 'todos'
-                  ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-lg'
+                  ? 'bg-gradient-to-r from-theme-primary to-theme-secondary text-white shadow-lg'
                   : 'bg-gray-50 text-gray-700 hover:bg-gray-100'
               }`}
             >
@@ -77,7 +77,7 @@ function AdminPanel() {
               onClick={() => setActiveTab('timeslots')}
               className={`flex-1 px-4 sm:px-6 py-3 sm:py-4 font-bold transition-all text-sm sm:text-base ${
                 activeTab === 'timeslots'
-                  ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-lg'
+                  ? 'bg-gradient-to-r from-theme-primary to-theme-secondary text-white shadow-lg'
                   : 'bg-gray-50 text-gray-700 hover:bg-gray-100'
               }`}
             >
@@ -87,7 +87,7 @@ function AdminPanel() {
               onClick={() => setActiveTab('members')}
               className={`flex-1 px-4 sm:px-6 py-3 sm:py-4 font-bold transition-all text-sm sm:text-base ${
                 activeTab === 'members'
-                  ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-lg'
+                  ? 'bg-gradient-to-r from-theme-primary to-theme-secondary text-white shadow-lg'
                   : 'bg-gray-50 text-gray-700 hover:bg-gray-100'
               }`}
             >
@@ -97,7 +97,7 @@ function AdminPanel() {
               onClick={() => setActiveTab('stats')}
               className={`flex-1 px-4 sm:px-6 py-3 sm:py-4 font-bold transition-all text-sm sm:text-base ${
                 activeTab === 'stats'
-                  ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-lg'
+                  ? 'bg-gradient-to-r from-theme-primary to-theme-secondary text-white shadow-lg'
                   : 'bg-gray-50 text-gray-700 hover:bg-gray-100'
               }`}
             >
@@ -233,9 +233,9 @@ function MembersTab() {
 
   return (
     <div className="space-y-6">
-      <div className="bg-gradient-to-br from-purple-50 to-pink-50 p-4 sm:p-6 rounded-2xl border-3 border-purple-300 shadow-lg">
+      <div className="bg-gradient-to-br from-purple-50 to-pink-50 p-4 sm:p-6 rounded-2xl border-3 border-theme-primary shadow-lg">
         <h2 className="text-xl sm:text-2xl font-bold text-gray-800 mb-4 flex items-center gap-2">
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-theme-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
           </svg>
           Add New Family Member
@@ -251,7 +251,7 @@ function MembersTab() {
               placeholder="Enter name (e.g., Omar)"
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              className="w-full px-4 py-3 border-2 border-purple-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent text-base"
+              className="w-full px-4 py-3 border-2 border-theme-primary/20 rounded-xl focus:outline-none focus:ring-2 focus:ring-theme-primary focus:border-transparent text-base"
             />
           </div>
 
@@ -262,7 +262,7 @@ function MembersTab() {
             <div className="flex items-start gap-4">
               {avatarPreview && (
                 <div className="flex-shrink-0">
-                  <img src={avatarPreview} alt="Preview" className="w-20 h-20 sm:w-24 sm:h-24 rounded-full object-cover border-4 border-purple-200" />
+                  <img src={avatarPreview} alt="Preview" className="w-20 h-20 sm:w-24 sm:h-24 rounded-full object-cover border-4 border-theme-primary/20" />
                 </div>
               )}
               <div className="flex-1">
@@ -270,7 +270,7 @@ function MembersTab() {
                   type="file"
                   accept="image/*"
                   onChange={handleAvatarChange}
-                  className="block w-full text-sm text-gray-700 file:mr-4 file:py-3 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-purple-50 file:text-purple-700 hover:file:bg-purple-100 file:cursor-pointer cursor-pointer border-2 border-purple-200 rounded-xl"
+                  className="block w-full text-sm text-gray-700 file:mr-4 file:py-3 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-purple-50 file:text-theme-primary hover:file:bg-purple-100 file:cursor-pointer cursor-pointer border-2 border-theme-primary/20 rounded-xl"
                 />
                 <p className="text-xs text-gray-500 mt-2">Max file size: 5MB. Supports: JPG, PNG, GIF, WebP</p>
               </div>
@@ -283,9 +283,9 @@ function MembersTab() {
                 type="checkbox"
                 checked={formData.is_admin === 1}
                 onChange={(e) => setFormData({ ...formData, is_admin: e.target.checked ? 1 : 0 })}
-                className="w-6 h-6 text-purple-600 border-2 border-gray-300 rounded focus:ring-2 focus:ring-purple-500"
+                className="w-6 h-6 text-theme-primary border-2 border-gray-300 rounded focus:ring-2 focus:ring-theme-primary"
               />
-              <span className="font-semibold text-gray-700 group-hover:text-purple-600 transition-colors">
+              <span className="font-semibold text-gray-700 group-hover:text-theme-primary transition-colors">
                 Admin Privileges
               </span>
             </label>
@@ -304,7 +304,7 @@ function MembersTab() {
       <div className="space-y-3">
         <h3 className="text-lg sm:text-xl font-bold text-gray-700 mb-3">Family Members</h3>
         {members?.map((member) => (
-          <div key={member.id} className="bg-white border-2 border-gray-200 rounded-xl p-4 sm:p-5 hover:shadow-lg hover:border-purple-300 transition-all">
+          <div key={member.id} className="bg-white border-2 border-gray-200 rounded-xl p-4 sm:p-5 hover:shadow-lg hover:border-theme-primary transition-all">
             {editingId === member.id ? (
               <div className="space-y-4">
                 <div>
@@ -368,12 +368,12 @@ function MembersTab() {
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
                   {member.avatar && (
-                    <img src={member.avatar} alt={member.name} className="w-14 h-14 sm:w-16 sm:h-16 rounded-full object-cover border-3 border-purple-200" />
+                    <img src={member.avatar} alt={member.name} className="w-14 h-14 sm:w-16 sm:h-16 rounded-full object-cover border-3 border-theme-primary/20" />
                   )}
                   <div>
                     <div className="font-bold text-lg sm:text-xl text-gray-800">{member.name}</div>
                     {member.is_admin === 1 && (
-                      <span className="inline-block text-xs sm:text-sm bg-purple-100 text-purple-700 px-3 py-1 rounded-full font-semibold mt-1">
+                      <span className="inline-block text-xs sm:text-sm bg-purple-100 text-theme-primary px-3 py-1 rounded-full font-semibold mt-1">
                         Admin
                       </span>
                     )}
@@ -505,9 +505,9 @@ function TimeslotsTab() {
 
   return (
     <div className="space-y-6">
-      <div className="bg-gradient-to-br from-purple-50 to-pink-50 p-4 sm:p-6 rounded-2xl border-3 border-purple-300 shadow-lg">
+      <div className="bg-gradient-to-br from-purple-50 to-pink-50 p-4 sm:p-6 rounded-2xl border-3 border-theme-primary shadow-lg">
         <h2 className="text-xl sm:text-2xl font-bold text-gray-800 mb-4 flex items-center gap-2">
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-theme-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
           Create New Time Slot
@@ -524,7 +524,7 @@ function TimeslotsTab() {
                 placeholder="e.g., Morning Routine"
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                className="w-full px-4 py-3 border-2 border-purple-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                className="w-full px-4 py-3 border-2 border-theme-primary/20 rounded-xl focus:outline-none focus:ring-2 focus:ring-theme-primary focus:border-transparent"
               />
             </div>
 
@@ -535,7 +535,7 @@ function TimeslotsTab() {
               <select
                 value={formData.recurrence_type}
                 onChange={(e) => setFormData({ ...formData, recurrence_type: e.target.value as any })}
-                className="w-full px-4 py-3 border-2 border-purple-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                className="w-full px-4 py-3 border-2 border-theme-primary/20 rounded-xl focus:outline-none focus:ring-2 focus:ring-theme-primary focus:border-transparent"
               >
                 <option value="daily">Every Day</option>
                 <option value="weekly">Every Week</option>
@@ -553,7 +553,7 @@ function TimeslotsTab() {
                 type="time"
                 value={formData.start_time}
                 onChange={(e) => setFormData({ ...formData, start_time: e.target.value })}
-                className="w-full px-4 py-3 border-2 border-purple-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                className="w-full px-4 py-3 border-2 border-theme-primary/20 rounded-xl focus:outline-none focus:ring-2 focus:ring-theme-primary focus:border-transparent"
               />
             </div>
 
@@ -565,7 +565,7 @@ function TimeslotsTab() {
                 type="time"
                 value={formData.end_time}
                 onChange={(e) => setFormData({ ...formData, end_time: e.target.value })}
-                className="w-full px-4 py-3 border-2 border-purple-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                className="w-full px-4 py-3 border-2 border-theme-primary/20 rounded-xl focus:outline-none focus:ring-2 focus:ring-theme-primary focus:border-transparent"
               />
             </div>
           </div>
@@ -578,7 +578,7 @@ function TimeslotsTab() {
               placeholder="Add notes about this time slot..."
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              className="w-full px-4 py-3 border-2 border-purple-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+              className="w-full px-4 py-3 border-2 border-theme-primary/20 rounded-xl focus:outline-none focus:ring-2 focus:ring-theme-primary focus:border-transparent"
               rows={2}
             />
           </div>
@@ -595,7 +595,7 @@ function TimeslotsTab() {
                   onClick={() => toggleMember(member.id)}
                   className={`px-4 sm:px-5 py-2.5 sm:py-3 rounded-xl font-semibold transition-all transform hover:scale-105 active:scale-95 ${
                     formData.member_ids.includes(member.id)
-                      ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-lg'
+                      ? 'bg-gradient-to-r from-theme-primary to-theme-secondary text-white shadow-lg'
                       : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
                   }`}
                 >
@@ -621,7 +621,7 @@ function TimeslotsTab() {
       <div className="space-y-3">
         <h3 className="text-lg sm:text-xl font-bold text-gray-700 mb-3">Time Slots</h3>
         {timeslots?.map((timeslot: any) => (
-          <div key={timeslot.id} className="bg-white border-2 border-gray-200 rounded-xl p-4 sm:p-5 hover:shadow-lg hover:border-purple-300 transition-all">
+          <div key={timeslot.id} className="bg-white border-2 border-gray-200 rounded-xl p-4 sm:p-5 hover:shadow-lg hover:border-theme-primary transition-all">
             {editingId === timeslot.id ? (
               <div className="space-y-4">
                 <div>
@@ -663,7 +663,7 @@ function TimeslotsTab() {
                         onClick={() => toggleMember(member.id)}
                         className={`px-3 py-2 rounded-lg text-sm font-medium ${
                           formData.member_ids.includes(member.id)
-                            ? 'bg-purple-600 text-white'
+                            ? 'bg-theme-primary text-white'
                             : 'bg-gray-200'
                         }`}
                       >
@@ -704,7 +704,7 @@ function TimeslotsTab() {
                     {timeslot.member_ids?.map((id: number) => {
                       const member = members?.find(m => m.id === id)
                       return member ? (
-                        <span key={id} className="inline-block text-xs sm:text-sm bg-purple-100 text-purple-700 px-3 py-1 rounded-full font-semibold">
+                        <span key={id} className="inline-block text-xs sm:text-sm bg-purple-100 text-theme-primary px-3 py-1 rounded-full font-semibold">
                           {member.name}
                         </span>
                       ) : null
@@ -892,9 +892,9 @@ function TodosTab() {
 
   return (
     <div className="space-y-6">
-      <div className="bg-gradient-to-br from-purple-50 to-pink-50 p-4 sm:p-6 rounded-2xl border-3 border-purple-300 shadow-lg">
+      <div className="bg-gradient-to-br from-purple-50 to-pink-50 p-4 sm:p-6 rounded-2xl border-3 border-theme-primary shadow-lg">
         <h2 className="text-xl sm:text-2xl font-bold text-gray-800 mb-4 flex items-center gap-2">
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-theme-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
           </svg>
           Create New Task
@@ -911,7 +911,7 @@ function TodosTab() {
                 placeholder="e.g., Brush Teeth"
                 value={formData.title}
                 onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                className="w-full px-4 py-3 border-2 border-purple-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                className="w-full px-4 py-3 border-2 border-theme-primary/20 rounded-xl focus:outline-none focus:ring-2 focus:ring-theme-primary focus:border-transparent"
               />
             </div>
 
@@ -924,7 +924,7 @@ function TodosTab() {
                 placeholder="e.g., 🦷"
                 value={formData.symbol}
                 onChange={(e) => setFormData({ ...formData, symbol: e.target.value })}
-                className="w-full px-4 py-3 border-2 border-purple-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent text-2xl"
+                className="w-full px-4 py-3 border-2 border-theme-primary/20 rounded-xl focus:outline-none focus:ring-2 focus:ring-theme-primary focus:border-transparent text-2xl"
               />
             </div>
           </div>
@@ -937,7 +937,7 @@ function TodosTab() {
               placeholder="Add instructions or notes..."
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              className="w-full px-4 py-3 border-2 border-purple-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+              className="w-full px-4 py-3 border-2 border-theme-primary/20 rounded-xl focus:outline-none focus:ring-2 focus:ring-theme-primary focus:border-transparent"
               rows={2}
             />
           </div>
@@ -949,7 +949,7 @@ function TodosTab() {
             <div className="flex items-start gap-4">
               {imagePreview && (
                 <div className="flex-shrink-0">
-                  <img src={imagePreview} alt="Preview" className="w-24 h-24 sm:w-32 sm:h-32 rounded-xl object-cover border-4 border-purple-200" />
+                  <img src={imagePreview} alt="Preview" className="w-24 h-24 sm:w-32 sm:h-32 rounded-xl object-cover border-4 border-theme-primary/20" />
                 </div>
               )}
               <div className="flex-1">
@@ -957,7 +957,7 @@ function TodosTab() {
                   type="file"
                   accept="image/*"
                   onChange={handleImageChange}
-                  className="block w-full text-sm text-gray-700 file:mr-4 file:py-3 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-purple-50 file:text-purple-700 hover:file:bg-purple-100 file:cursor-pointer cursor-pointer border-2 border-purple-200 rounded-xl"
+                  className="block w-full text-sm text-gray-700 file:mr-4 file:py-3 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-purple-50 file:text-theme-primary hover:file:bg-purple-100 file:cursor-pointer cursor-pointer border-2 border-theme-primary/20 rounded-xl"
                 />
                 <p className="text-xs text-gray-500 mt-2">Visual aid for the task. Max: 5MB. Supports: JPG, PNG, GIF, WebP</p>
               </div>
@@ -976,7 +976,7 @@ function TodosTab() {
                   onClick={() => toggleTimeslot(timeslot.id)}
                   className={`p-3 sm:p-4 rounded-xl font-semibold text-left transition-all transform hover:scale-105 active:scale-95 ${
                     formData.timeslot_ids.includes(timeslot.id)
-                      ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-lg border-2 border-purple-700'
+                      ? 'bg-gradient-to-r from-theme-primary to-theme-secondary text-white shadow-lg border-2 border-theme-primary'
                       : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border-2 border-gray-300'
                   }`}
                 >
@@ -1007,7 +1007,7 @@ function TodosTab() {
       <div className="space-y-3">
         <h3 className="text-lg sm:text-xl font-bold text-gray-700 mb-3">Tasks</h3>
         {todos?.map((todo: any) => (
-          <div key={todo.id} className="bg-white border-2 border-gray-200 rounded-xl p-4 sm:p-5 hover:shadow-lg hover:border-purple-300 transition-all">
+          <div key={todo.id} className="bg-white border-2 border-gray-200 rounded-xl p-4 sm:p-5 hover:shadow-lg hover:border-theme-primary transition-all">
             {editingId === todo.id ? (
               <div className="space-y-4">
                 <div className="grid grid-cols-2 gap-3">
@@ -1040,7 +1040,7 @@ function TodosTab() {
                         onClick={() => toggleTimeslot(timeslot.id)}
                         className={`px-3 py-2 rounded-lg text-sm text-left font-medium ${
                           formData.timeslot_ids.includes(timeslot.id)
-                            ? 'bg-purple-600 text-white'
+                            ? 'bg-theme-primary text-white'
                             : 'bg-gray-200'
                         }`}
                       >
@@ -1075,7 +1075,7 @@ function TodosTab() {
                       {todo.timeslot_ids?.map((id: number) => {
                         const timeslot = timeslots?.find((t: any) => t.id === id)
                         return timeslot ? (
-                          <span key={id} className="inline-block text-xs sm:text-sm bg-purple-100 text-purple-700 px-3 py-1 rounded-full font-semibold">
+                          <span key={id} className="inline-block text-xs sm:text-sm bg-purple-100 text-theme-primary px-3 py-1 rounded-full font-semibold">
                             {timeslot.name}
                           </span>
                         ) : null
@@ -1134,7 +1134,7 @@ function StatisticsTab() {
           {achievements?.map((achievement) => (
             <div
               key={achievement.id}
-              className="bg-gradient-to-br from-purple-50 to-pink-50 border-2 border-purple-200 rounded-xl p-4 shadow-md"
+              className="bg-gradient-to-br from-purple-50 to-pink-50 border-2 border-theme-primary/20 rounded-xl p-4 shadow-md"
             >
               <div className="flex items-start gap-3">
                 <div className="text-4xl">{achievement.icon}</div>
@@ -1142,7 +1142,7 @@ function StatisticsTab() {
                   <h3 className="font-bold text-gray-800">{achievement.name}</h3>
                   <p className="text-sm text-gray-600 mb-2">{achievement.description}</p>
                   <div className="flex items-center gap-2 text-sm">
-                    <span className="font-semibold text-purple-600">
+                    <span className="font-semibold text-theme-primary">
                       Requirement: {achievement.requirement_value} {achievement.requirement_type.replace('_', ' ')}
                     </span>
                   </div>
@@ -1183,8 +1183,8 @@ function MemberStatsCard({ member }: MemberStatsCardProps) {
   const earnedCount = achievements?.filter(a => a.earned_at).length || 0
 
   return (
-    <div className="bg-white rounded-xl shadow-lg overflow-hidden border-2 border-purple-200">
-      <div className="bg-gradient-to-r from-purple-400 to-pink-400 p-4 text-center">
+    <div className="bg-white rounded-xl shadow-lg overflow-hidden border-2 border-theme-primary/20">
+      <div className="bg-gradient-to-r from-theme-primary to-theme-secondary p-4 text-center">
         {member.avatar && (
           <div className="w-16 h-16 mx-auto mb-2 rounded-full overflow-hidden border-4 border-white shadow-lg">
             <img src={member.avatar} alt={member.name} className="w-full h-full object-cover" />
@@ -1196,7 +1196,7 @@ function MemberStatsCard({ member }: MemberStatsCardProps) {
       <div className="p-4 space-y-3">
         <div className="flex items-center justify-between">
           <span className="text-sm font-semibold text-gray-600">Level</span>
-          <span className="text-lg font-bold text-purple-600">{stats?.level || 1}</span>
+          <span className="text-lg font-bold text-theme-primary">{stats?.level || 1}</span>
         </div>
         <div className="flex items-center justify-between">
           <span className="text-sm font-semibold text-gray-600">Total Stars</span>
@@ -1220,7 +1220,7 @@ function MemberStatsCard({ member }: MemberStatsCardProps) {
         </div>
         <div className="flex items-center justify-between pt-2 border-t-2 border-gray-200">
           <span className="text-sm font-semibold text-gray-600">Achievements</span>
-          <span className="text-lg font-bold text-purple-600">{earnedCount}</span>
+          <span className="text-lg font-bold text-theme-primary">{earnedCount}</span>
         </div>
       </div>
     </div>

@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { db, type TodoCompletion, type TimeslotCompletion } from "../db/schema";
 import { z } from "zod";
 import { updateStats } from "./statistics";
+import { broadcast } from "./realtime";
 
 const GetCompletionsSchema = z.object({
   date: z.string().optional(),
@@ -93,6 +94,15 @@ export const completeTodo = createServerFn({ method: "POST" })
         data: { member_id: data.member_id, completion_date: completionDate },
       });
 
+      // Broadcast realtime event
+      const member = db.query("SELECT name FROM members WHERE id = ?").get(data.member_id) as { name: string } | undefined
+      broadcast({
+        type: 'task_completed',
+        memberId: data.member_id,
+        memberName: member?.name,
+        data: { todo_id: data.todo_id, timeslot_id: data.timeslot_id }
+      })
+
       return completion;
     } catch {
       throw new Error("Completion already exists or invalid data");
@@ -145,6 +155,17 @@ export const uncompleteTodo = createServerFn({ method: "POST" })
          WHERE member_id = ?`,
         [data.member_id]
       );
+    }
+
+    // Broadcast realtime event
+    if (deleted.changes > 0) {
+      const member = db.query("SELECT name FROM members WHERE id = ?").get(data.member_id) as { name: string } | undefined
+      broadcast({
+        type: 'task_uncompleted',
+        memberId: data.member_id,
+        memberName: member?.name,
+        data: { todo_id: data.todo_id, timeslot_id: data.timeslot_id }
+      })
     }
 
     return { success: true };

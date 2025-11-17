@@ -1,5 +1,59 @@
 @import "tailwindcss";
 
+@theme {
+  --color-theme-primary: oklch(0.55 0.25 290);
+  --color-theme-secondary: oklch(0.65 0.25 340);
+  --color-theme-accent: oklch(0.70 0.15 80);
+  --color-theme-bg-from: oklch(0.90 0.05 240);
+  --color-theme-bg-via: oklch(0.88 0.08 290);
+  --color-theme-bg-to: oklch(0.86 0.08 340);
+}
+
+:root[data-theme="default"] {
+  --color-theme-primary: oklch(0.55 0.25 290);
+  --color-theme-secondary: oklch(0.65 0.25 340);
+  --color-theme-accent: oklch(0.70 0.15 80);
+  --color-theme-bg-from: oklch(0.90 0.05 240);
+  --color-theme-bg-via: oklch(0.88 0.08 290);
+  --color-theme-bg-to: oklch(0.86 0.08 340);
+}
+
+:root[data-theme="ocean"] {
+  --color-theme-primary: oklch(0.55 0.15 210);
+  --color-theme-secondary: oklch(0.65 0.15 200);
+  --color-theme-accent: oklch(0.70 0.15 220);
+  --color-theme-bg-from: oklch(0.88 0.08 200);
+  --color-theme-bg-via: oklch(0.90 0.06 210);
+  --color-theme-bg-to: oklch(0.88 0.08 220);
+}
+
+:root[data-theme="sunset"] {
+  --color-theme-primary: oklch(0.60 0.20 40);
+  --color-theme-secondary: oklch(0.55 0.25 25);
+  --color-theme-accent: oklch(0.80 0.15 90);
+  --color-theme-bg-from: oklch(0.88 0.08 40);
+  --color-theme-bg-via: oklch(0.90 0.06 30);
+  --color-theme-bg-to: oklch(0.92 0.06 90);
+}
+
+:root[data-theme="forest"] {
+  --color-theme-primary: oklch(0.55 0.15 160);
+  --color-theme-secondary: oklch(0.60 0.18 145);
+  --color-theme-accent: oklch(0.70 0.20 120);
+  --color-theme-bg-from: oklch(0.88 0.08 150);
+  --color-theme-bg-via: oklch(0.90 0.06 145);
+  --color-theme-bg-to: oklch(0.92 0.06 120);
+}
+
+:root[data-theme="candy"] {
+  --color-theme-primary: oklch(0.60 0.28 320);
+  --color-theme-secondary: oklch(0.65 0.25 340);
+  --color-theme-accent: oklch(0.75 0.22 330);
+  --color-theme-bg-from: oklch(0.86 0.12 320);
+  --color-theme-bg-via: oklch(0.88 0.10 330);
+  --color-theme-bg-to: oklch(0.86 0.12 290);
+}
+
 body {
   @apply m-0;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen",
@@ -12,4 +66,19 @@ body {
 code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, "Courier New",
     monospace;
+}
+
+@keyframes slide-in {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.animate-slide-in {
+  animation: slide-in 0.3s ease-out;
 }
