@@ -87,7 +87,11 @@ export const completeTodo = createServerFn({ method: "POST" })
         .get(result.lastInsertRowid as number);
 
       // Check and complete the timeslot this todo belongs to
-      checkAndCompleteTimeslot(data.timeslot_id, data.member_id, completionDate);
+      checkAndCompleteTimeslot(
+        data.timeslot_id,
+        data.member_id,
+        completionDate
+      );
 
       // Update statistics and check achievements
       await updateStats({
@@ -95,13 +99,16 @@ export const completeTodo = createServerFn({ method: "POST" })
       });
 
       // Broadcast realtime event
-      const member = db.query("SELECT name FROM members WHERE id = ?").get(data.member_id) as { name: string } | undefined
+      const member = db
+        .query("SELECT name FROM members WHERE id = ?")
+        .get(data.member_id) as { name: string } | undefined;
       broadcast({
-        type: 'task_completed',
+        type: "task_completed",
         memberId: data.member_id,
+        timestamp: Date.now(),
         memberName: member?.name,
-        data: { todo_id: data.todo_id, timeslot_id: data.timeslot_id }
-      })
+        data: { todo_id: data.todo_id, timeslot_id: data.timeslot_id },
+      });
 
       return completion;
     } catch {
@@ -159,13 +166,16 @@ export const uncompleteTodo = createServerFn({ method: "POST" })
 
     // Broadcast realtime event
     if (deleted.changes > 0) {
-      const member = db.query("SELECT name FROM members WHERE id = ?").get(data.member_id) as { name: string } | undefined
+      const member = db
+        .query("SELECT name FROM members WHERE id = ?")
+        .get(data.member_id) as { name: string } | undefined;
       broadcast({
-        type: 'task_uncompleted',
+        type: "task_uncompleted",
         memberId: data.member_id,
+        timestamp: Date.now(),
         memberName: member?.name,
-        data: { todo_id: data.todo_id, timeslot_id: data.timeslot_id }
-      })
+        data: { todo_id: data.todo_id, timeslot_id: data.timeslot_id },
+      });
     }
 
     return { success: true };
@@ -216,6 +226,18 @@ function checkAndCompleteTimeslot(
            WHERE member_id = ?`,
           [memberId]
         );
+
+        // Broadcast timeslot completion event
+        const member = db
+          .query("SELECT name FROM members WHERE id = ?")
+          .get(memberId) as { name: string } | undefined;
+        broadcast({
+          type: "timeslot_completed",
+          memberId,
+          memberName: member?.name,
+          timestamp: Date.now(),
+          data: { timeslot_id: timeslotId },
+        });
       }
     } catch {
       // Ignore duplicate errors

@@ -1,7 +1,5 @@
 "use server";
 
-import { createServerFn } from "@tanstack/react-start";
-
 export type RealtimeEvent = {
   type:
     | "task_completed"
@@ -11,46 +9,59 @@ export type RealtimeEvent = {
   memberId: number;
   memberName?: string;
   data: any;
+  timestamp: number;
 };
 
-// Store event listeners globally
-const eventListeners: Set<(event: RealtimeEvent) => void> = new Set();
+// Store active SSE connections
+const connections = new Set<ReadableStreamDefaultController>();
+const encoder = new TextEncoder();
 
-export function broadcast(event: RealtimeEvent) {
-  eventListeners.forEach((listener) => listener(event));
+/**
+ * Add a new SSE connection to the pool
+ */
+export function addSSEConnection(controller: ReadableStreamDefaultController): void {
+  connections.add(controller);
 }
 
-// Async generator for streaming events
-export const eventStream = createServerFn({ method: "GET" }).handler(
-  async function* () {
-    const queue: RealtimeEvent[] = [];
-    let resolveNext: ((value: RealtimeEvent) => void) | null = null;
+/**
+ * Remove an SSE connection from the pool
+ */
+export function removeSSEConnection(controller: ReadableStreamDefaultController): void {
+  connections.delete(controller);
+}
 
-    const listener = (event: RealtimeEvent) => {
-      if (resolveNext) {
-        resolveNext(event);
-        resolveNext = null;
-      } else {
-        queue.push(event);
-      }
-    };
+/**
+ * Get the current number of active connections
+ */
+export function getConnectionCount(): number {
+  return connections.size;
+}
 
-    eventListeners.add(listener);
+/**
+ * Broadcast a realtime event to all connected SSE clients
+ */
+export function broadcast(event: RealtimeEvent): void {
+  const eventWithTimestamp: RealtimeEvent = {
+    ...event,
+    timestamp: Date.now(),
+  };
 
+  const message = `data: ${JSON.stringify(eventWithTimestamp)}\n\n`;
+  const encodedMessage = encoder.encode(message);
+
+  let failedConnections = 0;
+
+  connections.forEach((controller) => {
     try {
-      while (true) {
-        if (queue.length > 0) {
-          yield queue.shift()!;
-        } else {
-          // Wait for next event
-          const event = await new Promise<RealtimeEvent>((resolve) => {
-            resolveNext = resolve;
-          });
-          yield event;
-        }
-      }
-    } finally {
-      eventListeners.delete(listener);
+      controller.enqueue(encodedMessage);
+    } catch (error) {
+      failedConnections++;
+      connections.delete(controller);
     }
+  });
+
+  if (failedConnections > 0 && connections.size === 0) {
+    // All connections failed, no one to notify
+    return;
   }
-);
+}
