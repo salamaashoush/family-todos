@@ -193,6 +193,15 @@ export function initializeDatabase() {
     ON member_achievements(member_id)
   `);
 
+  db.run(`
+    CREATE TABLE IF NOT EXISTS layout_settings (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      key TEXT NOT NULL UNIQUE,
+      value TEXT NOT NULL,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
   seedInitialData();
 }
 
@@ -500,6 +509,13 @@ export type MemberAchievement = {
   member_id: number;
   achievement_id: number;
   earned_at: string;
+};
+
+export type LayoutSettingRow = {
+  id: number;
+  key: string;
+  value: string;
+  updated_at: string;
 };
 
 initializeDatabase();

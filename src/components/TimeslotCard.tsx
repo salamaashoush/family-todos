@@ -1,5 +1,6 @@
-import { useState, useMemo, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { useTimeslotCelebration } from '../hooks/useCelebration'
+import { useTimeslotProgress } from '../hooks/useCompletionProgress'
 import { TodoItem } from './TodoItem'
 import type { TimeslotCardProps } from '../types'
 
@@ -13,15 +14,12 @@ export function TimeslotCard({
   totalTimeslots,
   completedTimeslotsCount,
 }: TimeslotCardProps) {
-  const { completedCount, totalCount, allCompleted } = useMemo(() => {
-    const completed = todos.filter((t) => isTodoCompleted(t.id, timeslot.id, memberId)).length
-    const total = todos.length
-    return {
-      completedCount: completed,
-      totalCount: total,
-      allCompleted: total > 0 && completed === total,
-    }
-  }, [todos, isTodoCompleted, timeslot.id, memberId])
+  const { completedCount, totalCount, allCompleted } = useTimeslotProgress(
+    todos,
+    timeslot.id,
+    memberId,
+    isTodoCompleted
+  )
 
   const [wasCompleted, setWasCompleted] = useState(allCompleted)
 

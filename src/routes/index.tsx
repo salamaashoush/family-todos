@@ -1,14 +1,18 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
 import { useState, useCallback, useMemo } from 'react'
 import { Header } from '../components/Header'
-import { MemberColumn } from '../components/MemberColumn'
 import { Toast } from '../components/Toast'
 import { showToast } from '../components/Toast'
 import { useMembers, useTimeslots, useTodos, useCompletions } from '../hooks/useQueries'
 import { useTodoOperations, useIsTodoCompleted } from '../hooks/useTodoOperations'
 import { useRealtime } from '../hooks/useRealtime'
+import { useLayout, useCurrentTimeslot } from '../contexts/LayoutContext'
+import { useCompletionCelebration } from '../hooks/useCompletionCelebration'
+import { MemberFocusLayout } from '../components/layouts/MemberFocusLayout'
+import { TimeslotFocusLayout } from '../components/layouts/TimeslotFocusLayout'
+import { QuickCheckLayout } from '../components/layouts/QuickCheckLayout'
+import { FamilyDashboardLayout } from '../components/layouts/FamilyDashboardLayout'
 import type { RealtimeEvent } from '../server/realtime'
-import type { Member, Timeslot } from '../types'
 import { getMembers } from '../server/members'
 import { getTimeslots } from '../server/timeslots'
 import { getTodos } from '../server/todos'
@@ -48,9 +52,31 @@ function Home() {
   const { data: todos } = useTodos()
   const { data: completions } = useCompletions(selectedDate)
 
-  const { handleToggleTodo } = useTodoOperations(selectedDate)
+  const { handleToggleTodo: baseHandleToggleTodo } = useTodoOperations(selectedDate)
   const stableCompletions = useMemo(() => completions || [], [completions])
   const { isTodoCompleted } = useIsTodoCompleted(stableCompletions)
+
+  const { checkAndCelebrate } = useCompletionCelebration({
+    members: members || [],
+    timeslots: timeslots || [],
+    todos: todos || [],
+    isTodoCompleted,
+  })
+
+  const handleToggleTodo = useCallback(
+    (todoId: number, timeslotId: number, memberId: number, isCompleted: boolean) => {
+      // Check for celebration before toggling (if completing)
+      if (!isCompleted) {
+        checkAndCelebrate(todoId, timeslotId, memberId, true)
+      }
+      baseHandleToggleTodo(todoId, timeslotId, memberId, isCompleted)
+    },
+    [baseHandleToggleTodo, checkAndCelebrate]
+  )
+
+  const { layout, currentTimeslotId, isHydrated } = useLayout()
+
+  useCurrentTimeslot(timeslots || [])
 
   const handleRealtimeEvent = useCallback((event: RealtimeEvent) => {
     if (event.type === 'task_completed') {
@@ -62,13 +88,38 @@ function Home() {
 
   useRealtime(selectedDate, handleRealtimeEvent)
 
+  const layoutProps = {
+    members: members || [],
+    timeslots: timeslots || [],
+    todos: todos || [],
+    completions: completions || [],
+    isTodoCompleted,
+    onToggleTodo: handleToggleTodo,
+    currentTimeslotId,
+  }
+
+  const renderLayout = () => {
+    switch (layout) {
+      case 'member-focus':
+        return <MemberFocusLayout {...layoutProps} />
+      case 'timeslot-focus':
+        return <TimeslotFocusLayout {...layoutProps} />
+      case 'quick-check':
+        return <QuickCheckLayout {...layoutProps} />
+      case 'family-dashboard':
+        return <FamilyDashboardLayout {...layoutProps} />
+      default:
+        return <MemberFocusLayout {...layoutProps} />
+    }
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-theme-bg-from via-theme-bg-via to-theme-bg-to">
       <Toast />
       <Header selectedDate={selectedDate} onDateChange={setSelectedDate} />
 
       <div className="max-w-[1920px] mx-auto p-2 sm:p-4 lg:p-6 pb-20">
-        {membersLoading ? (
+        {membersLoading || !isHydrated ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
             {[1, 2, 3, 4].map((i) => (
               <div key={i} className="bg-white rounded-2xl shadow-xl overflow-hidden animate-pulse">
@@ -80,26 +131,9 @@ function Home() {
               </div>
             ))}
           </div>
+        ) : members && members.length > 0 ? (
+          renderLayout()
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
-            {members?.map((member: Member) => {
-              const memberTimeslots = timeslots?.filter((t: Timeslot) => t.member_ids?.includes(member.id)) || []
-              return (
-                <MemberColumn
-                  key={member.id}
-                  member={member}
-                  timeslots={memberTimeslots}
-                  todos={todos || []}
-                  completions={completions || []}
-                  isTodoCompleted={isTodoCompleted}
-                  onToggleTodo={handleToggleTodo}
-                />
-              )
-            })}
-          </div>
-        )}
-
-        {!membersLoading && members?.length === 0 && (
           <div className="text-center py-12 sm:py-16">
             <p className="text-xl sm:text-2xl text-gray-600 mb-4">No family members yet!</p>
             <Link
@@ -111,6 +145,30 @@ function Home() {
           </div>
         )}
       </div>
+
+      <Link
+        to="/stats"
+        className="fixed bottom-6 left-6 sm:bottom-8 sm:left-8 bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 active:from-yellow-700 active:to-orange-700 text-white p-4 sm:p-5 rounded-full shadow-2xl hover:shadow-yellow-500/50 transition-all transform hover:scale-110 active:scale-95 z-50 group min-w-[56px] min-h-[56px] sm:min-w-[64px] sm:min-h-[64px] flex items-center justify-center"
+        aria-label="Stats & Achievements"
+      >
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          className="h-6 w-6 sm:h-7 sm:w-7"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+          />
+        </svg>
+        <span className="absolute left-full ml-3 bg-gray-900 text-white px-3 py-2 rounded-lg text-sm font-semibold whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+          Stats & Achievements
+        </span>
+      </Link>
 
       <Link
         to="/admin"

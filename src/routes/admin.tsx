@@ -10,6 +10,7 @@ import { MembersTab } from '../components/admin/MembersTab'
 import { TimeslotsTab } from '../components/admin/TimeslotsTab'
 import { TodosTab } from '../components/admin/TodosTab'
 import { StatisticsTab } from '../components/admin/StatisticsTab'
+import { SettingsTab } from '../components/admin/SettingsTab'
 
 export const Route = createFileRoute('/admin')({
   beforeLoad: async () => {
@@ -43,7 +44,7 @@ export const Route = createFileRoute('/admin')({
 })
 
 function AdminPanel() {
-  const [activeTab, setActiveTab] = useState<'todos' | 'timeslots' | 'members' | 'stats'>('todos')
+  const [activeTab, setActiveTab] = useState<'todos' | 'timeslots' | 'members' | 'stats' | 'settings'>('todos')
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-100 via-purple-100 to-pink-100">
@@ -92,6 +93,16 @@ function AdminPanel() {
             >
               Statistics
             </button>
+            <button
+              onClick={() => setActiveTab('settings')}
+              className={`flex-1 px-4 sm:px-6 py-3 sm:py-4 font-bold transition-all text-sm sm:text-base ${
+                activeTab === 'settings'
+                  ? 'bg-gradient-to-r from-theme-primary to-theme-secondary text-white shadow-lg'
+                  : 'bg-gray-50 text-gray-700 hover:bg-gray-100'
+              }`}
+            >
+              Settings
+            </button>
           </div>
 
           <div className="p-4 sm:p-6 lg:p-8">
@@ -99,6 +110,7 @@ function AdminPanel() {
             {activeTab === 'timeslots' && <TimeslotsTab />}
             {activeTab === 'todos' && <TodosTab />}
             {activeTab === 'stats' && <StatisticsTab />}
+            {activeTab === 'settings' && <SettingsTab />}
           </div>
         </div>
       </div>
