@@ -1,11 +1,21 @@
 import { Database } from "bun:sqlite";
 import path from "node:path";
 
-const dbPath = path.join(process.cwd(), "family-todos.db");
-export const db = new Database(dbPath, { create: true });
+const dbFileName = process.env.DB_NAME || "family-todos.db";
+const dbPath = path.join(process.cwd(), dbFileName);
 
-db.run("PRAGMA foreign_keys = ON");
-db.run("PRAGMA journal_mode = WAL");
+let dbInstance: Database | null = null;
+
+export function getDb(): Database {
+  if (!dbInstance) {
+    dbInstance = new Database(dbPath, { create: true });
+    dbInstance.run("PRAGMA foreign_keys = ON");
+    dbInstance.run("PRAGMA journal_mode = WAL");
+  }
+  return dbInstance;
+}
+
+export const db = getDb();
 
 export function initializeDatabase() {
   db.run(`
@@ -186,12 +196,31 @@ export function initializeDatabase() {
   seedInitialData();
 }
 
+export function clearDatabase() {
+  const tables = ['member_achievements', 'achievements', 'member_stats', 'timeslot_completions', 'todo_completions', 'todo_timeslots', 'todos', 'timeslot_members', 'timeslots', 'members'];
+
+  for (const table of tables) {
+    try {
+      db.run(`DELETE FROM ${table}`);
+    } catch (error) {
+      // Table might not exist yet
+    }
+  }
+  console.log('Database cleared');
+}
+
 function seedInitialData() {
   const existingMembers = db.query<{ count: number }, []>(
     'SELECT COUNT(*) as count FROM members'
   ).get();
 
-  if (existingMembers && existingMembers.count === 0) {
+  // For test database, always reseed
+  const isTestDb = process.env.DB_NAME === 'family-todos-test.db';
+
+  if (isTestDb || (existingMembers && existingMembers.count === 0)) {
+    if (isTestDb && existingMembers && existingMembers.count > 0) {
+      clearDatabase();
+    }
     const members = [
       { name: 'Salama', avatar: null, is_admin: 1 },
       { name: 'Farida', avatar: null, is_admin: 1 },
@@ -395,6 +424,7 @@ export type Timeslot = {
   is_active: number;
   created_at: string;
   updated_at: string;
+  member_ids?: number[];
 };
 
 export type TimeslotMember = {
@@ -413,6 +443,7 @@ export type Todo = {
   position: number;
   created_at: string;
   updated_at: string;
+  timeslot_ids?: number[];
 };
 
 export type TodoTimeslot = {
