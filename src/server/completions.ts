@@ -52,6 +52,7 @@ const CompleteTodoSchema = z.object({
   timeslot_id: z.number(),
   member_id: z.number(),
   completion_date: z.string().optional(),
+  client_id: z.string().nullish(),
 });
 
 export const completeTodo = createServerFn({ method: "POST" })
@@ -104,6 +105,7 @@ export const completeTodo = createServerFn({ method: "POST" })
         .get(data.member_id) as { name: string } | undefined;
       broadcast({
         type: "task_completed",
+        sourceClientId: data.client_id ?? undefined,
         memberId: data.member_id,
         timestamp: Date.now(),
         memberName: member?.name,
@@ -121,6 +123,7 @@ const UncompleteTodoSchema = z.object({
   timeslot_id: z.number(),
   member_id: z.number(),
   completion_date: z.string().optional(),
+  client_id: z.string().nullish(),
 });
 
 export const uncompleteTodo = createServerFn({ method: "POST" })
@@ -171,6 +174,7 @@ export const uncompleteTodo = createServerFn({ method: "POST" })
         .get(data.member_id) as { name: string } | undefined;
       broadcast({
         type: "task_uncompleted",
+        sourceClientId: data.client_id ?? undefined,
         memberId: data.member_id,
         timestamp: Date.now(),
         memberName: member?.name,

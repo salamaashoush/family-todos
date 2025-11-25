@@ -1,15 +1,36 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import type { RealtimeEvent } from "../server/realtime";
+import type { RealtimeEvent, SSEEvent, SSEConnectionEvent } from "../server/realtime";
 
 const SSE_ENDPOINT = "/api/sse";
-const RECONNECT_DELAY = 3000; // 3 seconds
+const INITIAL_RECONNECT_DELAY = 1000;
+const MAX_RECONNECT_DELAY = 30000;
+const MAX_RETRIES = 10;
+
+// Store client ID on window so it persists and is accessible client-side only
+function setClientId(id: string): void {
+  if (typeof window !== 'undefined') {
+    (window as { __sseClientId?: string }).__sseClientId = id;
+  }
+}
+
+function getClientId(): string | null {
+  if (typeof window !== 'undefined') {
+    return (window as { __sseClientId?: string }).__sseClientId || null;
+  }
+  return null;
+}
 
 type EventHandler = (event: RealtimeEvent) => void;
 
-/**
- * Invalidate queries based on event type
- */
+function isConnectionEvent(event: SSEEvent): event is SSEConnectionEvent {
+  return event.type === "connected";
+}
+
+function isRealtimeEvent(event: SSEEvent): event is RealtimeEvent {
+  return event.type !== "connected";
+}
+
 function invalidateQueries(
   queryClient: ReturnType<typeof useQueryClient>,
   event: RealtimeEvent,
@@ -21,26 +42,38 @@ function invalidateQueries(
       queryClient.invalidateQueries({
         queryKey: ["completions", selectedDate],
       });
-      queryClient.invalidateQueries({ queryKey: ["memberStats"] });
-      queryClient.invalidateQueries({ queryKey: ["weeklyProgress"] });
+      queryClient.invalidateQueries({
+        queryKey: ["memberStats", event.memberId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["weeklyProgress", event.memberId],
+        exact: false,
+      });
       break;
 
     case "timeslot_completed":
       queryClient.invalidateQueries({
         queryKey: ["completions", selectedDate],
       });
-      queryClient.invalidateQueries({ queryKey: ["memberStats"] });
+      queryClient.invalidateQueries({
+        queryKey: ["memberStats", event.memberId],
+      });
       break;
 
     case "achievement_unlocked":
-      queryClient.invalidateQueries({ queryKey: ["memberAchievements"] });
-      queryClient.invalidateQueries({ queryKey: ["memberStats"] });
+      queryClient.invalidateQueries({
+        queryKey: ["memberAchievements", event.memberId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["memberStats", event.memberId],
+      });
       break;
   }
 }
 
 /**
  * Hook for realtime updates via Server-Sent Events
+ * Implements exponential backoff for reconnection attempts
  *
  * @param selectedDate - Current selected date for invalidating queries
  * @param onEvent - Optional callback for handling events (e.g., showing toasts)
@@ -50,35 +83,72 @@ export function useRealtime(
   onEvent?: EventHandler
 ): void {
   const queryClient = useQueryClient();
+  const retryCountRef = useRef(0);
+  const reconnectDelayRef = useRef(INITIAL_RECONNECT_DELAY);
+  const onEventRef = useRef(onEvent);
+
+  // Keep the ref updated with the latest callback without causing reconnection
+  useEffect(() => {
+    onEventRef.current = onEvent;
+  }, [onEvent]);
 
   useEffect(() => {
     let eventSource: EventSource | null = null;
     let reconnectTimeout: NodeJS.Timeout | null = null;
     let isMounted = true;
 
+    function resetBackoff(): void {
+      retryCountRef.current = 0;
+      reconnectDelayRef.current = INITIAL_RECONNECT_DELAY;
+    }
+
+    function getNextDelay(): number {
+      const delay = reconnectDelayRef.current;
+      reconnectDelayRef.current = Math.min(
+        reconnectDelayRef.current * 2,
+        MAX_RECONNECT_DELAY
+      );
+      return delay;
+    }
+
     function connect(): void {
       if (!isMounted) return;
+
+      if (retryCountRef.current >= MAX_RETRIES) {
+        console.warn(
+          "[Realtime] Max retries reached, stopping reconnection attempts"
+        );
+        return;
+      }
 
       eventSource = new EventSource(SSE_ENDPOINT);
 
       eventSource.onopen = () => {
-        // Connection established
+        resetBackoff();
       };
 
       eventSource.onmessage = (e) => {
         try {
-          const event: RealtimeEvent = JSON.parse(e.data);
+          const event = JSON.parse(e.data) as SSEEvent;
 
-          // Skip connection event
-          if (event.type === "connected") {
+          // Store client ID from connection event
+          if (isConnectionEvent(event)) {
+            setClientId(event.clientId);
             return;
           }
 
-          // Invalidate queries
-          invalidateQueries(queryClient, event, selectedDate);
+          if (!isRealtimeEvent(event)) {
+            return;
+          }
 
-          // Call event handler if provided
-          onEvent?.(event);
+          // Skip events from this client (own actions)
+          const currentClientId = getClientId();
+          if (event.sourceClientId && currentClientId && event.sourceClientId === currentClientId) {
+            return;
+          }
+
+          invalidateQueries(queryClient, event, selectedDate);
+          onEventRef.current?.(event);
         } catch (error) {
           console.error("[Realtime] Error parsing event:", error);
         }
@@ -88,9 +158,13 @@ export function useRealtime(
         eventSource?.close();
         eventSource = null;
 
-        // Attempt reconnection if still mounted
-        if (isMounted) {
-          reconnectTimeout = setTimeout(connect, RECONNECT_DELAY);
+        if (isMounted && retryCountRef.current < MAX_RETRIES) {
+          retryCountRef.current++;
+          const delay = getNextDelay();
+          console.log(
+            `[Realtime] Reconnecting in ${delay}ms (attempt ${retryCountRef.current}/${MAX_RETRIES})`
+          );
+          reconnectTimeout = setTimeout(connect, delay);
         }
       };
     }
@@ -108,5 +182,5 @@ export function useRealtime(
         eventSource.close();
       }
     };
-  }, [queryClient, selectedDate, onEvent]);
+  }, [queryClient, selectedDate]);
 }

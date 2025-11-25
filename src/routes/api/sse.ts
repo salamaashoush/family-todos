@@ -3,8 +3,16 @@ import { addSSEConnection, removeSSEConnection } from "../../server/realtime";
 
 const KEEP_ALIVE_INTERVAL = 30000; // 30 seconds
 
+/**
+ * Generate a unique client ID
+ */
+function generateClientId(): string {
+  return `${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
+}
+
 interface SSEController extends ReadableStreamDefaultController {
   cleanup?: () => void;
+  clientId?: string;
 }
 
 /**
@@ -16,20 +24,22 @@ function createKeepAlive(
   return setInterval(() => {
     try {
       controller.enqueue(new TextEncoder().encode(": ping\n\n"));
-    } catch (error) {
+    } catch {
       // Connection is closed, interval will be cleared by cleanup
     }
   }, KEEP_ALIVE_INTERVAL);
 }
 
 /**
- * Send initial connection event
+ * Send initial connection event with client ID
  */
 function sendConnectionEvent(
-  controller: ReadableStreamDefaultController
+  controller: ReadableStreamDefaultController,
+  clientId: string
 ): void {
   const event = {
     type: "connected",
+    clientId,
     timestamp: Date.now(),
   };
   const message = `data: ${JSON.stringify(event)}\n\n`;
@@ -44,13 +54,17 @@ export const Route = createFileRoute("/api/sse")({
   server: {
     handlers: {
       GET: async () => {
+        const clientId = generateClientId();
+
         const stream = new ReadableStream({
           start(controller: SSEController) {
-            // Register connection
-            addSSEConnection(controller);
+            controller.clientId = clientId;
 
-            // Send initial connection event
-            sendConnectionEvent(controller);
+            // Register connection with client ID
+            addSSEConnection(controller, clientId);
+
+            // Send initial connection event with client ID
+            sendConnectionEvent(controller, clientId);
 
             // Setup keep-alive
             const keepAlive = createKeepAlive(controller);
@@ -58,7 +72,7 @@ export const Route = createFileRoute("/api/sse")({
             // Store cleanup function
             controller.cleanup = () => {
               clearInterval(keepAlive);
-              removeSSEConnection(controller);
+              removeSSEConnection(clientId);
             };
           },
 

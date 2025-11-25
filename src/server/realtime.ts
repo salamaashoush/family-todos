@@ -1,33 +1,88 @@
 "use server";
 
-export type RealtimeEvent = {
-  type:
-    | "task_completed"
-    | "task_uncompleted"
-    | "timeslot_completed"
-    | "achievement_unlocked";
-  memberId: number;
-  memberName?: string;
-  data: any;
+export type SSEConnectionEvent = {
+  type: "connected";
+  clientId: string;
   timestamp: number;
 };
 
-// Store active SSE connections
-const connections = new Set<ReadableStreamDefaultController>();
+export type TaskCompletedEvent = {
+  type: "task_completed";
+  sourceClientId?: string;
+  memberId: number;
+  memberName?: string;
+  timestamp: number;
+  data: {
+    todo_id: number;
+    timeslot_id: number;
+  };
+};
+
+export type TaskUncompletedEvent = {
+  type: "task_uncompleted";
+  sourceClientId?: string;
+  memberId: number;
+  memberName?: string;
+  timestamp: number;
+  data: {
+    todo_id: number;
+    timeslot_id: number;
+  };
+};
+
+export type TimeslotCompletedEvent = {
+  type: "timeslot_completed";
+  sourceClientId?: string;
+  memberId: number;
+  memberName?: string;
+  timestamp: number;
+  data: {
+    timeslot_id: number;
+  };
+};
+
+export type AchievementUnlockedEvent = {
+  type: "achievement_unlocked";
+  sourceClientId?: string;
+  memberId: number;
+  memberName?: string;
+  timestamp: number;
+  data: {
+    achievement_id: number;
+    achievement_name: string;
+  };
+};
+
+export type RealtimeEvent =
+  | TaskCompletedEvent
+  | TaskUncompletedEvent
+  | TimeslotCompletedEvent
+  | AchievementUnlockedEvent;
+
+export type SSEEvent = SSEConnectionEvent | RealtimeEvent;
+
+// Store active SSE connections with their client IDs
+interface SSEConnection {
+  controller: ReadableStreamDefaultController;
+  clientId: string;
+}
+
+const connections = new Map<string, SSEConnection>();
 const encoder = new TextEncoder();
+
 
 /**
  * Add a new SSE connection to the pool
  */
-export function addSSEConnection(controller: ReadableStreamDefaultController): void {
-  connections.add(controller);
+export function addSSEConnection(controller: ReadableStreamDefaultController, clientId: string): void {
+  connections.set(clientId, { controller, clientId });
 }
 
 /**
  * Remove an SSE connection from the pool
  */
-export function removeSSEConnection(controller: ReadableStreamDefaultController): void {
-  connections.delete(controller);
+export function removeSSEConnection(clientId: string): void {
+  connections.delete(clientId);
 }
 
 /**
@@ -49,19 +104,15 @@ export function broadcast(event: RealtimeEvent): void {
   const message = `data: ${JSON.stringify(eventWithTimestamp)}\n\n`;
   const encodedMessage = encoder.encode(message);
 
-  let failedConnections = 0;
+  const failedClientIds: string[] = [];
 
-  connections.forEach((controller) => {
+  connections.forEach((connection, clientId) => {
     try {
-      controller.enqueue(encodedMessage);
-    } catch (error) {
-      failedConnections++;
-      connections.delete(controller);
+      connection.controller.enqueue(encodedMessage);
+    } catch {
+      failedClientIds.push(clientId);
     }
   });
 
-  if (failedConnections > 0 && connections.size === 0) {
-    // All connections failed, no one to notify
-    return;
-  }
+  failedClientIds.forEach((clientId) => connections.delete(clientId));
 }
