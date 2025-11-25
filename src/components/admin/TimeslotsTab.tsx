@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useTimeslots, useMembers } from '../../hooks/useQueries'
 import { useTimeslotMutations } from '../../hooks/useAdminMutations'
 import { Modal } from '../shared/Modal'
+import { ConfirmDialog } from '../shared/ConfirmDialog'
 import { TimeslotForm } from './TimeslotForm'
 import type { Timeslot, Member } from '../../types'
 
@@ -21,6 +22,7 @@ export function TimeslotsTab() {
   const { create, update, remove } = useTimeslotMutations()
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingTimeslot, setEditingTimeslot] = useState<Timeslot | null>(null)
+  const [deletingTimeslot, setDeletingTimeslot] = useState<Timeslot | null>(null)
 
   const handleAdd = async (data: TimeslotFormData) => {
     create.mutate({ data })
@@ -34,10 +36,10 @@ export function TimeslotsTab() {
     setEditingTimeslot(null)
   }
 
-  const handleDelete = (id: number, name: string) => {
-    if (confirm(`Delete "${name}"?`)) {
-      remove.mutate({ data: { id } })
-    }
+  const handleDelete = () => {
+    if (!deletingTimeslot) return
+    remove.mutate({ data: { id: deletingTimeslot.id } })
+    setDeletingTimeslot(null)
   }
 
   const openAddModal = () => {
@@ -134,15 +136,23 @@ export function TimeslotsTab() {
                 <div className="flex gap-2 ml-4">
                   <button
                     onClick={() => openEditModal(timeslot)}
-                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg text-sm sm:text-base transition-colors"
+                    className="p-2 sm:px-4 sm:py-2 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-semibold rounded-lg transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center gap-2"
+                    aria-label={`Edit ${timeslot.name}`}
                   >
-                    Edit
+                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                    </svg>
+                    <span className="hidden sm:inline">Edit</span>
                   </button>
                   <button
-                    onClick={() => handleDelete(timeslot.id, timeslot.name)}
-                    className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-lg text-sm sm:text-base transition-colors"
+                    onClick={() => setDeletingTimeslot(timeslot)}
+                    className="p-2 sm:px-4 sm:py-2 bg-red-600 hover:bg-red-700 active:bg-red-800 text-white font-semibold rounded-lg transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center gap-2"
+                    aria-label={`Delete ${timeslot.name}`}
                   >
-                    Delete
+                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                    <span className="hidden sm:inline">Delete</span>
                   </button>
                 </div>
               </div>
@@ -174,6 +184,14 @@ export function TimeslotsTab() {
           onCancel={closeModal}
         />
       </Modal>
+
+      <ConfirmDialog
+        isOpen={!!deletingTimeslot}
+        onClose={() => setDeletingTimeslot(null)}
+        onConfirm={handleDelete}
+        title="Delete Time Slot"
+        message={`Are you sure you want to delete "${deletingTimeslot?.name}"? This action cannot be undone.`}
+      />
     </div>
   )
 }
