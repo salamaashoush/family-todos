@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useTheme } from 'next-themes'
 
 const themeNames: Record<string, string> = {
@@ -12,6 +12,11 @@ const themeNames: Record<string, string> = {
 export function ThemeSwitcher() {
   const { theme, setTheme } = useTheme()
   const [isOpen, setIsOpen] = useState(false)
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   return (
     <div className="relative">
@@ -20,7 +25,7 @@ export function ThemeSwitcher() {
         className="bg-white border-2 border-theme-primary rounded-lg px-4 py-2 font-bold text-theme-primary hover:bg-theme-primary hover:text-white transition-all flex items-center gap-2"
       >
         <span>🎨</span>
-        <span className="hidden sm:inline">{theme ? themeNames[theme] : 'Theme'}</span>
+        <span className="hidden sm:inline">{mounted && theme ? themeNames[theme] : 'Theme'}</span>
       </button>
 
       {isOpen && (
@@ -39,13 +44,13 @@ export function ThemeSwitcher() {
                     setIsOpen(false)
                   }}
                   className={`w-full text-left px-3 py-2 rounded-lg transition-all flex items-center gap-3 ${
-                    theme === id
+                    mounted && theme === id
                       ? 'bg-theme-primary text-white font-bold'
                       : 'hover:bg-gray-100 text-gray-700'
                   }`}
                 >
                   <span>{name}</span>
-                  {theme === id && <span className="ml-auto">✓</span>}
+                  {mounted && theme === id && <span className="ml-auto">✓</span>}
                 </button>
               ))}
             </div>
