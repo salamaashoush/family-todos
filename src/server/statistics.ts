@@ -44,8 +44,7 @@ export const getMemberAchievements = createServerFn({ method: "GET" })
         `SELECT a.*, ma.earned_at
          FROM achievements a
          LEFT JOIN member_achievements ma ON a.id = ma.achievement_id AND ma.member_id = ?
-         ORDER BY a.requirement_value ASC`,
-        [data.member_id]
+         ORDER BY a.requirement_value ASC`
       ).all(data.member_id);
 
     return achievements;

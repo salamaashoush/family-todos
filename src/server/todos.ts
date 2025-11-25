@@ -6,30 +6,26 @@ const GetTodosSchema = z.object({
   timeslot_id: z.number().optional(),
 });
 
-type TodoWithTimeslots = Todo & {
-  timeslot_ids: number[];
-};
-
 export const getTodos = createServerFn({ method: "GET" })
   .inputValidator(GetTodosSchema)
   .handler(async ({ data }) => {
-    let query = "SELECT * FROM todos ORDER BY position, created_at";
+    const query = "SELECT * FROM todos ORDER BY position, created_at";
 
     const todos = db.query<Todo, []>(query).all();
 
-    const todosWithTimeslots: TodoWithTimeslots[] = todos.map(todo => {
+    const todosWithTimeslots = todos.map((todo: Todo) => {
       const timeslots = db.query<TodoTimeslot, [number]>(
         "SELECT * FROM todo_timeslots WHERE todo_id = ?"
       ).all(todo.id);
 
       return {
         ...todo,
-        timeslot_ids: timeslots.map(t => t.timeslot_id)
+        timeslot_ids: timeslots.map((t: TodoTimeslot) => t.timeslot_id)
       };
     });
 
     if (data.timeslot_id) {
-      return todosWithTimeslots.filter(t => t.timeslot_ids.includes(data.timeslot_id!));
+      return todosWithTimeslots.filter((t: Todo & { timeslot_ids: number[] }) => t.timeslot_ids.includes(data.timeslot_id!));
     }
 
     return todosWithTimeslots;

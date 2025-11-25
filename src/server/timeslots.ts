@@ -6,10 +6,6 @@ const GetTimeslotsSchema = z.object({
   member_id: z.number().optional(),
 });
 
-type TimeslotWithMembers = Timeslot & {
-  member_ids: number[];
-};
-
 export const getTimeslots = createServerFn({ method: "GET" })
   .inputValidator(GetTimeslotsSchema)
   .handler(async ({ data }) => {
@@ -20,19 +16,19 @@ export const getTimeslots = createServerFn({ method: "GET" })
 
     const timeslots = db.query<Timeslot, number[]>(query).all(...params);
 
-    const timeslotsWithMembers: TimeslotWithMembers[] = timeslots.map(timeslot => {
+    const timeslotsWithMembers = timeslots.map((timeslot: Timeslot) => {
       const members = db.query<TimeslotMember, [number]>(
         "SELECT * FROM timeslot_members WHERE timeslot_id = ?"
       ).all(timeslot.id);
 
       return {
         ...timeslot,
-        member_ids: members.map(m => m.member_id)
+        member_ids: members.map((m: TimeslotMember) => m.member_id)
       };
     });
 
     if (data.member_id) {
-      return timeslotsWithMembers.filter(t => t.member_ids.includes(data.member_id!));
+      return timeslotsWithMembers.filter((t: Timeslot & { member_ids: number[] }) => t.member_ids.includes(data.member_id!));
     }
 
     return timeslotsWithMembers;
