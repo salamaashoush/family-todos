@@ -1,9 +1,10 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useMembers } from '../../hooks/useQueries'
 import { useMemberMutations } from '../../hooks/useAdminMutations'
 import { Modal } from '../shared/Modal'
 import { ConfirmDialog } from '../shared/ConfirmDialog'
 import { MemberForm } from './MemberForm'
+import { SwipeableCard } from './SwipeableCard'
 import type { Member } from '../../types'
 
 export function MembersTab() {
@@ -12,6 +13,17 @@ export function MembersTab() {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingMember, setEditingMember] = useState<Member | null>(null)
   const [deletingMember, setDeletingMember] = useState<Member | null>(null)
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set())
+  const [searchQuery, setSearchQuery] = useState('')
+  const [showBulkDelete, setShowBulkDelete] = useState(false)
+
+  const filteredMembers = useMemo(() => {
+    if (!members) return []
+    if (!searchQuery) return members
+    return members.filter((member: Member) =>
+      member.name.toLowerCase().includes(searchQuery.toLowerCase())
+    )
+  }, [members, searchQuery])
 
   const handleAdd = async (data: { name: string; avatar: string; is_admin: number }) => {
     create.mutate({ data })
@@ -31,6 +43,34 @@ export function MembersTab() {
     setDeletingMember(null)
   }
 
+  const handleBulkDelete = () => {
+    selectedIds.forEach((id) => {
+      remove.mutate({ data: { id } })
+    })
+    setSelectedIds(new Set())
+    setShowBulkDelete(false)
+  }
+
+  const toggleSelect = (id: number) => {
+    setSelectedIds((prev) => {
+      const newSet = new Set(prev)
+      if (newSet.has(id)) {
+        newSet.delete(id)
+      } else {
+        newSet.add(id)
+      }
+      return newSet
+    })
+  }
+
+  const toggleSelectAll = () => {
+    if (selectedIds.size === filteredMembers.length) {
+      setSelectedIds(new Set())
+    } else {
+      setSelectedIds(new Set(filteredMembers.map((m: Member) => m.id)))
+    }
+  }
+
   const openAddModal = () => {
     setEditingMember(null)
     setIsModalOpen(true)
@@ -46,97 +86,161 @@ export function MembersTab() {
     setEditingMember(null)
   }
 
+  const isSelecting = selectedIds.size > 0
+
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold text-gray-800">Family Members</h2>
-        <button
-          onClick={openAddModal}
-          className="px-6 py-3 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white font-bold rounded-xl shadow-lg hover:shadow-xl transition-all transform hover:scale-105 active:scale-95 flex items-center gap-2"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+    <div className="space-y-4">
+      {/* Header */}
+      <div className="flex flex-col gap-4">
+        <div className="flex items-center justify-between">
+          <h2 className="text-xl sm:text-2xl font-bold text-gray-800">Family Members</h2>
+          <button
+            onClick={openAddModal}
+            className="px-4 py-2 sm:px-6 sm:py-3 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white font-bold rounded-xl shadow-lg transition-all flex items-center gap-2 min-h-[48px]"
+          >
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+            <span className="hidden sm:inline">Add Member</span>
+          </button>
+        </div>
+
+        {/* Search */}
+        <div className="relative">
+          <svg
+            className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
           </svg>
-          Add Member
-        </button>
+          <input
+            type="text"
+            placeholder="Search members..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full pl-10 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:border-theme-primary focus:outline-none transition-colors min-h-[48px]"
+          />
+        </div>
+
+        {/* Bulk actions bar */}
+        {isSelecting && (
+          <div className="flex items-center justify-between bg-theme-primary/10 rounded-xl p-3">
+            <div className="flex items-center gap-3">
+              <button
+                onClick={toggleSelectAll}
+                className="p-2 hover:bg-theme-primary/20 rounded-lg transition-colors"
+              >
+                <svg className="w-5 h-5 text-theme-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  {selectedIds.size === filteredMembers.length ? (
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  ) : (
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h8M12 8v8m9-4a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  )}
+                </svg>
+              </button>
+              <span className="font-semibold text-theme-primary">
+                {selectedIds.size} selected
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setSelectedIds(new Set())}
+                className="px-3 py-2 text-gray-600 hover:bg-gray-200 rounded-lg transition-colors min-h-[44px]"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => setShowBulkDelete(true)}
+                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-lg transition-colors min-h-[44px] flex items-center gap-2"
+              >
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+                Delete
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
+      {/* Members list */}
       {isLoading ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="space-y-3">
           {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="bg-white border-2 border-gray-200 rounded-xl p-4 sm:p-5 animate-pulse">
+            <div key={i} className="bg-white border-2 border-gray-200 rounded-xl p-4 animate-pulse">
               <div className="flex items-center gap-4">
-                <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-gray-200"></div>
+                <div className="w-12 h-12 rounded-full bg-gray-200" />
                 <div className="flex-1 space-y-2">
-                  <div className="h-5 bg-gray-200 rounded w-1/2"></div>
-                  <div className="h-4 bg-gray-200 rounded w-1/4"></div>
+                  <div className="h-5 bg-gray-200 rounded w-1/3" />
+                  <div className="h-4 bg-gray-200 rounded w-1/4" />
                 </div>
               </div>
             </div>
           ))}
         </div>
+      ) : filteredMembers.length === 0 ? (
+        <div className="text-center py-12 text-gray-500">
+          {searchQuery ? (
+            <>
+              <p className="text-lg">No members match "{searchQuery}"</p>
+              <button
+                onClick={() => setSearchQuery('')}
+                className="mt-3 text-theme-primary hover:underline font-medium"
+              >
+                Clear search
+              </button>
+            </>
+          ) : (
+            <>
+              <p className="text-lg mb-4">No family members yet</p>
+              <button
+                onClick={openAddModal}
+                className="px-6 py-3 bg-gradient-to-r from-theme-primary to-theme-secondary text-white font-bold rounded-xl hover:shadow-lg transition-all"
+              >
+                Add Your First Member
+              </button>
+            </>
+          )}
+        </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {members?.map((member: Member) => (
-          <div
-            key={member.id}
-            className="bg-white border-2 border-gray-200 rounded-xl p-4 sm:p-5 hover:shadow-lg hover:border-theme-primary transition-all"
-          >
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                {member.avatar && (
+        <div className="space-y-3">
+          <p className="text-sm text-gray-500 px-1">
+            Swipe left on a card to reveal edit/delete actions
+          </p>
+          {filteredMembers.map((member: Member) => (
+            <SwipeableCard
+              key={member.id}
+              onDelete={() => setDeletingMember(member)}
+              onEdit={() => openEditModal(member)}
+              isSelected={selectedIds.has(member.id)}
+              onSelect={() => toggleSelect(member.id)}
+              showCheckbox={true}
+            >
+              <div className="flex items-center gap-3">
+                {member.avatar ? (
                   <img
                     src={member.avatar}
                     alt={member.name}
-                    className="w-14 h-14 sm:w-16 sm:h-16 rounded-full object-cover border-3 border-theme-primary/20"
+                    className="w-12 h-12 rounded-full object-cover border-2 border-theme-primary/20 flex-shrink-0"
                   />
+                ) : (
+                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-theme-primary to-theme-secondary flex items-center justify-center text-white font-bold text-lg flex-shrink-0">
+                    {member.name.charAt(0).toUpperCase()}
+                  </div>
                 )}
-                <div>
-                  <div className="font-bold text-lg sm:text-xl text-gray-800">{member.name}</div>
+                <div className="min-w-0 flex-1">
+                  <h3 className="font-bold text-gray-800 truncate">{member.name}</h3>
                   {member.is_admin === 1 && (
-                    <span className="inline-block text-xs sm:text-sm bg-purple-100 text-theme-primary px-3 py-1 rounded-full font-semibold mt-1">
+                    <span className="inline-block text-xs bg-purple-100 text-theme-primary px-2 py-0.5 rounded-full font-semibold mt-1">
                       Admin
                     </span>
                   )}
                 </div>
               </div>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => openEditModal(member)}
-                  className="p-2 sm:px-4 sm:py-2 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-semibold rounded-lg transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center gap-2"
-                  aria-label={`Edit ${member.name}`}
-                >
-                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                  </svg>
-                  <span className="hidden sm:inline">Edit</span>
-                </button>
-                <button
-                  onClick={() => setDeletingMember(member)}
-                  className="p-2 sm:px-4 sm:py-2 bg-red-600 hover:bg-red-700 active:bg-red-800 text-white font-semibold rounded-lg transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center gap-2"
-                  aria-label={`Delete ${member.name}`}
-                >
-                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                  </svg>
-                  <span className="hidden sm:inline">Delete</span>
-                </button>
-              </div>
-            </div>
-          </div>
-        ))}
-        </div>
-      )}
-
-      {!isLoading && members?.length === 0 && (
-        <div className="text-center py-12 text-gray-500">
-          <p className="text-lg mb-4">No family members yet</p>
-          <button
-            onClick={openAddModal}
-            className="px-6 py-3 bg-gradient-to-r from-theme-primary to-theme-secondary text-white font-bold rounded-xl hover:shadow-lg transition-all"
-          >
-            Add Your First Member
-          </button>
+            </SwipeableCard>
+          ))}
         </div>
       )}
 
@@ -158,6 +262,14 @@ export function MembersTab() {
         onConfirm={handleDelete}
         title="Delete Member"
         message={`Are you sure you want to delete ${deletingMember?.name}? This action cannot be undone.`}
+      />
+
+      <ConfirmDialog
+        isOpen={showBulkDelete}
+        onClose={() => setShowBulkDelete(false)}
+        onConfirm={handleBulkDelete}
+        title="Delete Selected Members"
+        message={`Are you sure you want to delete ${selectedIds.size} member${selectedIds.size > 1 ? 's' : ''}? This action cannot be undone.`}
       />
     </div>
   )

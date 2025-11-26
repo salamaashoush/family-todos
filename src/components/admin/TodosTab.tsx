@@ -1,9 +1,26 @@
 import { useState, useMemo } from 'react'
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from '@dnd-kit/core'
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable'
 import { useTodos, useTimeslots } from '../../hooks/useQueries'
 import { useTodoMutations } from '../../hooks/useAdminMutations'
 import { Modal } from '../shared/Modal'
 import { ConfirmDialog } from '../shared/ConfirmDialog'
 import { TodoForm } from './TodoForm'
+import { SwipeableCard } from './SwipeableCard'
+import { SortableItem } from './SortableItem'
 import type { Todo, Timeslot } from '../../types'
 
 interface TodoFormData {
@@ -22,12 +39,28 @@ export function TodosTab() {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingTodo, setEditingTodo] = useState<Todo | null>(null)
   const [deletingTodo, setDeletingTodo] = useState<Todo | null>(null)
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set())
   const [searchQuery, setSearchQuery] = useState('')
   const [filterTimeslot, setFilterTimeslot] = useState<number | null>(null)
+  const [showBulkDelete, setShowBulkDelete] = useState(false)
+  const [isReordering, setIsReordering] = useState(false)
+  const [localTodos, setLocalTodos] = useState<Todo[]>([])
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  )
 
   const filteredTodos = useMemo(() => {
-    if (!todos) return []
-    return todos.filter((todo: Todo) => {
+    const source = isReordering ? localTodos : todos
+    if (!source) return []
+    return source.filter((todo: Todo) => {
       const matchesSearch =
         searchQuery === '' ||
         todo.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -36,7 +69,7 @@ export function TodosTab() {
         filterTimeslot === null || todo.timeslot_ids?.includes(filterTimeslot)
       return matchesSearch && matchesTimeslot
     })
-  }, [todos, searchQuery, filterTimeslot])
+  }, [todos, localTodos, isReordering, searchQuery, filterTimeslot])
 
   const handleAdd = async (data: TodoFormData) => {
     create.mutate({ data })
@@ -56,6 +89,77 @@ export function TodosTab() {
     setDeletingTodo(null)
   }
 
+  const handleBulkDelete = () => {
+    selectedIds.forEach((id) => {
+      remove.mutate({ data: { id } })
+    })
+    setSelectedIds(new Set())
+    setShowBulkDelete(false)
+  }
+
+  const toggleSelect = (id: number) => {
+    setSelectedIds((prev) => {
+      const newSet = new Set(prev)
+      if (newSet.has(id)) {
+        newSet.delete(id)
+      } else {
+        newSet.add(id)
+      }
+      return newSet
+    })
+  }
+
+  const toggleSelectAll = () => {
+    if (selectedIds.size === filteredTodos.length) {
+      setSelectedIds(new Set())
+    } else {
+      setSelectedIds(new Set(filteredTodos.map((t: Todo) => t.id)))
+    }
+  }
+
+  const startReordering = () => {
+    if (todos) {
+      setLocalTodos([...todos])
+      setIsReordering(true)
+    }
+  }
+
+  const cancelReordering = () => {
+    setIsReordering(false)
+    setLocalTodos([])
+  }
+
+  const saveReordering = () => {
+    localTodos.forEach((todo, index) => {
+      if (todo.position !== index) {
+        update.mutate({
+          data: {
+            id: todo.id,
+            title: todo.title,
+            description: todo.description || '',
+            symbol: todo.symbol || '',
+            image_url: todo.image_url || '',
+            position: index,
+            timeslot_ids: todo.timeslot_ids || [],
+          },
+        })
+      }
+    })
+    setIsReordering(false)
+    setLocalTodos([])
+  }
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event
+    if (over && active.id !== over.id) {
+      setLocalTodos((items) => {
+        const oldIndex = items.findIndex((i) => i.id === active.id)
+        const newIndex = items.findIndex((i) => i.id === over.id)
+        return arrayMove(items, oldIndex, newIndex)
+      })
+    }
+  }
+
   const openAddModal = () => {
     setEditingTodo(null)
     setIsModalOpen(true)
@@ -71,81 +175,162 @@ export function TodosTab() {
     setEditingTodo(null)
   }
 
+  const isSelecting = selectedIds.size > 0
+  const canReorder = !searchQuery && filterTimeslot === null && !isSelecting
+
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <h2 className="text-2xl font-bold text-gray-800">Tasks</h2>
-        <button
-          onClick={openAddModal}
-          className="px-6 py-3 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white font-bold rounded-xl shadow-lg hover:shadow-xl transition-all transform hover:scale-105 active:scale-95 flex items-center gap-2 min-h-[48px]"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-          </svg>
-          Add Task
-        </button>
-      </div>
-
-      <div className="flex flex-col sm:flex-row gap-3">
-        <div className="relative flex-1">
-          <svg
-            className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-            />
-          </svg>
-          <input
-            type="text"
-            placeholder="Search tasks..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:border-theme-primary focus:outline-none transition-colors min-h-[48px]"
-          />
+    <div className="space-y-4">
+      {/* Header */}
+      <div className="flex flex-col gap-4">
+        <div className="flex items-center justify-between">
+          <h2 className="text-xl sm:text-2xl font-bold text-gray-800">Tasks</h2>
+          <div className="flex items-center gap-2">
+            {!isReordering && (
+              <button
+                onClick={startReordering}
+                disabled={!canReorder || !todos?.length}
+                className="px-3 py-2 bg-gray-100 hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed text-gray-700 font-medium rounded-xl transition-colors min-h-[48px] flex items-center gap-2"
+              >
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8h16M4 16h16" />
+                </svg>
+                <span className="hidden sm:inline">Reorder</span>
+              </button>
+            )}
+            <button
+              onClick={openAddModal}
+              className="px-4 py-2 sm:px-6 sm:py-3 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white font-bold rounded-xl shadow-lg transition-all flex items-center gap-2 min-h-[48px]"
+            >
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+              <span className="hidden sm:inline">Add Task</span>
+            </button>
+          </div>
         </div>
-        <select
-          value={filterTimeslot ?? ''}
-          onChange={(e) => setFilterTimeslot(e.target.value ? Number(e.target.value) : null)}
-          className="px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-theme-primary focus:outline-none transition-colors min-h-[48px] bg-white"
-        >
-          <option value="">All Time Slots</option>
-          {timeslots?.map((ts: Timeslot) => (
-            <option key={ts.id} value={ts.id}>
-              {ts.name}
-            </option>
-          ))}
-        </select>
+
+        {/* Reordering bar */}
+        {isReordering && (
+          <div className="flex items-center justify-between bg-blue-50 border-2 border-blue-200 rounded-xl p-3">
+            <div className="flex items-center gap-2 text-blue-700">
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
+              </svg>
+              <span className="font-medium">Drag tasks to reorder</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={cancelReordering}
+                className="px-3 py-2 text-gray-600 hover:bg-gray-200 rounded-lg transition-colors min-h-[44px]"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={saveReordering}
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition-colors min-h-[44px]"
+              >
+                Save Order
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Search and filter */}
+        {!isReordering && (
+          <div className="flex flex-col sm:flex-row gap-3">
+            <div className="relative flex-1">
+              <svg
+                className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+              <input
+                type="text"
+                placeholder="Search tasks..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-10 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:border-theme-primary focus:outline-none transition-colors min-h-[48px]"
+              />
+            </div>
+            <select
+              value={filterTimeslot ?? ''}
+              onChange={(e) => setFilterTimeslot(e.target.value ? Number(e.target.value) : null)}
+              className="px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-theme-primary focus:outline-none transition-colors min-h-[48px] bg-white"
+            >
+              <option value="">All Time Slots</option>
+              {timeslots?.map((ts: Timeslot) => (
+                <option key={ts.id} value={ts.id}>
+                  {ts.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+
+        {/* Bulk actions bar */}
+        {isSelecting && !isReordering && (
+          <div className="flex items-center justify-between bg-theme-primary/10 rounded-xl p-3">
+            <div className="flex items-center gap-3">
+              <button
+                onClick={toggleSelectAll}
+                className="p-2 hover:bg-theme-primary/20 rounded-lg transition-colors"
+              >
+                <svg className="w-5 h-5 text-theme-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  {selectedIds.size === filteredTodos.length ? (
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  ) : (
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h8M12 8v8m9-4a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  )}
+                </svg>
+              </button>
+              <span className="font-semibold text-theme-primary">
+                {selectedIds.size} selected
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setSelectedIds(new Set())}
+                className="px-3 py-2 text-gray-600 hover:bg-gray-200 rounded-lg transition-colors min-h-[44px]"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => setShowBulkDelete(true)}
+                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-lg transition-colors min-h-[44px] flex items-center gap-2"
+              >
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+                Delete
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
+      {/* Todos list */}
       {todosLoading ? (
         <div className="space-y-3">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="bg-white border-2 border-gray-200 rounded-xl p-4 sm:p-5 animate-pulse">
-              <div className="flex gap-3 sm:gap-4">
-                <div className="w-10 h-10 bg-gray-200 rounded"></div>
+            <div key={i} className="bg-white border-2 border-gray-200 rounded-xl p-4 animate-pulse">
+              <div className="flex gap-3">
+                <div className="w-10 h-10 bg-gray-200 rounded" />
                 <div className="flex-1 space-y-2">
-                  <div className="h-5 bg-gray-200 rounded w-1/3"></div>
-                  <div className="h-4 bg-gray-200 rounded w-2/3"></div>
-                  <div className="flex gap-2">
-                    <div className="h-6 bg-gray-200 rounded-full w-20"></div>
-                    <div className="h-6 bg-gray-200 rounded-full w-24"></div>
-                  </div>
+                  <div className="h-5 bg-gray-200 rounded w-1/3" />
+                  <div className="h-4 bg-gray-200 rounded w-2/3" />
                 </div>
               </div>
             </div>
           ))}
         </div>
-      ) : (
-        <div className="space-y-3">
-          {filteredTodos.length === 0 && (searchQuery || filterTimeslot) ? (
-            <div className="text-center py-8 text-gray-500">
-              <p className="text-lg">No tasks match your search</p>
+      ) : filteredTodos.length === 0 ? (
+        <div className="text-center py-12 text-gray-500">
+          {searchQuery || filterTimeslot ? (
+            <>
+              <p className="text-lg">No tasks match your filters</p>
               <button
                 onClick={() => {
                   setSearchQuery('')
@@ -155,72 +340,92 @@ export function TodosTab() {
               >
                 Clear filters
               </button>
-            </div>
+            </>
           ) : (
-            filteredTodos.map((todo: Todo) => (
-              <div
-                key={todo.id}
-                className="bg-white border-2 border-gray-200 rounded-xl p-4 sm:p-5 hover:shadow-lg hover:border-theme-primary transition-all"
+            <>
+              <p className="text-lg mb-4">No tasks yet</p>
+              <button
+                onClick={openAddModal}
+                className="px-6 py-3 bg-gradient-to-r from-theme-primary to-theme-secondary text-white font-bold rounded-xl hover:shadow-lg transition-all"
               >
-                <div className="flex justify-between items-start">
-                  <div className="flex gap-3 sm:gap-4 flex-1">
-                    {todo.symbol && <span className="text-3xl sm:text-4xl flex-shrink-0">{todo.symbol}</span>}
-                    <div className="flex-1">
-                      <h3 className="font-bold text-lg sm:text-xl text-gray-800">{todo.title}</h3>
-                      {todo.description && <p className="text-sm text-gray-600 mt-2">{todo.description}</p>}
-                      <div className="flex flex-wrap gap-2 mt-3">
-                        {todo.timeslot_ids?.map((id: number) => {
-                          const timeslot = timeslots?.find((t: Timeslot) => t.id === id)
-                          return timeslot ? (
-                            <span
-                              key={id}
-                              className="inline-block text-xs sm:text-sm bg-purple-100 text-theme-primary px-3 py-1 rounded-full font-semibold"
-                            >
-                              {timeslot.name}
-                            </span>
-                          ) : null
-                        })}
+                Create Your First Task
+              </button>
+            </>
+          )}
+        </div>
+      ) : isReordering ? (
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragEnd={handleDragEnd}
+        >
+          <SortableContext
+            items={filteredTodos.map((t) => t.id)}
+            strategy={verticalListSortingStrategy}
+          >
+            <div className="space-y-3">
+              {filteredTodos.map((todo: Todo) => (
+                <SortableItem key={todo.id} id={todo.id}>
+                  <div className="bg-white border-2 border-gray-200 rounded-xl p-4">
+                    <div className="flex items-center gap-3">
+                      {todo.symbol && (
+                        <span className="text-2xl flex-shrink-0">{todo.symbol}</span>
+                      )}
+                      <div className="min-w-0 flex-1">
+                        <h3 className="font-bold text-gray-800 truncate">{todo.title}</h3>
+                        {todo.description && (
+                          <p className="text-sm text-gray-500 truncate">{todo.description}</p>
+                        )}
                       </div>
                     </div>
                   </div>
-                  <div className="flex gap-2 ml-4">
-                    <button
-                      onClick={() => openEditModal(todo)}
-                      className="p-2 sm:px-4 sm:py-2 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-semibold rounded-lg transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center gap-2"
-                      aria-label={`Edit ${todo.title}`}
-                    >
-                      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                      </svg>
-                      <span className="hidden sm:inline">Edit</span>
-                    </button>
-                    <button
-                      onClick={() => setDeletingTodo(todo)}
-                      className="p-2 sm:px-4 sm:py-2 bg-red-600 hover:bg-red-700 active:bg-red-800 text-white font-semibold rounded-lg transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center gap-2"
-                      aria-label={`Delete ${todo.title}`}
-                    >
-                      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                      </svg>
-                      <span className="hidden sm:inline">Delete</span>
-                    </button>
-                  </div>
+                </SortableItem>
+              ))}
+            </div>
+          </SortableContext>
+        </DndContext>
+      ) : (
+        <div className="space-y-3">
+          <p className="text-sm text-gray-500 px-1">
+            Swipe left on a card to reveal edit/delete actions
+          </p>
+          {filteredTodos.map((todo: Todo) => (
+            <SwipeableCard
+              key={todo.id}
+              onDelete={() => setDeletingTodo(todo)}
+              onEdit={() => openEditModal(todo)}
+              isSelected={selectedIds.has(todo.id)}
+              onSelect={() => toggleSelect(todo.id)}
+              showCheckbox={true}
+            >
+              <div className="flex items-start gap-3">
+                {todo.symbol && (
+                  <span className="text-3xl flex-shrink-0">{todo.symbol}</span>
+                )}
+                <div className="min-w-0 flex-1">
+                  <h3 className="font-bold text-gray-800">{todo.title}</h3>
+                  {todo.description && (
+                    <p className="text-sm text-gray-500 mt-1 line-clamp-2">{todo.description}</p>
+                  )}
+                  {todo.timeslot_ids && todo.timeslot_ids.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5 mt-2">
+                      {todo.timeslot_ids.map((id: number) => {
+                        const timeslot = timeslots?.find((t: Timeslot) => t.id === id)
+                        return timeslot ? (
+                          <span
+                            key={id}
+                            className="inline-block text-xs bg-purple-100 text-theme-primary px-2 py-0.5 rounded-full font-medium"
+                          >
+                            {timeslot.name}
+                          </span>
+                        ) : null
+                      })}
+                    </div>
+                  )}
                 </div>
               </div>
-            ))
-          )}
-        </div>
-      )}
-
-      {!todosLoading && todos?.length === 0 && (
-        <div className="text-center py-12 text-gray-500">
-          <p className="text-lg mb-4">No tasks yet</p>
-          <button
-            onClick={openAddModal}
-            className="px-6 py-3 bg-gradient-to-r from-theme-primary to-theme-secondary text-white font-bold rounded-xl hover:shadow-lg transition-all"
-          >
-            Create Your First Task
-          </button>
+            </SwipeableCard>
+          ))}
         </div>
       )}
 
@@ -242,6 +447,14 @@ export function TodosTab() {
         onConfirm={handleDelete}
         title="Delete Task"
         message={`Are you sure you want to delete "${deletingTodo?.title}"? This action cannot be undone.`}
+      />
+
+      <ConfirmDialog
+        isOpen={showBulkDelete}
+        onClose={() => setShowBulkDelete(false)}
+        onConfirm={handleBulkDelete}
+        title="Delete Selected Tasks"
+        message={`Are you sure you want to delete ${selectedIds.size} task${selectedIds.size > 1 ? 's' : ''}? This action cannot be undone.`}
       />
     </div>
   )
