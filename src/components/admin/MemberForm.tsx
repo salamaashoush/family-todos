@@ -94,23 +94,14 @@ export function MemberForm({ member, onSubmit, onCancel }: MemberFormProps) {
         )}
       />
 
-      <div className="flex items-start gap-4">
-        {imagePreview && (
-          <div className="flex-shrink-0">
-            <img
-              src={imagePreview}
-              alt="Preview"
-              className="w-20 h-20 sm:w-24 sm:h-24 rounded-full object-cover border-4 border-theme-primary/20"
-            />
-          </div>
-        )}
-        <FileInput
-          label="Avatar Photo (Optional)"
-          accept="image/*"
-          onChange={handleImageChange}
-          helperText={`Max: ${UPLOAD_CONFIG.MAX_FILE_SIZE_MB}MB. Supports: ${UPLOAD_CONFIG.SUPPORTED_FORMATS}`}
-        />
-      </div>
+      <FileInput
+        label="Avatar Photo (Optional)"
+        accept="image/*"
+        onChange={handleImageChange}
+        previewUrl={imagePreview}
+        onClear={resetImage}
+        helperText={`Max: ${UPLOAD_CONFIG.MAX_FILE_SIZE_MB}MB`}
+      />
 
       <form.Field
         name="isParent"

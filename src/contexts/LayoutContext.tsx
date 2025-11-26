@@ -14,6 +14,7 @@ const SETTINGS_STORAGE_KEY = 'family-todos-layout-settings'
 interface LayoutContextValue {
   layout: LayoutId
   setLayout: (layout: LayoutId) => void
+  setAutoLayout: () => void
   settings: LayoutSettings
   updateSettings: (settings: Partial<LayoutSettings>) => void
   deviceType: DeviceType
@@ -102,6 +103,13 @@ export function LayoutProvider({ children }: LayoutProviderProps) {
     }
   }, [])
 
+  const setAutoLayout = useCallback(() => {
+    setManualLayout(null)
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem(LAYOUT_STORAGE_KEY)
+    }
+  }, [])
+
   const updateSettings = useCallback((newSettings: Partial<LayoutSettings>) => {
     setSettings((prev) => {
       const updated = { ...prev, ...newSettings }
@@ -118,6 +126,7 @@ export function LayoutProvider({ children }: LayoutProviderProps) {
     () => ({
       layout,
       setLayout,
+      setAutoLayout,
       settings,
       updateSettings,
       deviceType,
@@ -126,7 +135,7 @@ export function LayoutProvider({ children }: LayoutProviderProps) {
       isManualOverride,
       isHydrated,
     }),
-    [layout, setLayout, settings, updateSettings, deviceType, currentTimeslotId, isManualOverride, isHydrated]
+    [layout, setLayout, setAutoLayout, settings, updateSettings, deviceType, currentTimeslotId, isManualOverride, isHydrated]
   )
 
   return <LayoutContext.Provider value={value}>{children}</LayoutContext.Provider>

@@ -340,6 +340,44 @@ export const togglePublicTodo = createServerFn({ method: "POST" })
   });
 
 /**
+ * Get member stats for public board (no auth required, uses share token)
+ */
+export const getPublicMemberStats = createServerFn({ method: "GET" })
+  .inputValidator(GetFamilyByTokenSchema)
+  .handler(async ({ data }) => {
+    // Verify token and get family
+    const [family] = await db
+      .select({ id: schema.families.id })
+      .from(schema.families)
+      .where(eq(schema.families.shareToken, data.token))
+      .limit(1);
+
+    if (!family) {
+      throw new Error("Invalid share token");
+    }
+
+    // Get all members for this family
+    const members = await db
+      .select({ id: schema.members.id })
+      .from(schema.members)
+      .where(eq(schema.members.familyId, family.id));
+
+    const memberIds = members.map((m) => m.id);
+
+    if (memberIds.length === 0) {
+      return [];
+    }
+
+    // Get stats for all members
+    const stats = await db
+      .select()
+      .from(schema.memberStats);
+
+    // Filter to only this family's members
+    return stats.filter((s) => memberIds.includes(s.memberId));
+  });
+
+/**
  * Regenerate share token (requires auth - admin only)
  * This invalidates all existing share links
  */

@@ -21,5 +21,6 @@ export { ConfirmDialog } from './ConfirmDialog'
 // Domain components
 export { ProgressBar } from './ProgressBar'
 export { MemberAvatar } from './MemberAvatar'
+export { MemberHeader } from './MemberHeader'
 export { TodoCheckbox } from './TodoCheckbox'
 export { TimeslotHeader } from './TimeslotHeader'

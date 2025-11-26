@@ -1,12 +1,14 @@
 import { useMemo } from 'react'
 import { useMemberDayProgress } from '../hooks/useCompletionProgress'
 import { TimeslotCard } from './TimeslotCard'
+import { MemberHeader } from './shared'
 import type { MemberColumnProps, Timeslot, Todo } from '../types'
 
 export function MemberColumn({
   member,
   timeslots,
   todos,
+  stats,
   isTodoCompleted,
   onToggleTodo,
 }: MemberColumnProps) {
@@ -25,14 +27,7 @@ export function MemberColumn({
 
   return (
     <div className="bg-white rounded-2xl sm:rounded-3xl shadow-2xl overflow-hidden h-full flex flex-col">
-      <div className="bg-gradient-to-r from-theme-primary to-theme-secondary p-4 sm:p-6 text-center flex-shrink-0">
-        {member.avatar && (
-          <div className="w-20 h-20 sm:w-24 sm:h-24 mx-auto mb-3 sm:mb-4 rounded-full overflow-hidden border-4 border-white shadow-lg">
-            <img src={member.avatar} alt={member.name} className="w-full h-full object-cover" />
-          </div>
-        )}
-        <h2 className="text-2xl sm:text-3xl font-bold text-white">{member.name}</h2>
-      </div>
+      <MemberHeader member={member} stats={stats} className="flex-shrink-0 rounded-t-2xl sm:rounded-t-3xl" />
 
       <div className="p-3 sm:p-4 space-y-3 sm:space-y-4 flex-1 overflow-y-auto">
         {timeslots.length === 0 && (

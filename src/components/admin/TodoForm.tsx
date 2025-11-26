@@ -216,23 +216,14 @@ export function TodoForm({ todo, onSubmit, onCancel }: TodoFormProps) {
           )}
         />
 
-        <div className="flex items-start gap-4">
-          {imagePreview && (
-            <div className="flex-shrink-0">
-              <img
-                src={imagePreview}
-                alt="Preview"
-                className="w-24 h-24 sm:w-32 sm:h-32 rounded-xl object-cover border-4 border-theme-primary/20"
-              />
-            </div>
-          )}
-          <FileInput
-            label="Task Image (Optional)"
-            accept="image/*"
-            onChange={handleImageChange}
-            helperText={`Visual aid for the task. Max: ${UPLOAD_CONFIG.MAX_FILE_SIZE_MB}MB`}
-          />
-        </div>
+        <FileInput
+          label="Task Image (Optional)"
+          accept="image/*"
+          onChange={handleImageChange}
+          previewUrl={imagePreview}
+          onClear={resetImage}
+          helperText={`Max: ${UPLOAD_CONFIG.MAX_FILE_SIZE_MB}MB`}
+        />
 
         <form.Field
           name="points"

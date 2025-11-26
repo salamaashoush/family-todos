@@ -44,28 +44,28 @@ export function TimeslotCard({
 
   return (
     <div
-      className={`rounded-xl sm:rounded-2xl p-3 sm:p-4 transition-all ${
+      className={`rounded-xl p-3 transition-all ${
         allCompleted
-          ? 'bg-green-100 border-4 border-green-400'
-          : 'bg-gray-50 border-4 border-gray-200'
+          ? 'bg-green-50 border-2 border-green-400'
+          : 'bg-gray-50 border-2 border-gray-200'
       }`}
     >
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-3">
-        <h3 className="text-lg sm:text-xl font-bold text-gray-800">{timeslot.name}</h3>
+      <div className="flex items-center justify-between gap-2 mb-2">
+        <h3 className="text-base font-bold text-gray-800 truncate">{timeslot.name}</h3>
         {timeslot.startTime && timeslot.endTime && (
-          <span className="text-xs sm:text-sm font-semibold text-gray-600 bg-white px-3 py-2 rounded-full self-start sm:self-auto">
+          <span className="text-xs font-medium text-gray-500 flex-shrink-0">
             {timeslot.startTime} - {timeslot.endTime}
           </span>
         )}
       </div>
 
       {timeslot.description && (
-        <p className="text-gray-600 mb-3 text-sm">{timeslot.description}</p>
+        <p className="text-gray-500 mb-2 text-xs truncate">{timeslot.description}</p>
       )}
 
-      <div className="space-y-2 sm:space-y-3">
+      <div className="space-y-1.5">
         {todos.length === 0 && (
-          <div className="text-center text-gray-400 py-4 text-sm">No tasks yet</div>
+          <div className="text-center text-gray-400 py-2 text-xs">No tasks yet</div>
         )}
         {todos.map((todo) => (
           <TodoCheckbox
@@ -73,23 +73,23 @@ export function TimeslotCard({
             todo={todo}
             isCompleted={isTodoCompleted(todo.id, timeslot.id, memberId)}
             onToggle={() => handleToggle(todo.id, isTodoCompleted(todo.id, timeslot.id, memberId))}
-            size="lg"
-            showDetails
+            size="md"
+            showDescription
           />
         ))}
       </div>
 
       {totalCount > 0 && (
-        <div className="mt-3 pt-3 border-t-2 border-gray-300">
-          <div className="flex items-center justify-between text-sm sm:text-base font-semibold">
-            <span className="text-gray-700">Progress:</span>
+        <div className="mt-2 pt-2 border-t border-gray-200">
+          <div className="flex items-center justify-between text-xs font-medium mb-1">
+            <span className="text-gray-600">Progress:</span>
             <span className={allCompleted ? 'text-green-600' : 'text-theme-primary'}>
               {completedCount} / {totalCount}
             </span>
           </div>
-          <div className="w-full bg-gray-200 rounded-full h-4 mt-2">
+          <div className="w-full bg-gray-200 rounded-full h-1.5">
             <div
-              className={`h-4 rounded-full transition-all ${
+              className={`h-1.5 rounded-full transition-all ${
                 allCompleted ? 'bg-green-500' : 'bg-theme-primary'
               }`}
               style={{ width: `${(completedCount / totalCount) * 100}%` }}

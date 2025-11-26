@@ -1,13 +1,14 @@
 import { useCallback } from 'react'
 import { useTimeslotProgress, useMemberDayProgress, useOverallDayProgress } from '../../hooks/useCompletionProgress'
 import { useSortedTimeslots, useTimeslotTodos, useTimeslotMembers } from '../../hooks/useTimeslotData'
-import { ProgressBar, MemberAvatar, TodoCheckbox } from '../shared'
-import type { LayoutProps, Member, Timeslot, Todo } from '../../types'
+import { ProgressBar, MemberAvatar, MemberHeader, TodoCheckbox } from '../shared'
+import type { LayoutProps, Member, Timeslot, Todo, MemberStats } from '../../types'
 
 interface CurrentTimeslotCardProps {
   member: Member
   timeslot: Timeslot
   todos: Todo[]
+  stats?: MemberStats | null
   isTodoCompleted: (todoId: number, timeslotId: number, memberId: number) => boolean
   onToggleTodo: (todoId: number, timeslotId: number, memberId: number, isCompleted: boolean) => void
 }
@@ -16,6 +17,7 @@ function CurrentTimeslotCard({
   member,
   timeslot,
   todos,
+  stats,
   isTodoCompleted,
   onToggleTodo,
 }: CurrentTimeslotCardProps) {
@@ -42,16 +44,11 @@ function CurrentTimeslotCard({
         allCompleted ? 'ring-3 ring-green-400' : ''
       }`}
     >
-      <div
-        className={`p-3 sm:p-4 text-center ${
-          allCompleted
-            ? 'bg-gradient-to-b from-green-500 to-green-600'
-            : 'bg-gradient-to-b from-theme-primary to-theme-secondary'
-        }`}
-      >
-        <MemberAvatar name={member.name} avatar={member.avatar} size="lg" className="mx-auto text-white" />
-        <h3 className="text-white font-bold mt-2 text-base sm:text-lg">{member.name}</h3>
-      </div>
+      <MemberHeader
+        member={member}
+        stats={stats}
+        variant={allCompleted ? 'complete' : 'compact'}
+      />
 
       <div className={`p-3 sm:p-4 ${allCompleted ? 'bg-green-50' : 'bg-white'}`}>
         <div className="space-y-2">
@@ -86,10 +83,11 @@ interface DaySummaryCardProps {
   member: Member
   timeslots: Timeslot[]
   todos: Todo[]
+  stats?: MemberStats | null
   isTodoCompleted: (todoId: number, timeslotId: number, memberId: number) => boolean
 }
 
-function DaySummaryCard({ member, timeslots, todos, isTodoCompleted }: DaySummaryCardProps) {
+function DaySummaryCard({ member, timeslots, todos, stats, isTodoCompleted }: DaySummaryCardProps) {
   const { completedCount, totalCount, percentage, allCompleted } = useMemberDayProgress(
     member,
     timeslots,
@@ -104,18 +102,31 @@ function DaySummaryCard({ member, timeslots, todos, isTodoCompleted }: DaySummar
       }`}
     >
       <div className="flex items-center gap-2 sm:gap-3 mb-3">
-        <MemberAvatar
-          name={member.name}
-          avatar={member.avatar}
-          size="md"
-          borderColor={allCompleted ? 'green' : 'gray'}
-          className={allCompleted ? 'text-green-600' : 'text-theme-primary'}
-        />
+        <div className="relative flex-shrink-0">
+          <MemberAvatar
+            name={member.name}
+            avatar={member.avatar}
+            size="md"
+            borderColor={allCompleted ? 'green' : 'gray'}
+            className={allCompleted ? 'text-green-600' : 'text-theme-primary'}
+          />
+          {stats && stats.level > 0 && (
+            <div className="absolute -bottom-1 -right-1 bg-yellow-400 text-yellow-900 text-[10px] font-bold px-1 py-0.5 rounded-full border-2 border-white shadow-md">
+              {stats.level}
+            </div>
+          )}
+        </div>
         <div className="flex-1 min-w-0">
           <h4 className="font-bold text-gray-800 text-sm sm:text-base truncate">{member.name}</h4>
           <p className="text-xs text-gray-500">
             {completedCount}/{totalCount} tasks
           </p>
+          {stats && (
+            <div className="flex items-center gap-1 text-[10px] text-gray-400">
+              {stats.currentStreak > 0 && <span>🔥{stats.currentStreak}</span>}
+              <span>⭐{stats.totalStars}</span>
+            </div>
+          )}
         </div>
       </div>
 
@@ -134,6 +145,7 @@ export function FamilyDashboardLayout({
   members,
   timeslots,
   todos,
+  memberStats,
   isTodoCompleted,
   onToggleTodo,
   currentTimeslotId,
@@ -209,17 +221,21 @@ export function FamilyDashboardLayout({
               <p className="text-center text-gray-500 py-8">No members assigned to this timeslot</p>
             ) : (
               <div className="flex gap-4 overflow-x-auto pb-2 -mb-2 snap-x snap-mandatory">
-                {currentTimeslotMembers.map((member) => (
-                  <div key={member.id} className="snap-start">
-                    <CurrentTimeslotCard
-                      member={member}
-                      timeslot={currentTimeslot}
-                      todos={todos}
-                      isTodoCompleted={isTodoCompleted}
-                      onToggleTodo={onToggleTodo}
-                    />
-                  </div>
-                ))}
+                {currentTimeslotMembers.map((member) => {
+                  const stats = memberStats?.find((s) => s.memberId === member.id)
+                  return (
+                    <div key={member.id} className="snap-start">
+                      <CurrentTimeslotCard
+                        member={member}
+                        timeslot={currentTimeslot}
+                        todos={todos}
+                        stats={stats}
+                        isTodoCompleted={isTodoCompleted}
+                        onToggleTodo={onToggleTodo}
+                      />
+                    </div>
+                  )
+                })}
               </div>
             )}
           </div>
@@ -245,11 +261,14 @@ export function FamilyDashboardLayout({
         />
 
         <div className="flex gap-3 sm:gap-4 overflow-x-auto pb-2 -mb-2 snap-x snap-mandatory">
-          {members.map((member) => (
-            <div key={member.id} className="snap-start">
-              <DaySummaryCard member={member} timeslots={timeslots} todos={todos} isTodoCompleted={isTodoCompleted} />
-            </div>
-          ))}
+          {members.map((member) => {
+            const stats = memberStats?.find((s) => s.memberId === member.id)
+            return (
+              <div key={member.id} className="snap-start">
+                <DaySummaryCard member={member} timeslots={timeslots} todos={todos} stats={stats} isTodoCompleted={isTodoCompleted} />
+              </div>
+            )
+          })}
         </div>
       </div>
     </div>

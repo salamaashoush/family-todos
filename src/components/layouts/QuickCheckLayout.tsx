@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
 import { useTimeslotProgress, useMemberDayProgress } from '../../hooks/useCompletionProgress'
 import { useTimeslotTodos, useMemberTimeslots } from '../../hooks/useTimeslotData'
-import { ProgressBar, MemberAvatar, TodoCheckbox, TimeslotHeader } from '../shared'
+import { ProgressBar, MemberAvatar, MemberHeader, TodoCheckbox, TimeslotHeader } from '../shared'
 import type { LayoutProps, Timeslot, Todo } from '../../types'
 
 interface AccordionTimeslotProps {
@@ -85,6 +85,7 @@ export function QuickCheckLayout({
   members,
   timeslots,
   todos,
+  memberStats,
   isTodoCompleted,
   onToggleTodo,
   currentTimeslotId,
@@ -95,6 +96,7 @@ export function QuickCheckLayout({
   const containerRef = useRef<HTMLDivElement>(null)
 
   const selectedMember = members[selectedMemberIndex]
+  const selectedMemberStats = memberStats?.find((s) => s.memberId === selectedMember?.id)
 
   const memberTimeslots = useMemberTimeslots(timeslots, selectedMember?.id ?? 0)
 
@@ -183,33 +185,19 @@ export function QuickCheckLayout({
         })}
       </div>
 
-      <div className="bg-white rounded-2xl p-4 mb-4 shadow-lg">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <MemberAvatar
-              name={selectedMember.name}
-              avatar={selectedMember.avatar}
-              size="lg"
-              borderColor="primary"
-              className="text-theme-primary"
-            />
-            <div>
-              <h2 className="text-xl font-bold text-gray-800">{selectedMember.name}</h2>
-              <p className="text-sm text-gray-500">
-                {memberDayProgress.completedCount} of {memberDayProgress.totalCount} tasks today
-              </p>
-            </div>
+      <div className="bg-white rounded-2xl overflow-hidden mb-4 shadow-lg">
+        <MemberHeader member={selectedMember} stats={selectedMemberStats} />
+        <div className="px-3 py-2">
+          <div className="flex items-center justify-between text-sm text-gray-600 mb-2">
+            <span>{memberDayProgress.completedCount} of {memberDayProgress.totalCount} tasks today</span>
+            <span className="text-lg font-bold text-theme-primary">{memberDayProgress.percentage}%</span>
           </div>
-          <div className="text-right">
-            <div className="text-2xl font-bold text-theme-primary">{memberDayProgress.percentage}%</div>
-          </div>
+          <ProgressBar
+            completed={memberDayProgress.completedCount}
+            total={memberDayProgress.totalCount}
+            size="sm"
+          />
         </div>
-        <ProgressBar
-          completed={memberDayProgress.completedCount}
-          total={memberDayProgress.totalCount}
-          size="md"
-          className="mt-3"
-        />
       </div>
 
       <div className="text-center text-xs text-gray-400 mb-3">Swipe left or right to switch members</div>

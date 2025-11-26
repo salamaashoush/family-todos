@@ -18,6 +18,7 @@ export interface MemberColumnProps {
   timeslots: Timeslot[]
   todos: Todo[]
   completions: TodoCompletion[]
+  stats?: MemberStats | null
   isTodoCompleted: (todoId: number, timeslotId: number, memberId: number) => boolean
   onToggleTodo: (todoId: number, timeslotId: number, memberId: number, isCompleted: boolean) => void
 }
@@ -57,6 +58,7 @@ export interface LayoutProps {
   timeslots: Timeslot[]
   todos: Todo[]
   completions: TodoCompletion[]
+  memberStats?: MemberStats[]
   isTodoCompleted: (todoId: number, timeslotId: number, memberId: number) => boolean
   onToggleTodo: (todoId: number, timeslotId: number, memberId: number, isCompleted: boolean) => void
   currentTimeslotId: number | null

@@ -3,6 +3,7 @@ import { useState, useCallback, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Toast, showToast } from "../../components/Toast";
 import { FloatingMenu } from "../../components/FloatingMenu";
+import { LayoutSwitcher } from "../../components/LayoutSwitcher";
 import { MemberFocusLayout } from "../../components/layouts/MemberFocusLayout";
 import { TimeslotFocusLayout } from "../../components/layouts/TimeslotFocusLayout";
 import { QuickCheckLayout } from "../../components/layouts/QuickCheckLayout";
@@ -18,6 +19,7 @@ import {
   getPublicTimeslots,
   getPublicTodos,
   getPublicCompletions,
+  getPublicMemberStats,
   togglePublicTodo,
 } from "../../server/publicBoard";
 
@@ -56,6 +58,10 @@ export const Route = createFileRoute("/family/$token")({
           queryClient.ensureQueryData({
             queryKey: ["public-completions", token, today],
             queryFn: () => getPublicCompletions({ data: { token, date: today } }),
+          }),
+          queryClient.ensureQueryData({
+            queryKey: ["public-member-stats", token],
+            queryFn: () => getPublicMemberStats({ data: { token } }),
           }),
         ]);
       }
@@ -141,6 +147,13 @@ function PublicFamilyBoard() {
     queryKey: ["public-completions", token, selectedDate],
     queryFn: () =>
       getPublicCompletions({ data: { token, date: selectedDate } }),
+    enabled: !!family,
+  });
+
+  // Fetch member stats for gamification display
+  const { data: memberStats } = useQuery({
+    queryKey: ["public-member-stats", token],
+    queryFn: () => getPublicMemberStats({ data: { token } }),
     enabled: !!family,
   });
 
@@ -329,6 +342,7 @@ function PublicFamilyBoard() {
     timeslots: filteredTimeslots,
     todos: todos || [],
     completions: completions || [],
+    memberStats: memberStats || [],
     isTodoCompleted,
     onToggleTodo: handleToggleTodo,
     currentTimeslotId,
@@ -380,6 +394,7 @@ function PublicFamilyBoard() {
             </div>
 
             <div className="flex items-center gap-1.5 sm:gap-2">
+              <LayoutSwitcher />
               <DatePicker
                 selectedDate={selectedDate}
                 onDateChange={setSelectedDate}
