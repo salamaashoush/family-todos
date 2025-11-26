@@ -66,7 +66,7 @@ export function useAppSession() {
       secure: isProduction || forceSecureCookies,
       sameSite: "strict", // Upgraded from "lax" for better CSRF protection
       httpOnly: true,
-      maxAge: 60 * 60 * 24, // Reduced from 7 days to 24 hours
+      maxAge: 60 * 60 * 24 * 7, // 7 days
     },
   });
 }
