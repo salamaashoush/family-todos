@@ -7,6 +7,8 @@ import { getMembers } from '../server/members'
 import { getTimeslots } from '../server/timeslots'
 import { getTodos } from '../server/todos'
 import { getAllAchievements } from '../server/statistics'
+import { getShareToken } from '../server/publicBoard'
+import { getRewards } from '../server/rewards'
 import { AdminHeader } from '../components/admin/AdminHeader'
 import { MembersTab } from '../components/admin/MembersTab'
 import { TimeslotsTab } from '../components/admin/TimeslotsTab'
@@ -57,6 +59,14 @@ export const Route = createFileRoute('/admin')({
       queryClient.ensureQueryData({
         queryKey: ['achievements'],
         queryFn: () => getAllAchievements(),
+      }),
+      queryClient.ensureQueryData({
+        queryKey: ['share-token'],
+        queryFn: () => getShareToken(),
+      }),
+      queryClient.ensureQueryData({
+        queryKey: ['rewards'],
+        queryFn: () => getRewards(),
       }),
     ])
   },

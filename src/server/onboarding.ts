@@ -6,6 +6,7 @@ import { useAppSession } from "~/utils/session";
 import { getTenantContext } from "../utils/tenant";
 import { TEMPLATES, type TemplateId } from "../config/templates";
 import type { RecurrenceType } from "../db/schema";
+import { generateShareToken } from "./publicBoard";
 
 // Get onboarding status
 export const getOnboardingStatus = createServerFn({ method: "GET" }).handler(
@@ -144,12 +145,13 @@ export const createFamily = createServerFn({ method: "POST" })
       throw new Error("This family URL is already taken. Please choose a different name or slug.");
     }
 
-    // Create family
+    // Create family with share token for public board access
     const [family] = await db
       .insert(schema.families)
       .values({
         name: data.name,
         slug,
+        shareToken: generateShareToken(),
         isOnboarded: false,
       })
       .returning();

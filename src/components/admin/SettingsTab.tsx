@@ -1,6 +1,9 @@
 import { useState, useCallback } from 'react'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useLayout } from '../../contexts/LayoutContext'
 import { layouts, LAYOUT_IDS, type LayoutId, type DeviceType } from '../../config/layouts'
+import { getShareToken, regenerateShareToken } from '../../server/publicBoard'
+import { Copy, RefreshCw, ExternalLink, Link as LinkIcon, Check } from 'lucide-react'
 
 const deviceLabels: Record<DeviceType, { label: string; description: string }> = {
   phone: { label: 'Phone', description: 'Screens under 640px (iPhone)' },
@@ -11,6 +14,39 @@ const deviceLabels: Record<DeviceType, { label: string; description: string }> =
 export function SettingsTab() {
   const { settings, updateSettings } = useLayout()
   const [isSaving, setIsSaving] = useState(false)
+  const [copied, setCopied] = useState(false)
+  const queryClient = useQueryClient()
+
+  // Share link management
+  const { data: shareData, isLoading: shareLoading } = useQuery({
+    queryKey: ['share-token'],
+    queryFn: () => getShareToken(),
+  })
+
+  const regenerateMutation = useMutation({
+    mutationFn: regenerateShareToken,
+    onSuccess: (data) => {
+      queryClient.setQueryData(['share-token'], data)
+    },
+  })
+
+  const shareUrl = shareData?.shareToken
+    ? `${window.location.origin}/family/${shareData.shareToken}`
+    : null
+
+  const handleCopyLink = useCallback(() => {
+    if (shareUrl) {
+      navigator.clipboard.writeText(shareUrl)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    }
+  }, [shareUrl])
+
+  const handleRegenerateToken = useCallback(() => {
+    if (confirm('Are you sure? This will invalidate the current share link. Kids will need the new link to access the board.')) {
+      regenerateMutation.mutate({})
+    }
+  }, [regenerateMutation])
 
   const handleToggleAutoSwitch = useCallback(() => {
     setIsSaving(true)
@@ -58,10 +94,88 @@ export function SettingsTab() {
       {/* Header */}
       <div className="flex flex-col gap-4">
         <div className="flex items-center justify-between">
-          <h2 className="text-xl sm:text-2xl font-bold text-gray-800">Layout Settings</h2>
+          <h2 className="text-xl sm:text-2xl font-bold text-gray-800">Settings</h2>
         </div>
       </div>
 
+      {/* Share Link Section */}
+      <div className="bg-gradient-to-r from-theme-primary/10 to-theme-secondary/10 border-2 border-theme-primary/30 rounded-xl p-4 sm:p-6 space-y-4">
+        <div className="flex items-center gap-2">
+          <LinkIcon className="w-5 h-5 text-theme-primary" />
+          <h3 className="text-lg font-bold text-gray-800">Family Board Link</h3>
+        </div>
+        <p className="text-sm text-gray-600">
+          Share this link with your kids so they can view and check off their tasks without needing an account.
+        </p>
+
+        {shareLoading ? (
+          <div className="flex items-center gap-2 text-gray-500">
+            <RefreshCw className="w-4 h-4 animate-spin" />
+            <span>Loading...</span>
+          </div>
+        ) : shareUrl ? (
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              <input
+                type="text"
+                readOnly
+                value={shareUrl}
+                className="flex-1 px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm text-gray-700 font-mono"
+              />
+              <button
+                onClick={handleCopyLink}
+                className={`px-4 py-2 rounded-lg font-medium flex items-center gap-2 transition-colors ${
+                  copied
+                    ? 'bg-green-500 text-white'
+                    : 'bg-theme-primary text-white hover:opacity-90'
+                }`}
+              >
+                {copied ? (
+                  <>
+                    <Check className="w-4 h-4" />
+                    Copied!
+                  </>
+                ) : (
+                  <>
+                    <Copy className="w-4 h-4" />
+                    Copy
+                  </>
+                )}
+              </button>
+            </div>
+
+            <div className="flex flex-wrap gap-2">
+              <a
+                href={shareUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 px-3 py-1.5 bg-white border border-gray-300 rounded-lg text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+              >
+                <ExternalLink className="w-4 h-4" />
+                Open Board
+              </a>
+              <button
+                onClick={handleRegenerateToken}
+                disabled={regenerateMutation.isPending}
+                className="inline-flex items-center gap-2 px-3 py-1.5 bg-white border border-orange-300 rounded-lg text-sm text-orange-700 hover:bg-orange-50 transition-colors disabled:opacity-50"
+              >
+                <RefreshCw className={`w-4 h-4 ${regenerateMutation.isPending ? 'animate-spin' : ''}`} />
+                Regenerate Link
+              </button>
+            </div>
+
+            <p className="text-xs text-gray-500">
+              Regenerating the link will invalidate the old one. Anyone with the old link will no longer have access.
+            </p>
+          </div>
+        ) : (
+          <div className="text-sm text-gray-500">
+            No share link generated yet. Complete onboarding to get your share link.
+          </div>
+        )}
+      </div>
+
+      {/* Layout Settings Section */}
       <div className="bg-white border-2 border-gray-200 rounded-xl p-4 sm:p-6 space-y-6">
         <h3 className="text-lg font-bold text-gray-800">Auto-Switch Options</h3>
 

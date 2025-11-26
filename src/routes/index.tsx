@@ -1,196 +1,225 @@
-import { createFileRoute, Link, redirect } from '@tanstack/react-router'
-import { useState, useCallback, useMemo } from 'react'
-import { Header } from '../components/Header'
-import { Toast } from '../components/Toast'
-import { showToast } from '../components/Toast'
-import { FloatingMenu } from '../components/FloatingMenu'
-import { useMembers, useTimeslots, useTodos, useCompletions } from '../hooks/useQueries'
-import { useTodoOperations, useIsTodoCompleted } from '../hooks/useTodoOperations'
-import { useRealtime } from '../hooks/useRealtime'
-import { useLayout, useCurrentTimeslot } from '../contexts/LayoutContext'
-import { useCompletionCelebration } from '../hooks/useCompletionCelebration'
-import { MemberFocusLayout } from '../components/layouts/MemberFocusLayout'
-import { TimeslotFocusLayout } from '../components/layouts/TimeslotFocusLayout'
-import { QuickCheckLayout } from '../components/layouts/QuickCheckLayout'
-import { FamilyDashboardLayout } from '../components/layouts/FamilyDashboardLayout'
-import { filterTimeslotsByDateString } from '../utils/timeslots'
-import type { RealtimeEvent } from '../server/realtime'
-import { getMembers } from '../server/members'
-import { getTimeslots } from '../server/timeslots'
-import { getTodos } from '../server/todos'
-import { getTodoCompletions } from '../server/completions'
-import { getOnboardingStatus } from '../server/onboarding'
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { checkAuth } from "../server/auth";
+import { CheckCircle, Users, Calendar, Trophy, ArrowRight } from "lucide-react";
 
-export const Route = createFileRoute('/')({
-  beforeLoad: async () => {
-    // Check authentication and onboarding status
-    const status = await getOnboardingStatus()
-
-    // Redirect to signup if not authenticated
-    if (!status.isAuthenticated) {
-      throw redirect({ to: '/signup' })
-    }
-
-    // Redirect to onboarding if not completed
-    if (!status.isOnboarded) {
-      throw redirect({ to: '/onboarding' })
-    }
+export const Route = createFileRoute("/")({
+  loader: async () => {
+    // Check if user is logged in
+    const auth = await checkAuth();
+    return { isAuthenticated: auth.authenticated };
   },
-  loader: async ({ context: { queryClient } }) => {
-    const date = new Date().toISOString().split('T')[0]
+  component: LandingPage,
+});
 
-    await Promise.all([
-      queryClient.ensureQueryData({
-        queryKey: ['members'],
-        queryFn: () => getMembers(),
-      }),
-      queryClient.ensureQueryData({
-        queryKey: ['timeslots', date],
-        queryFn: () => getTimeslots({ data: { date } }),
-      }),
-      queryClient.ensureQueryData({
-        queryKey: ['todos'],
-        queryFn: () => getTodos({ data: {} }),
-      }),
-      queryClient.ensureQueryData({
-        queryKey: ['completions', date],
-        queryFn: () => getTodoCompletions({ data: { date } }),
-      }),
-    ])
-  },
-  component: Home,
-})
-
-function Home() {
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0])
-
-  const { data: members, isLoading: membersLoading } = useMembers()
-  // Pass selectedDate to useTimeslots for server-side recurrence filtering
-  const { data: timeslots } = useTimeslots(selectedDate)
-  const { data: todos } = useTodos()
-  const { data: completions } = useCompletions(selectedDate)
-
-  const { handleToggleTodo: baseHandleToggleTodo } = useTodoOperations(selectedDate)
-  const stableCompletions = useMemo(() => completions || [], [completions])
-  const { isTodoCompleted } = useIsTodoCompleted(stableCompletions)
-
-  // Timeslots are now filtered server-side, but keep client-side filtering as fallback
-  // for robustness (double-check recurrence rules)
-  const filteredTimeslots = useMemo(() => {
-    if (!timeslots) return []
-    // Server already filters by date, but we apply client-side filter as safety net
-    return filterTimeslotsByDateString(timeslots, selectedDate)
-  }, [timeslots, selectedDate])
-
-  const { checkAndCelebrate } = useCompletionCelebration({
-    timeslots: filteredTimeslots,
-    todos: todos || [],
-    isTodoCompleted,
-  })
-
-  const handleToggleTodo = useCallback(
-    (todoId: number, timeslotId: number, memberId: number, isCompleted: boolean) => {
-      // Check for celebration before toggling (if completing)
-      if (!isCompleted) {
-        checkAndCelebrate(todoId, timeslotId, memberId, true)
-      }
-      baseHandleToggleTodo(todoId, timeslotId, memberId, isCompleted)
-    },
-    [baseHandleToggleTodo, checkAndCelebrate]
-  )
-
-  const { layout, settings, currentTimeslotId, isHydrated } = useLayout()
-
-  // Only highlight current timeslot when viewing today
-  useCurrentTimeslot(filteredTimeslots, selectedDate)
-
-  const handleRealtimeEvent = useCallback((event: RealtimeEvent) => {
-    if (event.type === 'task_completed') {
-      showToast(`${event.memberName} completed a task!`, 'success')
-    } else if (event.type === 'task_uncompleted') {
-      showToast(`${event.memberName} uncompleted a task`, 'info')
-    }
-  }, [])
-
-  useRealtime(selectedDate, handleRealtimeEvent)
-
-  // Filter out parents if showParentsInLayout is false
-  const filteredMembers = useMemo(() => {
-    if (!members) return []
-    if (settings.showParentsInLayout) return members
-    return members.filter((m) => !m.isParent)
-  }, [members, settings.showParentsInLayout])
-
-  const layoutProps = {
-    members: filteredMembers,
-    timeslots: filteredTimeslots,
-    todos: todos || [],
-    completions: completions || [],
-    isTodoCompleted,
-    onToggleTodo: handleToggleTodo,
-    currentTimeslotId,
-  }
-
-  const renderLayout = () => {
-    switch (layout) {
-      case 'member-focus':
-        return <MemberFocusLayout {...layoutProps} />
-      case 'timeslot-focus':
-        return <TimeslotFocusLayout {...layoutProps} />
-      case 'quick-check':
-        return <QuickCheckLayout {...layoutProps} />
-      case 'family-dashboard':
-        return <FamilyDashboardLayout {...layoutProps} />
-      default:
-        return <MemberFocusLayout {...layoutProps} />
-    }
-  }
+function LandingPage() {
+  const { isAuthenticated } = Route.useLoaderData();
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-theme-bg-from via-theme-bg-via to-theme-bg-to">
-      <Toast />
-      <Header selectedDate={selectedDate} onDateChange={setSelectedDate} />
-
-      <div className="max-w-[1920px] mx-auto p-2 sm:p-4 lg:p-6 pb-20">
-        {membersLoading || !isHydrated ? (
-          <div className="flex gap-4 sm:gap-5 lg:gap-6 overflow-x-auto pb-4 -mx-2 px-2 snap-x snap-mandatory scrollbar-thin">
-            {[1, 2, 3, 4].map((i) => (
-              <div key={i} className="flex-shrink-0 w-80 sm:w-96 bg-white rounded-2xl shadow-xl overflow-hidden animate-pulse snap-start">
-                <div className="h-32 bg-gray-200"></div>
-                <div className="p-4 space-y-3">
-                  <div className="h-4 bg-gray-200 rounded w-3/4"></div>
-                  <div className="h-4 bg-gray-200 rounded w-1/2"></div>
-                </div>
+      {/* Header */}
+      <header className="bg-white/80 backdrop-blur-md shadow-sm sticky top-0 z-40">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-16">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-theme-primary to-theme-secondary flex items-center justify-center shadow-md">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-6 w-6 text-white"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"
+                  />
+                </svg>
               </div>
-            ))}
-          </div>
-        ) : filteredMembers.length > 0 ? (
-          renderLayout()
-        ) : members && members.length > 0 ? (
-          <div className="text-center py-12 sm:py-16">
-            <p className="text-xl sm:text-2xl text-gray-600 mb-4">All members are parents and hidden from view.</p>
-            <p className="text-gray-500 mb-4">Enable "Show parents in layout" in Settings to see them.</p>
-            <Link
-              to="/admin"
-              className="inline-block px-6 sm:px-8 py-4 sm:py-3 bg-theme-primary hover:bg-theme-primary active:bg-theme-primary text-white font-semibold rounded-xl transition-colors min-h-[48px]"
-            >
-              Go to Admin Settings
-            </Link>
-          </div>
-        ) : (
-          <div className="text-center py-12 sm:py-16">
-            <p className="text-xl sm:text-2xl text-gray-600 mb-4">No family members yet!</p>
-            <Link
-              to="/admin"
-              className="inline-block px-6 sm:px-8 py-4 sm:py-3 bg-theme-primary hover:bg-theme-primary active:bg-theme-primary text-white font-semibold rounded-xl transition-colors min-h-[48px]"
-            >
-              Add Members in Admin Panel
-            </Link>
-          </div>
-        )}
-      </div>
+              <span className="text-xl font-bold text-gray-800">
+                Family Todos
+              </span>
+            </div>
 
-      <FloatingMenu />
+            <div className="flex items-center gap-3">
+              {isAuthenticated ? (
+                <Link
+                  to="/admin"
+                  className="px-4 py-2 bg-theme-primary text-white font-semibold rounded-lg hover:opacity-90 transition-opacity"
+                >
+                  Dashboard
+                </Link>
+              ) : (
+                <>
+                  <Link
+                    to="/login"
+                    className="px-4 py-2 text-gray-700 font-medium hover:text-gray-900 transition-colors"
+                  >
+                    Login
+                  </Link>
+                  <Link
+                    to="/signup"
+                    className="px-4 py-2 bg-theme-primary text-white font-semibold rounded-lg hover:opacity-90 transition-opacity"
+                  >
+                    Get Started
+                  </Link>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      </header>
+
+      {/* Hero Section */}
+      <section className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-16 sm:py-24">
+        <div className="text-center">
+          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-gray-900 mb-6">
+            Family Task Management
+            <br />
+            <span className="text-theme-primary">Made Simple</span>
+          </h1>
+          <p className="text-xl text-gray-600 mb-8 max-w-2xl mx-auto">
+            Keep your family organized with shared task boards. Kids can check
+            off their chores without needing an account - just share a link!
+          </p>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <Link
+              to="/signup"
+              className="px-8 py-4 bg-theme-primary text-white font-semibold rounded-xl hover:opacity-90 transition-opacity text-lg flex items-center justify-center gap-2"
+            >
+              Start Free <ArrowRight className="w-5 h-5" />
+            </Link>
+            <Link
+              to="/login"
+              className="px-8 py-4 bg-white text-gray-700 font-semibold rounded-xl hover:bg-gray-50 transition-colors text-lg border border-gray-200"
+            >
+              Login
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* Features Section */}
+      <section className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+        <h2 className="text-3xl font-bold text-center text-gray-900 mb-12">
+          Everything You Need
+        </h2>
+        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
+          <FeatureCard
+            icon={<Users className="w-8 h-8" />}
+            title="Family Members"
+            description="Add all family members with custom avatars and track tasks for each person"
+          />
+          <FeatureCard
+            icon={<Calendar className="w-8 h-8" />}
+            title="Time Slots"
+            description="Organize tasks by time of day - morning routines, after school, bedtime"
+          />
+          <FeatureCard
+            icon={<CheckCircle className="w-8 h-8" />}
+            title="Easy Check-off"
+            description="Kids can mark tasks complete from any device - no login required"
+          />
+          <FeatureCard
+            icon={<Trophy className="w-8 h-8" />}
+            title="Achievements"
+            description="Celebrate milestones with badges and track streaks to stay motivated"
+          />
+        </div>
+      </section>
+
+      {/* How It Works Section */}
+      <section className="bg-white/50 py-16">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+          <h2 className="text-3xl font-bold text-center text-gray-900 mb-12">
+            How It Works
+          </h2>
+          <div className="grid md:grid-cols-3 gap-8">
+            <StepCard
+              number="1"
+              title="Create Your Family"
+              description="Sign up and set up your family with members, time slots, and tasks"
+            />
+            <StepCard
+              number="2"
+              title="Share the Link"
+              description="Get a private link that only your family can access - no accounts needed for kids"
+            />
+            <StepCard
+              number="3"
+              title="Track Progress"
+              description="Watch as tasks get completed and celebrate achievements together"
+            />
+          </div>
+        </div>
+      </section>
+
+      {/* CTA Section */}
+      <section className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-16 text-center">
+        <div className="bg-white rounded-3xl shadow-xl p-8 sm:p-12">
+          <h2 className="text-3xl font-bold text-gray-900 mb-4">
+            Ready to Get Organized?
+          </h2>
+          <p className="text-gray-600 mb-8 max-w-xl mx-auto">
+            Join families who use Family Todos to keep their household running
+            smoothly. Free to get started!
+          </p>
+          <Link
+            to="/signup"
+            className="inline-flex items-center gap-2 px-8 py-4 bg-theme-primary text-white font-semibold rounded-xl hover:opacity-90 transition-opacity text-lg"
+          >
+            Create Your Family Board <ArrowRight className="w-5 h-5" />
+          </Link>
+        </div>
+      </section>
+
+      {/* Footer */}
+      <footer className="bg-gray-900 text-gray-400 py-8">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+          <p>Family Todos - Keep your family organized</p>
+        </div>
+      </footer>
     </div>
-  )
+  );
+}
+
+function FeatureCard({
+  icon,
+  title,
+  description,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  description: string;
+}) {
+  return (
+    <div className="bg-white rounded-2xl p-6 shadow-lg">
+      <div className="w-14 h-14 bg-theme-primary/10 rounded-xl flex items-center justify-center text-theme-primary mb-4">
+        {icon}
+      </div>
+      <h3 className="text-lg font-semibold text-gray-900 mb-2">{title}</h3>
+      <p className="text-gray-600">{description}</p>
+    </div>
+  );
+}
+
+function StepCard({
+  number,
+  title,
+  description,
+}: {
+  number: string;
+  title: string;
+  description: string;
+}) {
+  return (
+    <div className="text-center">
+      <div className="w-12 h-12 bg-theme-primary text-white rounded-full flex items-center justify-center text-xl font-bold mx-auto mb-4">
+        {number}
+      </div>
+      <h3 className="text-lg font-semibold text-gray-900 mb-2">{title}</h3>
+      <p className="text-gray-600">{description}</p>
+    </div>
+  );
 }

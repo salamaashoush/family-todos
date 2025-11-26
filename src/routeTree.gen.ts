@@ -19,6 +19,7 @@ import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as OnboardingIndexRouteImport } from './routes/onboarding/index'
 import { Route as UploadsSplatRouteImport } from './routes/uploads/$'
+import { Route as FamilyTokenRouteImport } from './routes/family/$token'
 import { Route as ApiSseRouteImport } from './routes/api/sse'
 import { Route as ApiHealthRouteImport } from './routes/api/health'
 
@@ -72,6 +73,11 @@ const UploadsSplatRoute = UploadsSplatRouteImport.update({
   path: '/uploads/$',
   getParentRoute: () => rootRouteImport,
 } as any)
+const FamilyTokenRoute = FamilyTokenRouteImport.update({
+  id: '/family/$token',
+  path: '/family/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiSseRoute = ApiSseRouteImport.update({
   id: '/api/sse',
   path: '/api/sse',
@@ -94,6 +100,7 @@ export interface FileRoutesByFullPath {
   '/verify-email': typeof VerifyEmailRoute
   '/api/health': typeof ApiHealthRoute
   '/api/sse': typeof ApiSseRoute
+  '/family/$token': typeof FamilyTokenRoute
   '/uploads/$': typeof UploadsSplatRoute
   '/onboarding': typeof OnboardingIndexRoute
 }
@@ -108,6 +115,7 @@ export interface FileRoutesByTo {
   '/verify-email': typeof VerifyEmailRoute
   '/api/health': typeof ApiHealthRoute
   '/api/sse': typeof ApiSseRoute
+  '/family/$token': typeof FamilyTokenRoute
   '/uploads/$': typeof UploadsSplatRoute
   '/onboarding': typeof OnboardingIndexRoute
 }
@@ -123,6 +131,7 @@ export interface FileRoutesById {
   '/verify-email': typeof VerifyEmailRoute
   '/api/health': typeof ApiHealthRoute
   '/api/sse': typeof ApiSseRoute
+  '/family/$token': typeof FamilyTokenRoute
   '/uploads/$': typeof UploadsSplatRoute
   '/onboarding/': typeof OnboardingIndexRoute
 }
@@ -139,6 +148,7 @@ export interface FileRouteTypes {
     | '/verify-email'
     | '/api/health'
     | '/api/sse'
+    | '/family/$token'
     | '/uploads/$'
     | '/onboarding'
   fileRoutesByTo: FileRoutesByTo
@@ -153,6 +163,7 @@ export interface FileRouteTypes {
     | '/verify-email'
     | '/api/health'
     | '/api/sse'
+    | '/family/$token'
     | '/uploads/$'
     | '/onboarding'
   id:
@@ -167,6 +178,7 @@ export interface FileRouteTypes {
     | '/verify-email'
     | '/api/health'
     | '/api/sse'
+    | '/family/$token'
     | '/uploads/$'
     | '/onboarding/'
   fileRoutesById: FileRoutesById
@@ -182,6 +194,7 @@ export interface RootRouteChildren {
   VerifyEmailRoute: typeof VerifyEmailRoute
   ApiHealthRoute: typeof ApiHealthRoute
   ApiSseRoute: typeof ApiSseRoute
+  FamilyTokenRoute: typeof FamilyTokenRoute
   UploadsSplatRoute: typeof UploadsSplatRoute
   OnboardingIndexRoute: typeof OnboardingIndexRoute
 }
@@ -258,6 +271,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof UploadsSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/family/$token': {
+      id: '/family/$token'
+      path: '/family/$token'
+      fullPath: '/family/$token'
+      preLoaderRoute: typeof FamilyTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/sse': {
       id: '/api/sse'
       path: '/api/sse'
@@ -286,6 +306,7 @@ const rootRouteChildren: RootRouteChildren = {
   VerifyEmailRoute: VerifyEmailRoute,
   ApiHealthRoute: ApiHealthRoute,
   ApiSseRoute: ApiSseRoute,
+  FamilyTokenRoute: FamilyTokenRoute,
   UploadsSplatRoute: UploadsSplatRoute,
   OnboardingIndexRoute: OnboardingIndexRoute,
 }
