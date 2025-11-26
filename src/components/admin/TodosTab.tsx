@@ -16,10 +16,7 @@ import {
 } from '@dnd-kit/sortable'
 import { useTodos, useTimeslots } from '../../hooks/useQueries'
 import { useTodoMutations } from '../../hooks/useAdminMutations'
-import { Modal } from '../shared/Modal'
-import { ConfirmDialog } from '../shared/ConfirmDialog'
-import { Button } from '../shared/Button'
-import { Select } from '../shared/Select'
+import { Modal, ConfirmDialog, Button, Select, SkeletonCard, EmptyState, Badge } from '../shared'
 import { TodoForm } from './TodoForm'
 import { AdminCard } from './AdminCard'
 import { SortableItem } from './SortableItem'
@@ -328,40 +325,28 @@ export function TodosTab() {
       {todosLoading ? (
         <div className="space-y-3">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="bg-white border-2 border-gray-200 rounded-xl p-4 animate-pulse">
-              <div className="flex gap-3">
-                <div className="w-10 h-10 bg-gray-200 rounded" />
-                <div className="flex-1 space-y-2">
-                  <div className="h-5 bg-gray-200 rounded w-1/3" />
-                  <div className="h-4 bg-gray-200 rounded w-2/3" />
-                </div>
-              </div>
-            </div>
+            <SkeletonCard key={i} lines={2} />
           ))}
         </div>
       ) : filteredTodos.length === 0 ? (
-        <div className="text-center py-12 text-gray-500">
-          {searchQuery || filterTimeslot ? (
-            <>
-              <p className="text-lg">No tasks match your filters</p>
-              <button
-                onClick={() => {
-                  setSearchQuery('')
-                  setFilterTimeslot(null)
-                }}
-                className="mt-3 text-theme-primary hover:underline font-medium"
-              >
-                Clear filters
-              </button>
-            </>
-          ) : (
-            <div className="flex flex-col items-center">
-              <ClipboardIcon />
-              <p className="text-lg">No tasks yet</p>
-              <p className="text-sm text-gray-400 mt-1">Click "Add Task" above to create one</p>
-            </div>
-          )}
-        </div>
+        (searchQuery || filterTimeslot) ? (
+          <EmptyState
+            title="No tasks match your filters"
+            action={{
+              label: 'Clear filters',
+              onClick: () => {
+                setSearchQuery('')
+                setFilterTimeslot(null)
+              },
+            }}
+          />
+        ) : (
+          <EmptyState
+            icon={<ClipboardIcon />}
+            title="No tasks yet"
+            description="Click 'Add Task' above to create one"
+          />
+        )
       ) : isReordering ? (
         <DndContext
           sensors={sensors}
@@ -418,12 +403,9 @@ export function TodosTab() {
                       {todo.timeslotIds.map((id: number) => {
                         const timeslot = timeslots?.find((t: Timeslot) => t.id === id)
                         return timeslot ? (
-                          <span
-                            key={id}
-                            className="inline-block text-xs bg-theme-primary/10 text-theme-primary px-2 py-0.5 rounded-full font-medium"
-                          >
+                          <Badge key={id} variant="primary" size="sm">
                             {timeslot.name}
-                          </span>
+                          </Badge>
                         ) : null
                       })}
                     </div>

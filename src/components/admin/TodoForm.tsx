@@ -8,7 +8,7 @@ import { UPLOAD_CONFIG } from '../../constants'
 import { getErrorMessage } from '../../utils/form'
 import { getDisplaySymbol } from '../../utils/symbols'
 import { showToast } from '../Toast'
-import { Button, Input, Textarea, FileInput, MultiSelect, EmojiInput } from '../shared'
+import { Button, Input, Textarea, FileInput, MultiSelect, EmojiInput, Alert } from '../shared'
 import { Modal } from '../shared/Modal'
 import { TimeslotForm } from './TimeslotForm'
 import { MemberForm } from './MemberForm'
@@ -159,26 +159,15 @@ export function TodoForm({ todo, onSubmit, onCancel }: TodoFormProps) {
       >
         {/* Warning if no timeslots */}
         {hasNoTimeslots && (
-          <div className="bg-amber-50 border-2 border-amber-200 rounded-xl p-4">
-            <div className="flex items-start gap-3">
-              <svg className="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-              </svg>
-              <div className="flex-1">
-                <p className="font-semibold text-amber-800">No time slots available</p>
-                <p className="text-sm text-amber-700 mt-1">
-                  You need at least one time slot before creating a task.
-                </p>
-                <button
-                  type="button"
-                  onClick={() => setShowTimeslotModal(true)}
-                  className="mt-2 text-sm font-semibold text-amber-700 hover:text-amber-800 underline"
-                >
-                  Create a time slot now
-                </button>
-              </div>
-            </div>
-          </div>
+          <Alert
+            variant="warning"
+            title="No time slots available"
+            message="You need at least one time slot before creating a task."
+            action={{
+              label: 'Create a time slot now',
+              onClick: () => setShowTimeslotModal(true),
+            }}
+          />
         )}
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -328,19 +317,11 @@ export function TodoForm({ todo, onSubmit, onCancel }: TodoFormProps) {
       >
         {hasNoMembers ? (
           <div className="space-y-4">
-            <div className="bg-amber-50 border-2 border-amber-200 rounded-xl p-4">
-              <div className="flex items-start gap-3">
-                <svg className="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                </svg>
-                <div className="flex-1">
-                  <p className="font-semibold text-amber-800">No family members yet</p>
-                  <p className="text-sm text-amber-700 mt-1">
-                    You need at least one family member before creating a time slot.
-                  </p>
-                </div>
-              </div>
-            </div>
+            <Alert
+              variant="warning"
+              title="No family members yet"
+              message="You need at least one family member before creating a time slot."
+            />
             <div className="flex justify-end gap-3">
               <Button variant="secondary" onClick={() => setShowTimeslotModal(false)}>
                 Cancel

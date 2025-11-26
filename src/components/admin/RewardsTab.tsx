@@ -2,11 +2,7 @@ import { useState, useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useRewardMutations, useRedemptionMutations } from '../../hooks/useAdminMutations'
 import { getRewards, getPendingRedemptions } from '../../server/rewards'
-import { Modal } from '../shared/Modal'
-import { ConfirmDialog } from '../shared/ConfirmDialog'
-import { Button } from '../shared/Button'
-import { Input } from '../shared/Input'
-import { Select } from '../shared/Select'
+import { Modal, ConfirmDialog, Button, Input, Select, SkeletonCard, EmptyState, Badge } from '../shared'
 import { AdminCard } from './AdminCard'
 import { RewardForm } from './RewardForm'
 import type { Reward, RewardRedemption } from '../../types'
@@ -310,37 +306,28 @@ export function RewardsTab() {
           {rewardsLoading ? (
             <div className="space-y-3">
               {[1, 2, 3].map((i) => (
-                <div key={i} className="bg-white border-2 border-gray-200 rounded-xl p-4 animate-pulse">
-                  <div className="space-y-2">
-                    <div className="h-5 bg-gray-200 rounded w-1/3" />
-                    <div className="h-4 bg-gray-200 rounded w-1/4" />
-                  </div>
-                </div>
+                <SkeletonCard key={i} lines={2} />
               ))}
             </div>
           ) : filteredRewards.length === 0 ? (
-            <div className="text-center py-12 text-gray-500">
-              {searchQuery || filterStatus !== 'all' ? (
-                <>
-                  <p className="text-lg">No rewards match your filters</p>
-                  <button
-                    onClick={() => {
-                      setSearchQuery('')
-                      setFilterStatus('all')
-                    }}
-                    className="mt-3 text-theme-primary hover:underline font-medium"
-                  >
-                    Clear filters
-                  </button>
-                </>
-              ) : (
-                <div className="flex flex-col items-center">
-                  <GiftIcon className="w-12 h-12 text-gray-300 mb-4" />
-                  <p className="text-lg">No rewards yet</p>
-                  <p className="text-sm text-gray-400 mt-1">Click "Add Reward" above to create one</p>
-                </div>
-              )}
-            </div>
+            searchQuery || filterStatus !== 'all' ? (
+              <EmptyState
+                title={`No rewards match your filters`}
+                action={{
+                  label: 'Clear filters',
+                  onClick: () => {
+                    setSearchQuery('')
+                    setFilterStatus('all')
+                  },
+                }}
+              />
+            ) : (
+              <EmptyState
+                icon={<GiftIcon className="w-12 h-12 text-gray-300 mb-4" />}
+                title="No rewards yet"
+                description="Click 'Add Reward' above to create one"
+              />
+            )
           ) : (
             <div className="space-y-3">
               {filteredRewards.map((reward: Reward) => (
@@ -360,9 +347,7 @@ export function RewardsTab() {
                       <div className="flex items-center gap-2">
                         <h3 className="font-bold text-gray-800">{reward.name}</h3>
                         {!reward.isActive && (
-                          <span className="text-xs bg-gray-200 text-gray-600 px-2 py-0.5 rounded-full">
-                            Inactive
-                          </span>
+                          <Badge variant="secondary" size="sm">Inactive</Badge>
                         )}
                       </div>
                       {reward.description && (
@@ -441,13 +426,15 @@ export function RewardsTab() {
               </div>
             </>
           ) : (
-            <div className="text-center py-12 text-gray-500">
-              <svg className="w-12 h-12 mx-auto mb-4 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              <p className="text-lg">No pending redemptions</p>
-              <p className="text-sm text-gray-400 mt-1">When family members redeem rewards, they'll appear here</p>
-            </div>
+            <EmptyState
+              icon={
+                <svg className="w-12 h-12 text-gray-300 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              }
+              title="No pending redemptions"
+              description="When family members redeem rewards, they'll appear here"
+            />
           )}
         </div>
       )}

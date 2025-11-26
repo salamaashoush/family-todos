@@ -8,6 +8,12 @@ export { MultiSelect } from './MultiSelect'
 export { FileInput } from './FileInput'
 export { EmojiInput } from './EmojiInput'
 
+// Feedback components
+export { Alert } from './Alert'
+export { Badge } from './Badge'
+export { EmptyState } from './EmptyState'
+export { Skeleton, SkeletonCard, SkeletonList } from './Skeleton'
+
 // Modal components
 export { Modal } from './Modal'
 export { ConfirmDialog } from './ConfirmDialog'

@@ -8,7 +8,7 @@ import {
   resetAdminPassword,
 } from '../../server/admin-users'
 import { checkAuth } from '../../server/auth'
-import { Button } from '../shared'
+import { Button, SkeletonCard, EmptyState, Badge } from '../shared'
 import { Modal } from '../shared/Modal'
 import { ConfirmDialog } from '../shared/ConfirmDialog'
 import { AdminCard } from './AdminCard'
@@ -212,37 +212,22 @@ export function SecurityTab() {
       {isLoading ? (
         <div className="space-y-3">
           {[1, 2].map((i) => (
-            <div key={i} className="bg-white border-2 border-gray-200 rounded-xl p-4 animate-pulse">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-full bg-gray-200" />
-                <div className="flex-1 space-y-2">
-                  <div className="h-5 bg-gray-200 rounded w-1/3" />
-                  <div className="h-4 bg-gray-200 rounded w-1/4" />
-                </div>
-              </div>
-            </div>
+            <SkeletonCard key={i} lines={2} />
           ))}
         </div>
       ) : filteredAdmins.length === 0 ? (
-        <div className="text-center py-12 text-gray-500">
-          {searchQuery ? (
-            <>
-              <p className="text-lg">No admins match "{searchQuery}"</p>
-              <button
-                onClick={() => setSearchQuery('')}
-                className="mt-3 text-theme-primary hover:underline font-medium"
-              >
-                Clear search
-              </button>
-            </>
-          ) : (
-            <div className="flex flex-col items-center">
-              <ShieldIcon />
-              <p className="text-lg">No admin users yet</p>
-              <p className="text-sm text-gray-400 mt-1">Click "Add Admin" above to create one</p>
-            </div>
-          )}
-        </div>
+        searchQuery ? (
+          <EmptyState
+            title={`No admins match "${searchQuery}"`}
+            action={{ label: 'Clear search', onClick: () => setSearchQuery('') }}
+          />
+        ) : (
+          <EmptyState
+            icon={<ShieldIcon />}
+            title="No admin users yet"
+            description="Click 'Add Admin' above to create one"
+          />
+        )
       ) : (
         <div className="space-y-3">
           {filteredAdmins.map((admin: AdminUser) => {
@@ -274,19 +259,14 @@ export function SecurityTab() {
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2 flex-wrap">
                       <h3 className="font-bold text-gray-800 truncate">{admin.username}</h3>
-                      <span className={`inline-block text-xs px-2 py-0.5 rounded-full font-semibold ${
-                        admin.role === 'owner'
-                          ? 'bg-amber-100 text-amber-700'
-                          : admin.role === 'admin'
-                            ? 'bg-blue-100 text-blue-700'
-                            : 'bg-gray-100 text-gray-600'
-                      }`}>
+                      <Badge
+                        variant={admin.role === 'owner' ? 'warning' : admin.role === 'admin' ? 'info' : 'secondary'}
+                        size="sm"
+                      >
                         {admin.role}
-                      </span>
+                      </Badge>
                       {isCurrent && (
-                        <span className="inline-block text-xs bg-theme-primary/10 text-theme-primary px-2 py-0.5 rounded-full font-semibold">
-                          You
-                        </span>
+                        <Badge variant="primary" size="sm">You</Badge>
                       )}
                     </div>
                     <p className="text-sm text-gray-500">

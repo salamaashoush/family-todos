@@ -20,11 +20,11 @@ const getCSPContent = () => {
 
   // More permissive in development for hot reload, devtools, etc.
   if (isDev) {
-    return "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' ws: wss:;"
+    return "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' ws: wss:; worker-src 'self' blob:;"
   }
 
-  // Strict CSP for production
-  return "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self'; frame-ancestors 'none'; form-action 'self'; base-uri 'self';"
+  // Strict CSP for production - worker-src blob: needed for canvas-confetti
+  return "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self'; worker-src 'self' blob:; frame-ancestors 'none'; form-action 'self'; base-uri 'self';"
 }
 
 export const Route = createRootRouteWithContext<{
@@ -83,19 +83,8 @@ export const Route = createRootRouteWithContext<{
         content: 'yes',
       },
       // Security headers via meta tags
-      // Note: Some of these are better set as HTTP headers, but meta tags provide baseline protection
-      {
-        httpEquiv: 'X-Content-Type-Options',
-        content: 'nosniff',
-      },
-      {
-        httpEquiv: 'X-Frame-Options',
-        content: 'DENY',
-      },
-      {
-        httpEquiv: 'X-XSS-Protection',
-        content: '1; mode=block',
-      },
+      // Note: X-Frame-Options and X-Content-Type-Options must be set via HTTP headers, not meta tags
+      // CSP frame-ancestors directive provides equivalent protection to X-Frame-Options
       {
         httpEquiv: 'Content-Security-Policy',
         content: getCSPContent(),
@@ -103,10 +92,6 @@ export const Route = createRootRouteWithContext<{
       {
         httpEquiv: 'Referrer-Policy',
         content: 'strict-origin-when-cross-origin',
-      },
-      {
-        httpEquiv: 'Permissions-Policy',
-        content: 'camera=(), microphone=(), geolocation=()',
       },
     ],
     links: [
@@ -314,73 +299,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
         <TanStackRouterDevtools position="bottom-right" />
         <ReactQueryDevtools buttonPosition="bottom-left" />
         <Scripts />
-        <ServiceWorkerRegistration />
       </body>
     </html>
   )
-}
-
-function ServiceWorkerRegistration() {
-  return (
-    <script
-      dangerouslySetInnerHTML={{
-        __html: `
-          (function() {
-            if (!('serviceWorker' in navigator)) return;
-
-            window.addEventListener('load', function() {
-              navigator.serviceWorker.register('/sw.js')
-                .then(function(registration) {
-                  console.log('[App] SW registered, scope:', registration.scope);
-
-                  // Check for updates periodically (every 60 seconds)
-                  setInterval(function() {
-                    registration.update().catch(function(err) {
-                      console.warn('[App] SW update check failed:', err);
-                    });
-                  }, 60000);
-
-                  // Listen for new service worker installing
-                  registration.addEventListener('updatefound', function() {
-                    var newWorker = registration.installing;
-                    if (!newWorker) return;
-
-                    console.log('[App] New SW installing...');
-
-                    newWorker.addEventListener('statechange', function() {
-                      if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                        // New SW installed but waiting - auto-activate it
-                        console.log('[App] New SW installed, activating...');
-                        newWorker.postMessage({ type: 'SKIP_WAITING' });
-                      }
-                    });
-                  });
-                })
-                .catch(function(err) {
-                  console.error('[App] SW registration failed:', err);
-                });
-
-              // Listen for SW messages
-              navigator.serviceWorker.addEventListener('message', function(event) {
-                if (event.data && event.data.type === 'SW_UPDATED') {
-                  console.log('[App] SW updated to version:', event.data.version);
-                  // Optionally reload to get fresh content
-                  // window.location.reload();
-                }
-              });
-
-              // Handle controller change (new SW took over)
-              var refreshing = false;
-              navigator.serviceWorker.addEventListener('controllerchange', function() {
-                if (refreshing) return;
-                refreshing = true;
-                console.log('[App] New SW controller, reloading...');
-                window.location.reload();
-              });
-            });
-          })();
-        `,
-      }}
-    />
-  );
 }

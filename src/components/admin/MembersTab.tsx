@@ -1,9 +1,7 @@
 import { useState, useMemo } from 'react'
 import { useMembers } from '../../hooks/useQueries'
 import { useMemberMutations } from '../../hooks/useAdminMutations'
-import { Modal } from '../shared/Modal'
-import { ConfirmDialog } from '../shared/ConfirmDialog'
-import { Button } from '../shared/Button'
+import { Modal, ConfirmDialog, Button, SkeletonCard, EmptyState } from '../shared'
 import { MemberForm } from './MemberForm'
 import { AdminCard } from './AdminCard'
 import type { Member } from '../../types'
@@ -183,37 +181,22 @@ export function MembersTab() {
       {isLoading ? (
         <div className="space-y-3">
           {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="bg-white border-2 border-gray-200 rounded-xl p-4 animate-pulse">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-full bg-gray-200" />
-                <div className="flex-1 space-y-2">
-                  <div className="h-5 bg-gray-200 rounded w-1/3" />
-                  <div className="h-4 bg-gray-200 rounded w-1/4" />
-                </div>
-              </div>
-            </div>
+            <SkeletonCard key={i} lines={2} />
           ))}
         </div>
       ) : filteredMembers.length === 0 ? (
-        <div className="text-center py-12 text-gray-500">
-          {searchQuery ? (
-            <>
-              <p className="text-lg">No members match "{searchQuery}"</p>
-              <button
-                onClick={() => setSearchQuery('')}
-                className="mt-3 text-theme-primary hover:underline font-medium"
-              >
-                Clear search
-              </button>
-            </>
-          ) : (
-            <div className="flex flex-col items-center">
-              <UsersIcon />
-              <p className="text-lg">No family members yet</p>
-              <p className="text-sm text-gray-400 mt-1">Click "Add Member" above to create one</p>
-            </div>
-          )}
-        </div>
+        searchQuery ? (
+          <EmptyState
+            title={`No members match "${searchQuery}"`}
+            action={{ label: 'Clear search', onClick: () => setSearchQuery('') }}
+          />
+        ) : (
+          <EmptyState
+            icon={<UsersIcon />}
+            title="No family members yet"
+            description="Click 'Add Member' above to create one"
+          />
+        )
       ) : (
         <div className="space-y-3">
           {filteredMembers.map((member: Member) => (

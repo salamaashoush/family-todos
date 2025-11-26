@@ -1,5 +1,5 @@
 import { createFileRoute, redirect, Link } from "@tanstack/react-router";
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { z } from "zod";
 import { checkAuth } from "../server/auth";
@@ -13,26 +13,20 @@ import {
   deleteUser,
 } from "../server/superAdmin";
 import { Toast, showToast } from "../components/Toast";
-import { Button } from "../components/shared";
+import { Button, Input, Select, Badge, SkeletonCard, EmptyState, Alert } from "../components/shared";
+import { Modal } from "../components/shared/Modal";
+import { ConfirmDialog } from "../components/shared/ConfirmDialog";
+import { AdminCard, ActionItem } from "../components/admin/AdminCard";
 import {
   Users,
   Clock,
   CheckCircle,
   XCircle,
   AlertCircle,
-  AlertTriangle,
   Search,
-  ChevronLeft,
-  ChevronRight,
   Shield,
   Home,
   LogOut,
-  Eye,
-  UserCheck,
-  UserX,
-  Trash2,
-  X,
-  Key,
 } from "lucide-react";
 import { logout } from "../server/auth";
 
@@ -78,6 +72,14 @@ export const Route = createFileRoute("/super-admin")({
 
 type StatusFilter = "all" | "pending" | "active" | "suspended" | "rejected";
 
+type UserType = {
+  id: number;
+  username: string;
+  email: string;
+  accountStatus: string;
+  createdAt: string;
+};
+
 function SuperAdminDashboard() {
   const queryClient = useQueryClient();
   const search = Route.useSearch();
@@ -86,7 +88,7 @@ function SuperAdminDashboard() {
   const [searchTerm, setSearchTerm] = useState(search.search || "");
   const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [userToDelete, setUserToDelete] = useState<number | null>(null);
+  const [showDetailsModal, setShowDetailsModal] = useState(false);
 
   // Stats query
   const { data: stats } = useQuery({
@@ -118,7 +120,7 @@ function SuperAdminDashboard() {
   const { data: userDetails, isLoading: detailsLoading } = useQuery({
     queryKey: ["super-admin-user-details", selectedUserId],
     queryFn: () => getUserDetails({ data: { userId: selectedUserId! } }),
-    enabled: !!selectedUserId,
+    enabled: !!selectedUserId && showDetailsModal,
   });
 
   // Update status mutation
@@ -142,8 +144,8 @@ function SuperAdminDashboard() {
       queryClient.invalidateQueries({ queryKey: ["super-admin-users"] });
       queryClient.invalidateQueries({ queryKey: ["super-admin-stats"] });
       setShowDeleteConfirm(false);
-      setUserToDelete(null);
       setSelectedUserId(null);
+      setShowDetailsModal(false);
       showToast("User deleted", "success");
     },
     onError: (error: Error) => {
@@ -187,480 +189,397 @@ function SuperAdminDashboard() {
     window.location.href = "/login";
   };
 
+  const openUserDetails = (userId: number) => {
+    setSelectedUserId(userId);
+    setShowDetailsModal(true);
+  };
+
+  const closeDetailsModal = () => {
+    setShowDetailsModal(false);
+    setSelectedUserId(null);
+  };
+
   const getStatusBadge = (status: string) => {
-    const badges: Record<string, { bg: string; text: string; icon: React.ReactNode }> = {
-      pending: { bg: "bg-yellow-100", text: "text-yellow-700", icon: <Clock className="w-3 h-3" /> },
-      active: { bg: "bg-green-100", text: "text-green-700", icon: <CheckCircle className="w-3 h-3" /> },
-      suspended: { bg: "bg-orange-100", text: "text-orange-700", icon: <AlertCircle className="w-3 h-3" /> },
-      rejected: { bg: "bg-red-100", text: "text-red-700", icon: <XCircle className="w-3 h-3" /> },
+    const variantMap: Record<string, "warning" | "success" | "danger" | "info"> = {
+      pending: "warning",
+      active: "success",
+      suspended: "warning",
+      rejected: "danger",
     };
-    const badge = badges[status] || badges.pending;
     return (
-      <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${badge.bg} ${badge.text}`}>
-        {badge.icon}
+      <Badge variant={variantMap[status] || "info"} size="sm">
         {status.charAt(0).toUpperCase() + status.slice(1)}
-      </span>
+      </Badge>
     );
   };
 
+  const filteredUsers = useMemo(() => usersData?.users || [], [usersData]);
+  const pendingCount = stats?.pendingUsers || 0;
+
   return (
-    <div className="min-h-screen bg-gray-100">
+    <div className="min-h-screen bg-gray-50">
       <Toast />
 
-      {/* Security Warning Banner */}
-      {securityCheck?.needsPasswordChange && (
-        <div className="bg-red-600 text-white px-4 py-3">
-          <div className="max-w-7xl mx-auto flex items-center gap-3">
-            <AlertTriangle className="w-5 h-5 flex-shrink-0" />
-            <div className="flex-1">
-              <p className="font-semibold">Security Warning: Default Admin Password Not Changed</p>
-              <p className="text-sm text-red-100">
-                The default admin account "{securityCheck.defaultAdminUsername}" is using the default password.
-                Please change it immediately in the Security tab of your admin dashboard.
-              </p>
-            </div>
-            <Link
-              to="/admin"
-              search={{ tab: "security" }}
-              className="flex items-center gap-2 bg-white text-red-600 px-4 py-2 rounded-lg font-semibold hover:bg-red-50 transition-colors"
-            >
-              <Key className="w-4 h-4" />
-              Change Password
-            </Link>
-          </div>
-        </div>
-      )}
-
       {/* Header */}
-      <header className="bg-gray-900 text-white shadow-lg">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-purple-600 flex items-center justify-center">
-                <Shield className="w-6 h-6" />
+      <header className="bg-white/95 backdrop-blur-md shadow-lg sticky top-0 z-40 border-b-2 border-theme-primary/20">
+        <div className="max-w-[1920px] mx-auto px-3 sm:px-4 lg:px-6">
+          <div className="flex items-center justify-between h-14 sm:h-16">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-br from-theme-primary to-theme-secondary flex items-center justify-center flex-shrink-0 shadow-md">
+                <Shield className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
               </div>
-              <div>
-                <h1 className="text-lg font-bold">Super Admin</h1>
-                <p className="text-xs text-gray-400">Internal Dashboard</p>
-              </div>
+              <h1 className="text-base sm:text-lg lg:text-xl font-bold text-gray-800">
+                Super Admin
+              </h1>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-1.5 sm:gap-2">
               <Link
-                to="/"
-                className="p-2 rounded-lg hover:bg-gray-800 transition-colors"
-                title="Go to main site"
+                to="/admin"
+                className="flex items-center justify-center gap-2 p-2 sm:px-3 sm:py-2 rounded-xl bg-theme-primary/10 hover:bg-theme-primary/20 active:bg-theme-primary/30 transition-colors min-h-[44px] min-w-[44px]"
+                title="Admin Dashboard"
               >
-                <Home className="w-5 h-5" />
+                <Home className="w-5 h-5 text-theme-primary" />
+                <span className="hidden sm:inline text-sm font-medium text-theme-primary">Dashboard</span>
               </Link>
               <button
                 onClick={handleLogout}
-                className="p-2 rounded-lg hover:bg-gray-800 transition-colors"
+                className="flex items-center justify-center gap-2 p-2 sm:px-3 sm:py-2 rounded-xl bg-red-100 hover:bg-red-200 active:bg-red-300 transition-colors min-h-[44px] min-w-[44px]"
                 title="Logout"
               >
-                <LogOut className="w-5 h-5" />
+                <LogOut className="w-5 h-5 text-red-600" />
+                <span className="hidden sm:inline text-sm font-medium text-red-600">Logout</span>
               </button>
             </div>
           </div>
         </div>
       </header>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+        {/* Security Warning */}
+        {securityCheck?.needsPasswordChange && (
+          <Alert
+            variant="danger"
+            title="Security Warning: Default Admin Password Not Changed"
+            message={`The default admin account "${securityCheck.defaultAdminUsername}" is using the default password. Please change it immediately.`}
+            action={{
+              label: "Change Password",
+              onClick: () => window.location.href = "/admin?tab=security",
+            }}
+          />
+        )}
+
         {/* Stats Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4 mb-8">
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
           <StatCard
             label="Total Users"
             value={stats?.totalUsers ?? 0}
-            icon={<Users className="w-5 h-5 text-blue-600" />}
-            color="blue"
+            icon={<Users className="w-5 h-5 text-theme-primary" />}
           />
           <StatCard
             label="Pending"
             value={stats?.pendingUsers ?? 0}
             icon={<Clock className="w-5 h-5 text-yellow-600" />}
-            color="yellow"
-            highlight={stats?.pendingUsers ? stats.pendingUsers > 0 : false}
+            highlight={pendingCount > 0}
           />
           <StatCard
             label="Active"
             value={stats?.activeUsers ?? 0}
             icon={<CheckCircle className="w-5 h-5 text-green-600" />}
-            color="green"
           />
           <StatCard
             label="Suspended"
             value={stats?.suspendedUsers ?? 0}
             icon={<AlertCircle className="w-5 h-5 text-orange-600" />}
-            color="orange"
           />
           <StatCard
             label="Families"
             value={stats?.totalFamilies ?? 0}
-            icon={<Home className="w-5 h-5 text-purple-600" />}
-            color="purple"
+            icon={<Home className="w-5 h-5 text-theme-secondary" />}
           />
           <StatCard
             label="This Week"
             value={stats?.recentSignups ?? 0}
             icon={<Users className="w-5 h-5 text-indigo-600" />}
-            color="indigo"
           />
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Main Content */}
+        <div className="space-y-4">
+          {/* Header */}
+          <div className="flex flex-col gap-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-xl sm:text-2xl font-bold text-gray-800">User Management</h2>
+            </div>
+
+            {/* Search and Filter */}
+            <div className="flex flex-col sm:flex-row gap-3">
+              <div className="flex-1">
+                <Input
+                  type="text"
+                  placeholder="Search by username or email..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+                  leftIcon={<Search className="w-5 h-5" />}
+                />
+              </div>
+              <Select
+                value={search.status}
+                onChange={(e) => handleStatusFilter(e.target.value as StatusFilter)}
+              >
+                <option value="all">All Users</option>
+                <option value="pending">Pending {pendingCount > 0 ? `(${pendingCount})` : ""}</option>
+                <option value="active">Active</option>
+                <option value="suspended">Suspended</option>
+                <option value="rejected">Rejected</option>
+              </Select>
+              <Button onClick={handleSearch}>Search</Button>
+            </div>
+          </div>
+
           {/* Users List */}
-          <div className="lg:col-span-2 bg-white rounded-xl shadow-sm overflow-hidden">
-            {/* Filters */}
-            <div className="p-4 border-b border-gray-200 space-y-4">
-              <div className="flex flex-wrap gap-2">
-                {(["all", "pending", "active", "suspended", "rejected"] as StatusFilter[]).map((status) => (
-                  <button
-                    key={status}
-                    onClick={() => handleStatusFilter(status)}
-                    className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                      search.status === status
-                        ? "bg-gray-900 text-white"
-                        : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                    }`}
-                  >
-                    {status.charAt(0).toUpperCase() + status.slice(1)}
-                    {status === "pending" && stats?.pendingUsers ? (
-                      <span className="ml-1.5 px-1.5 py-0.5 bg-yellow-500 text-white rounded-full text-xs">
-                        {stats.pendingUsers}
-                      </span>
-                    ) : null}
-                  </button>
-                ))}
-              </div>
-
-              <div className="flex gap-2">
-                <div className="flex-1 relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                  <input
-                    type="text"
-                    placeholder="Search by username or email..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
-                  />
-                </div>
-                <Button onClick={handleSearch}>Search</Button>
-              </div>
+          {usersLoading ? (
+            <div className="space-y-3">
+              {[1, 2, 3, 4].map((i) => (
+                <SkeletonCard key={i} lines={2} />
+              ))}
             </div>
-
-            {/* Users Table */}
-            <div className="overflow-x-auto">
-              {usersLoading ? (
-                <div className="p-8 text-center text-gray-500">Loading...</div>
-              ) : usersData?.users.length === 0 ? (
-                <div className="p-8 text-center text-gray-500">No users found</div>
-              ) : (
-                <table className="w-full">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">User</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Joined</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-200">
-                    {usersData?.users.map((user) => (
-                      <tr
-                        key={user.id}
-                        className={`hover:bg-gray-50 cursor-pointer ${selectedUserId === user.id ? "bg-purple-50" : ""}`}
-                        onClick={() => setSelectedUserId(user.id)}
-                      >
-                        <td className="px-4 py-3">
-                          <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center text-sm font-medium text-gray-600">
-                              {user.username.charAt(0).toUpperCase()}
-                            </div>
-                            <div>
-                              <div className="font-medium text-gray-900">{user.username}</div>
-                              <div className="text-sm text-gray-500">{user.email}</div>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="px-4 py-3">{getStatusBadge(user.accountStatus)}</td>
-                        <td className="px-4 py-3 text-sm text-gray-500">
-                          {new Date(user.createdAt).toLocaleDateString()}
-                        </td>
-                        <td className="px-4 py-3">
-                          <div className="flex items-center gap-1">
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setSelectedUserId(user.id);
-                              }}
-                              className="p-1.5 rounded hover:bg-gray-200 text-gray-600"
-                              title="View details"
-                            >
-                              <Eye className="w-4 h-4" />
-                            </button>
-                            {user.accountStatus === "pending" && (
-                              <>
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleStatusChange(user.id, "active");
-                                  }}
-                                  className="p-1.5 rounded hover:bg-green-100 text-green-600"
-                                  title="Approve"
-                                >
-                                  <UserCheck className="w-4 h-4" />
-                                </button>
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleStatusChange(user.id, "rejected");
-                                  }}
-                                  className="p-1.5 rounded hover:bg-red-100 text-red-600"
-                                  title="Reject"
-                                >
-                                  <UserX className="w-4 h-4" />
-                                </button>
-                              </>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              )}
-            </div>
-
-            {/* Pagination */}
-            {usersData && usersData.pagination.totalPages > 1 && (
-              <div className="px-4 py-3 border-t border-gray-200 flex items-center justify-between">
-                <div className="text-sm text-gray-500">
-                  Page {usersData.pagination.page} of {usersData.pagination.totalPages}
-                </div>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => handlePageChange(usersData.pagination.page - 1)}
-                    disabled={usersData.pagination.page === 1}
-                    className="p-2 rounded-lg border border-gray-300 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
-                  >
-                    <ChevronLeft className="w-4 h-4" />
-                  </button>
-                  <button
-                    onClick={() => handlePageChange(usersData.pagination.page + 1)}
-                    disabled={usersData.pagination.page === usersData.pagination.totalPages}
-                    className="p-2 rounded-lg border border-gray-300 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
-                  >
-                    <ChevronRight className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* User Details Panel */}
-          <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-            {selectedUserId ? (
-              detailsLoading ? (
-                <div className="p-8 text-center text-gray-500">Loading...</div>
-              ) : userDetails ? (
-                <div className="divide-y divide-gray-200">
-                  <div className="p-4">
-                    <div className="flex items-center justify-between mb-4">
-                      <h3 className="text-lg font-semibold text-gray-900">User Details</h3>
-                      <button
-                        onClick={() => setSelectedUserId(null)}
-                        className="p-1 rounded hover:bg-gray-100"
-                      >
-                        <X className="w-5 h-5 text-gray-500" />
-                      </button>
-                    </div>
-
-                    <div className="flex items-center gap-4 mb-4">
-                      <div className="w-16 h-16 rounded-full bg-gray-200 flex items-center justify-center text-2xl font-medium text-gray-600">
-                        {userDetails.username.charAt(0).toUpperCase()}
-                      </div>
-                      <div>
-                        <div className="text-xl font-semibold text-gray-900">{userDetails.username}</div>
-                        <div className="text-sm text-gray-500">{userDetails.email}</div>
-                        <div className="mt-1">{getStatusBadge(userDetails.accountStatus)}</div>
-                      </div>
-                    </div>
-
-                    <div className="space-y-3 text-sm">
-                      <div className="flex justify-between">
-                        <span className="text-gray-500">Email Verified</span>
-                        <span className={userDetails.emailVerified ? "text-green-600" : "text-red-600"}>
-                          {userDetails.emailVerified ? "Yes" : "No"}
-                        </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-500">Joined</span>
-                        <span>{new Date(userDetails.createdAt).toLocaleDateString()}</span>
-                      </div>
-                      {userDetails.lastLoginAt && (
-                        <div className="flex justify-between">
-                          <span className="text-gray-500">Last Login</span>
-                          <span>{new Date(userDetails.lastLoginAt).toLocaleDateString()}</span>
-                        </div>
-                      )}
-                      {userDetails.activatedAt && (
-                        <div className="flex justify-between">
-                          <span className="text-gray-500">Activated</span>
-                          <span>
-                            {new Date(userDetails.activatedAt).toLocaleDateString()}
-                            {userDetails.activatorName && (
-                              <span className="text-gray-400"> by {userDetails.activatorName}</span>
-                            )}
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Families */}
-                  <div className="p-4">
-                    <h4 className="font-medium text-gray-900 mb-3">Families ({userDetails.families.length})</h4>
-                    {userDetails.families.length > 0 ? (
-                      <div className="space-y-2">
-                        {userDetails.families.map((family) => (
-                          <div key={family.id} className="p-3 bg-gray-50 rounded-lg">
-                            <div className="font-medium text-gray-800">{family.name}</div>
-                            <div className="text-xs text-gray-500">
-                              {family.role} | {family.isOnboarded ? "Onboarded" : "Setup incomplete"}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <p className="text-sm text-gray-500">No families yet</p>
-                    )}
-                  </div>
-
-                  {/* Admin Notes */}
-                  {userDetails.adminNotes && (
-                    <div className="p-4">
-                      <h4 className="font-medium text-gray-900 mb-2">Admin Notes</h4>
-                      <p className="text-sm text-gray-600 bg-gray-50 p-3 rounded-lg">{userDetails.adminNotes}</p>
-                    </div>
-                  )}
-
-                  {/* Actions */}
-                  <div className="p-4 space-y-2">
-                    <h4 className="font-medium text-gray-900 mb-3">Actions</h4>
-                    <div className="grid grid-cols-2 gap-2">
-                      {userDetails.accountStatus !== "active" && (
-                        <button
-                          onClick={() => handleStatusChange(userDetails.id, "active")}
-                          disabled={updateStatusMutation.isPending}
-                          className="px-3 py-2 bg-green-100 text-green-700 rounded-lg hover:bg-green-200 text-sm font-medium"
-                        >
-                          Activate
-                        </button>
-                      )}
-                      {userDetails.accountStatus !== "suspended" && (
-                        <button
-                          onClick={() => handleStatusChange(userDetails.id, "suspended")}
-                          disabled={updateStatusMutation.isPending}
-                          className="px-3 py-2 bg-orange-100 text-orange-700 rounded-lg hover:bg-orange-200 text-sm font-medium"
-                        >
-                          Suspend
-                        </button>
-                      )}
-                      {userDetails.accountStatus !== "rejected" && (
-                        <button
-                          onClick={() => handleStatusChange(userDetails.id, "rejected")}
-                          disabled={updateStatusMutation.isPending}
-                          className="px-3 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 text-sm font-medium"
-                        >
-                          Reject
-                        </button>
-                      )}
-                      <button
-                        onClick={() => {
-                          setUserToDelete(userDetails.id);
-                          setShowDeleteConfirm(true);
-                        }}
-                        className="px-3 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 text-sm font-medium flex items-center justify-center gap-1"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                        Delete
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              ) : null
+          ) : filteredUsers.length === 0 ? (
+            searchTerm ? (
+              <EmptyState
+                title={`No users match "${searchTerm}"`}
+                action={{ label: "Clear search", onClick: () => { setSearchTerm(""); handleSearch(); } }}
+              />
             ) : (
-              <div className="p-8 text-center">
-                <Users className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-                <p className="text-gray-500">Select a user to view details</p>
+              <EmptyState
+                icon={<Users className="w-12 h-12 text-gray-300 mb-4" />}
+                title="No users in this category"
+                description="Try selecting a different status filter"
+              />
+            )
+          ) : (
+            <div className="space-y-3">
+              {filteredUsers.map((user: UserType) => {
+                const userActions: ActionItem[] = [
+                  {
+                    label: "View Details",
+                    icon: <Search className="w-4 h-4" />,
+                    onClick: () => openUserDetails(user.id),
+                  },
+                ];
+
+                // Add Activate action if not already active
+                if (user.accountStatus !== "active") {
+                  userActions.push({
+                    label: "Activate",
+                    icon: <CheckCircle className="w-4 h-4" />,
+                    onClick: () => handleStatusChange(user.id, "active"),
+                  });
+                }
+
+                // Add Suspend action if not already suspended
+                if (user.accountStatus !== "suspended") {
+                  userActions.push({
+                    label: "Suspend",
+                    icon: <AlertCircle className="w-4 h-4" />,
+                    onClick: () => handleStatusChange(user.id, "suspended"),
+                  });
+                }
+
+                // Add Reject action if not already rejected
+                if (user.accountStatus !== "rejected") {
+                  userActions.push({
+                    label: "Reject",
+                    icon: <XCircle className="w-4 h-4" />,
+                    onClick: () => handleStatusChange(user.id, "rejected"),
+                    variant: "danger",
+                  });
+                }
+
+                // Always add Delete action
+                userActions.push({
+                  label: "Delete",
+                  icon: <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>,
+                  onClick: () => {
+                    setSelectedUserId(user.id);
+                    setShowDeleteConfirm(true);
+                  },
+                  variant: "danger",
+                });
+
+                return (
+                <AdminCard
+                  key={user.id}
+                  actions={userActions}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-theme-primary to-theme-secondary flex items-center justify-center text-white font-bold text-lg flex-shrink-0">
+                      {user.username.charAt(0).toUpperCase()}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <h3 className="font-bold text-gray-800 truncate">{user.username}</h3>
+                        {getStatusBadge(user.accountStatus)}
+                      </div>
+                      <p className="text-sm text-gray-500 truncate">{user.email}</p>
+                      <p className="text-xs text-gray-400">
+                        Joined: {new Date(user.createdAt).toLocaleDateString()}
+                      </p>
+                    </div>
+                  </div>
+                </AdminCard>
+              );
+              })}
+            </div>
+          )}
+
+          {/* Pagination */}
+          {usersData && usersData.pagination.totalPages > 1 && (
+            <div className="flex items-center justify-between pt-4">
+              <p className="text-sm text-gray-500">
+                Page {usersData.pagination.page} of {usersData.pagination.totalPages}
+              </p>
+              <div className="flex gap-2">
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => handlePageChange(usersData.pagination.page - 1)}
+                  disabled={usersData.pagination.page === 1}
+                >
+                  Previous
+                </Button>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => handlePageChange(usersData.pagination.page + 1)}
+                  disabled={usersData.pagination.page === usersData.pagination.totalPages}
+                >
+                  Next
+                </Button>
               </div>
-            )}
-          </div>
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Delete Confirmation Modal */}
-      {showDeleteConfirm && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">Delete User?</h3>
-            <p className="text-gray-600 mb-6">
-              This will permanently delete this user and all their associated data. This action cannot be undone.
-            </p>
-            <div className="flex gap-3 justify-end">
-              <Button
-                variant="secondary"
-                onClick={() => {
-                  setShowDeleteConfirm(false);
-                  setUserToDelete(null);
-                }}
-              >
-                Cancel
-              </Button>
-              <button
-                onClick={() => {
-                  if (userToDelete) {
-                    deleteMutation.mutate({ data: { userId: userToDelete } });
-                  }
-                }}
-                disabled={deleteMutation.isPending}
-                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50"
-              >
-                {deleteMutation.isPending ? "Deleting..." : "Delete User"}
-              </button>
-            </div>
+      {/* User Details Modal */}
+      <Modal
+        isOpen={showDetailsModal}
+        onClose={closeDetailsModal}
+        title="User Details"
+      >
+        {detailsLoading ? (
+          <div className="space-y-3">
+            <SkeletonCard lines={3} />
           </div>
-        </div>
-      )}
+        ) : userDetails ? (
+          <div className="space-y-6">
+            {/* User Info */}
+            <div className="flex items-center gap-4">
+              <div className="w-16 h-16 rounded-full bg-gradient-to-br from-theme-primary to-theme-secondary flex items-center justify-center text-2xl font-bold text-white">
+                {userDetails.username.charAt(0).toUpperCase()}
+              </div>
+              <div>
+                <h3 className="text-xl font-bold text-gray-900">{userDetails.username}</h3>
+                <p className="text-sm text-gray-500">{userDetails.email}</p>
+                <div className="mt-1">{getStatusBadge(userDetails.accountStatus)}</div>
+              </div>
+            </div>
+
+            {/* Details */}
+            <div className="bg-gray-50 rounded-xl p-4 space-y-3">
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-500">Email Verified</span>
+                <Badge variant={userDetails.emailVerified ? "success" : "danger"} size="sm">
+                  {userDetails.emailVerified ? "Yes" : "No"}
+                </Badge>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-500">Joined</span>
+                <span className="font-medium">{new Date(userDetails.createdAt).toLocaleDateString()}</span>
+              </div>
+              {userDetails.lastLoginAt && (
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-500">Last Login</span>
+                  <span className="font-medium">{new Date(userDetails.lastLoginAt).toLocaleDateString()}</span>
+                </div>
+              )}
+              {userDetails.activatedAt && (
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-500">Activated</span>
+                  <span className="font-medium">
+                    {new Date(userDetails.activatedAt).toLocaleDateString()}
+                    {userDetails.activatorName && (
+                      <span className="text-gray-400"> by {userDetails.activatorName}</span>
+                    )}
+                  </span>
+                </div>
+              )}
+            </div>
+
+            {/* Families */}
+            <div>
+              <h4 className="font-bold text-gray-900 mb-3">Families ({userDetails.families.length})</h4>
+              {userDetails.families.length > 0 ? (
+                <div className="space-y-2">
+                  {userDetails.families.map((family: { id: number; name: string; role: string; isOnboarded: boolean }) => (
+                    <div key={family.id} className="p-3 bg-gray-50 rounded-xl">
+                      <div className="font-medium text-gray-800">{family.name}</div>
+                      <div className="text-xs text-gray-500 flex items-center gap-2 mt-1">
+                        <Badge variant="secondary" size="sm">{family.role}</Badge>
+                        <Badge variant={family.isOnboarded ? "success" : "warning"} size="sm">
+                          {family.isOnboarded ? "Onboarded" : "Setup incomplete"}
+                        </Badge>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-gray-500">No families yet</p>
+              )}
+            </div>
+
+            {/* Admin Notes */}
+            {userDetails.adminNotes && (
+              <div>
+                <h4 className="font-bold text-gray-900 mb-2">Admin Notes</h4>
+                <p className="text-sm text-gray-600 bg-gray-50 p-3 rounded-xl">{userDetails.adminNotes}</p>
+              </div>
+            )}
+          </div>
+        ) : null}
+      </Modal>
+
+      {/* Delete Confirmation */}
+      <ConfirmDialog
+        isOpen={showDeleteConfirm}
+        onClose={() => {
+          setShowDeleteConfirm(false);
+          if (!showDetailsModal) setSelectedUserId(null);
+        }}
+        onConfirm={() => {
+          if (selectedUserId) {
+            deleteMutation.mutate({ data: { userId: selectedUserId } });
+          }
+        }}
+        title="Delete User?"
+        message="This will permanently delete this user and all their associated data. This action cannot be undone."
+      />
     </div>
   );
 }
+
 interface StatCardProps {
   label: string;
   value: number;
   icon: React.ReactNode;
-  color: string;
   highlight?: boolean;
 }
-function StatCard({
-  label,
-  value,
-  icon,
-  color,
-  highlight = false,
-}: StatCardProps) {
-  const colorClasses: Record<string, string> = {
-    blue: "border-blue-200 bg-blue-50",
-    yellow: "border-yellow-200 bg-yellow-50",
-    green: "border-green-200 bg-green-50",
-    orange: "border-orange-200 bg-orange-50",
-    purple: "border-purple-200 bg-purple-50",
-    indigo: "border-indigo-200 bg-indigo-50",
-  };
 
+function StatCard({ label, value, icon, highlight = false }: StatCardProps) {
   return (
     <div
-      className={`p-4 rounded-xl border-2 ${colorClasses[color]} ${highlight ? "ring-2 ring-yellow-400 ring-offset-2" : ""}`}
+      className={`p-4 rounded-xl border-2 border-gray-200 bg-white ${highlight ? "ring-2 ring-theme-primary ring-offset-2" : ""}`}
     >
       <div className="flex items-center gap-2 mb-2">
         {icon}
