@@ -13,21 +13,6 @@ import appCss from '../styles.css?url'
 import { ThemeProvider } from 'next-themes'
 import { LayoutProvider } from '../contexts/LayoutContext'
 
-// Content Security Policy for production
-// Restricts sources for scripts, styles, images, etc.
-const getCSPContent = () => {
-  const isDev = process.env.NODE_ENV === 'development'
-
-  // More permissive in development for hot reload, devtools, etc.
-  if (isDev) {
-    return "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' ws: wss:; worker-src 'self' blob:;"
-  }
-
-  // Production CSP - 'unsafe-inline' required for TanStack Start hydration scripts
-  // worker-src blob: needed for canvas-confetti
-  return "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' wss:; worker-src 'self' blob:; frame-ancestors 'none'; form-action 'self'; base-uri 'self';"
-}
-
 export const Route = createRootRouteWithContext<{
   queryClient: QueryClient
 }>()({
@@ -82,17 +67,6 @@ export const Route = createRootRouteWithContext<{
       {
         name: 'mobile-web-app-capable',
         content: 'yes',
-      },
-      // Security headers via meta tags
-      // Note: X-Frame-Options and X-Content-Type-Options must be set via HTTP headers, not meta tags
-      // CSP frame-ancestors directive provides equivalent protection to X-Frame-Options
-      {
-        httpEquiv: 'Content-Security-Policy',
-        content: getCSPContent(),
-      },
-      {
-        httpEquiv: 'Referrer-Policy',
-        content: 'strict-origin-when-cross-origin',
       },
     ],
     links: [
