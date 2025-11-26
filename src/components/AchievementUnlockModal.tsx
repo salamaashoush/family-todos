@@ -132,7 +132,7 @@ export function AchievementUnlockModal({ achievement, onClose }: AchievementUnlo
 
             {/* Inner badge */}
             <div className="absolute inset-2 rounded-full bg-gradient-to-br from-slate-800 to-slate-900 flex items-center justify-center shadow-inner">
-              <span className="text-6xl animate-badge-pop">
+              <span className="text-6xl animate-badge-pop text-white">
                 {achievement.achievementIcon || '🏆'}
               </span>
             </div>
