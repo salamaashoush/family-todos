@@ -212,17 +212,16 @@ export function TimeslotForm({ timeslot, onSubmit, onCancel }: TimeslotFormProps
       <form.Subscribe
         selector={(state) => [state.canSubmit, state.isSubmitting]}
         children={([canSubmit, isSubmitting]) => (
-          <div className="flex gap-3 pt-4">
+          <div className="flex justify-end gap-3 pt-4">
+            <Button type="button" variant="secondary" onClick={onCancel}>
+              Cancel
+            </Button>
             <Button
               type="submit"
               disabled={!canSubmit}
               isLoading={isSubmitting}
-              fullWidth
             >
               {timeslot ? 'Update Time Slot' : 'Create Time Slot'}
-            </Button>
-            <Button type="button" variant="secondary" onClick={onCancel}>
-              Cancel
             </Button>
           </div>
         )}

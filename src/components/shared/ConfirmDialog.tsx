@@ -124,11 +124,11 @@ export function ConfirmDialog({
             </div>
           </div>
         </div>
-        <div className="flex gap-3 p-4 bg-gray-50 border-t border-gray-200">
-          <Button variant="secondary" onClick={onClose} fullWidth>
+        <div className="flex justify-end gap-3 p-4 bg-gray-50 border-t border-gray-200">
+          <Button variant="secondary" onClick={onClose}>
             {cancelText}
           </Button>
-          <Button variant="danger" onClick={handleConfirm} fullWidth>
+          <Button variant="danger" onClick={handleConfirm}>
             {confirmText}
           </Button>
         </div>

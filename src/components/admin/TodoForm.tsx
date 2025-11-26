@@ -231,17 +231,16 @@ export function TodoForm({ todo, onSubmit, onCancel }: TodoFormProps) {
       <form.Subscribe
         selector={(state) => [state.canSubmit, state.isSubmitting]}
         children={([canSubmit, isSubmitting]) => (
-          <div className="flex gap-3 pt-4">
+          <div className="flex justify-end gap-3 pt-4">
+            <Button type="button" variant="secondary" onClick={onCancel}>
+              Cancel
+            </Button>
             <Button
               type="submit"
               disabled={!canSubmit || isUploading}
               isLoading={isUploading || isSubmitting}
-              fullWidth
             >
               {todo ? 'Update Task' : 'Create Task'}
-            </Button>
-            <Button type="button" variant="secondary" onClick={onCancel}>
-              Cancel
             </Button>
           </div>
         )}
