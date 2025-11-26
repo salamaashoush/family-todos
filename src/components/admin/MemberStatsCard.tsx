@@ -9,7 +9,7 @@ export function MemberStatsCard({ member }: MemberStatsCardProps) {
   const isLoading = statsLoading || achievementsLoading
 
   return (
-    <div className="bg-white rounded-xl shadow-lg overflow-hidden border-2 border-theme-primary/20">
+    <div className="bg-white rounded-xl shadow-lg overflow-hidden border-2 border-gray-200">
       <div className="bg-gradient-to-r from-theme-primary to-theme-secondary p-4 text-center">
         {member.avatar && (
           <div className="w-16 h-16 mx-auto mb-2 rounded-full overflow-hidden border-4 border-white shadow-lg">

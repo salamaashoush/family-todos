@@ -4,7 +4,7 @@ import { z } from 'zod'
 import { useImageUpload } from '../../hooks/useImageUpload'
 import { UPLOAD_CONFIG } from '../../constants'
 import { showToast } from '../Toast'
-import { Button, Input, Checkbox } from '../shared'
+import { Button, Input, Checkbox, FileInput } from '../shared'
 import type { Member } from '../../types'
 
 const memberSchema = z.object({
@@ -95,30 +95,22 @@ export function MemberForm({ member, onSubmit, onCancel }: MemberFormProps) {
         )}
       />
 
-      <div>
-        <label className="block text-sm font-bold text-gray-700 mb-2">Avatar Photo (Optional)</label>
-        <div className="flex items-start gap-4">
-          {imagePreview && (
-            <div className="flex-shrink-0">
-              <img
-                src={imagePreview}
-                alt="Preview"
-                className="w-20 h-20 sm:w-24 sm:h-24 rounded-full object-cover border-4 border-theme-primary/20"
-              />
-            </div>
-          )}
-          <div className="flex-1">
-            <input
-              type="file"
-              accept="image/*"
-              onChange={handleImageChange}
-              className="block w-full text-sm text-gray-700 file:mr-4 file:py-3 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-purple-50 file:text-theme-primary hover:file:bg-purple-100 file:cursor-pointer cursor-pointer border-2 border-theme-primary/20 rounded-xl"
+      <div className="flex items-start gap-4">
+        {imagePreview && (
+          <div className="flex-shrink-0">
+            <img
+              src={imagePreview}
+              alt="Preview"
+              className="w-20 h-20 sm:w-24 sm:h-24 rounded-full object-cover border-4 border-theme-primary/20"
             />
-            <p className="text-xs text-gray-500 mt-2">
-              Max file size: {UPLOAD_CONFIG.MAX_FILE_SIZE_MB}MB. Supports: {UPLOAD_CONFIG.SUPPORTED_FORMATS}
-            </p>
           </div>
-        </div>
+        )}
+        <FileInput
+          label="Avatar Photo (Optional)"
+          accept="image/*"
+          onChange={handleImageChange}
+          helperText={`Max: ${UPLOAD_CONFIG.MAX_FILE_SIZE_MB}MB. Supports: ${UPLOAD_CONFIG.SUPPORTED_FORMATS}`}
+        />
       </div>
 
       <form.Field

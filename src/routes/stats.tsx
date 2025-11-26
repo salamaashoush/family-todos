@@ -118,7 +118,7 @@ function MemberStatsView({ member, stats, achievements }: MemberStatsViewProps) 
                 <div
                   key={day.date}
                   className={`flex flex-col items-center p-3 rounded-xl border-2 transition-all ${
-                    isToday ? 'border-theme-primary bg-purple-50 shadow-md' : 'border-gray-200 bg-white'
+                    isToday ? 'border-theme-primary bg-theme-primary/10 shadow-md' : 'border-gray-200 bg-white'
                   }`}
                 >
                   <span className="text-sm font-bold text-gray-600">{WEEK_DAYS[index]}</span>

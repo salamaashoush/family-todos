@@ -5,7 +5,7 @@ import { useTimeslots } from '../../hooks/useQueries'
 import { useImageUpload } from '../../hooks/useImageUpload'
 import { UPLOAD_CONFIG } from '../../constants'
 import { showToast } from '../Toast'
-import { Button, Input, Textarea } from '../shared'
+import { Button, Input, Textarea, FileInput } from '../shared'
 import type { Todo, Timeslot } from '../../types'
 
 const todoSchema = z.object({
@@ -143,30 +143,22 @@ export function TodoForm({ todo, onSubmit, onCancel }: TodoFormProps) {
         )}
       />
 
-      <div>
-        <label className="block text-sm font-bold text-gray-700 mb-2">Task Image (Optional)</label>
-        <div className="flex items-start gap-4">
-          {imagePreview && (
-            <div className="flex-shrink-0">
-              <img
-                src={imagePreview}
-                alt="Preview"
-                className="w-24 h-24 sm:w-32 sm:h-32 rounded-xl object-cover border-4 border-theme-primary/20"
-              />
-            </div>
-          )}
-          <div className="flex-1">
-            <input
-              type="file"
-              accept="image/*"
-              onChange={handleImageChange}
-              className="block w-full text-sm text-gray-700 file:mr-4 file:py-3 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-purple-50 file:text-theme-primary hover:file:bg-purple-100 file:cursor-pointer cursor-pointer border-2 border-theme-primary/20 rounded-xl"
+      <div className="flex items-start gap-4">
+        {imagePreview && (
+          <div className="flex-shrink-0">
+            <img
+              src={imagePreview}
+              alt="Preview"
+              className="w-24 h-24 sm:w-32 sm:h-32 rounded-xl object-cover border-4 border-theme-primary/20"
             />
-            <p className="text-xs text-gray-500 mt-2">
-              Visual aid for the task. Max: {UPLOAD_CONFIG.MAX_FILE_SIZE_MB}MB. Supports: {UPLOAD_CONFIG.SUPPORTED_FORMATS}
-            </p>
           </div>
-        </div>
+        )}
+        <FileInput
+          label="Task Image (Optional)"
+          accept="image/*"
+          onChange={handleImageChange}
+          helperText={`Visual aid for the task. Max: ${UPLOAD_CONFIG.MAX_FILE_SIZE_MB}MB`}
+        />
       </div>
 
       <form.Field

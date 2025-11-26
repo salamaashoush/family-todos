@@ -169,7 +169,7 @@ export function StatsDisplay({ stats, achievements }: StatsDisplayProps) {
                   <div
                     key={day.date}
                     className={`flex flex-col items-center p-2 rounded-lg border-2 ${
-                      isToday ? 'border-theme-primary bg-purple-50' : 'border-gray-200 bg-white'
+                      isToday ? 'border-theme-primary bg-theme-primary/10' : 'border-gray-200 bg-white'
                     }`}
                   >
                     <span className="text-xs font-bold text-gray-600">{WEEK_DAYS[index]}</span>
