@@ -10,19 +10,20 @@ export function MemberFocusLayout({
   onToggleTodo,
 }: LayoutProps) {
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
+    <div className="flex gap-4 sm:gap-5 lg:gap-6 overflow-x-auto pb-4 -mx-2 px-2 snap-x snap-mandatory scrollbar-thin">
       {members.map((member: Member) => {
         const memberTimeslots = timeslots.filter((t: Timeslot) => t.member_ids?.includes(member.id))
         return (
-          <MemberColumn
-            key={member.id}
-            member={member}
-            timeslots={memberTimeslots}
-            todos={todos}
-            completions={completions}
-            isTodoCompleted={isTodoCompleted}
-            onToggleTodo={onToggleTodo}
-          />
+          <div key={member.id} className="flex-shrink-0 w-80 sm:w-96 snap-start">
+            <MemberColumn
+              member={member}
+              timeslots={memberTimeslots}
+              todos={todos}
+              completions={completions}
+              isTodoCompleted={isTodoCompleted}
+              onToggleTodo={onToggleTodo}
+            />
+          </div>
         )
       })}
     </div>

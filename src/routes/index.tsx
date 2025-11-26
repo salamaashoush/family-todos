@@ -119,9 +119,9 @@ function Home() {
 
       <div className="max-w-[1920px] mx-auto p-2 sm:p-4 lg:p-6 pb-20">
         {membersLoading || !isHydrated ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
+          <div className="flex gap-4 sm:gap-5 lg:gap-6 overflow-x-auto pb-4 -mx-2 px-2 snap-x snap-mandatory scrollbar-thin">
             {[1, 2, 3, 4].map((i) => (
-              <div key={i} className="bg-white rounded-2xl shadow-xl overflow-hidden animate-pulse">
+              <div key={i} className="flex-shrink-0 w-80 sm:w-96 bg-white rounded-2xl shadow-xl overflow-hidden animate-pulse snap-start">
                 <div className="h-32 bg-gray-200"></div>
                 <div className="p-4 space-y-3">
                   <div className="h-4 bg-gray-200 rounded w-3/4"></div>
