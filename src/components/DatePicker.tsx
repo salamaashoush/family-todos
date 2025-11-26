@@ -8,18 +8,33 @@ interface DatePickerProps {
 export function DatePicker({ selectedDate, onDateChange }: DatePickerProps) {
   const inputRef = useRef<HTMLInputElement>(null)
 
-  const today = new Date().toISOString().split('T')[0]
+  // Get today's date in local timezone as YYYY-MM-DD
+  const getLocalDateString = (date: Date) => {
+    const year = date.getFullYear()
+    const month = String(date.getMonth() + 1).padStart(2, '0')
+    const day = String(date.getDate()).padStart(2, '0')
+    return `${year}-${month}-${day}`
+  }
+
+  const today = getLocalDateString(new Date())
 
   const formatDisplayDate = (dateStr: string) => {
-    const date = new Date(dateStr + 'T00:00:00')
-    const todayDate = new Date(today + 'T00:00:00')
-    const diffTime = date.getTime() - todayDate.getTime()
-    const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24))
+    // Compare date strings directly for accurate Today/Yesterday/Tomorrow labels
+    if (dateStr === today) return 'Today'
 
-    if (diffDays === 0) return 'Today'
-    if (diffDays === -1) return 'Yesterday'
-    if (diffDays === 1) return 'Tomorrow'
+    // Calculate yesterday and tomorrow in local timezone
+    const now = new Date()
+    const yesterday = new Date(now)
+    yesterday.setDate(yesterday.getDate() - 1)
+    const tomorrow = new Date(now)
+    tomorrow.setDate(tomorrow.getDate() + 1)
 
+    if (dateStr === getLocalDateString(yesterday)) return 'Yesterday'
+    if (dateStr === getLocalDateString(tomorrow)) return 'Tomorrow'
+
+    // For other dates, parse and format
+    const [year, month, day] = dateStr.split('-').map(Number)
+    const date = new Date(year, month - 1, day)
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
   }
 

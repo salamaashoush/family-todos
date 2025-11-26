@@ -238,19 +238,34 @@ const TogglePublicTodoSchema = z.object({
 
 /**
  * Check if a date is within the allowed completion window
- * Allowed: today and yesterday only
+ * Allowed: today and yesterday only (based on client's provided date)
  * Not allowed: future dates or dates more than 1 day in the past
+ *
+ * Note: This uses UTC to avoid timezone issues between client and server
  */
 function isDateInCompletionWindow(dateString: string): { allowed: boolean; reason?: string } {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  // Get today's date in UTC as YYYY-MM-DD string
+  const now = new Date();
+  const todayStr = now.toISOString().split("T")[0];
 
-  const [year, month, day] = dateString.split("-").map(Number);
-  const targetDate = new Date(year, month - 1, day);
-  targetDate.setHours(0, 0, 0, 0);
+  // Get yesterday's date in UTC as YYYY-MM-DD string
+  const yesterday = new Date(now);
+  yesterday.setUTCDate(yesterday.getUTCDate() - 1);
+  const yesterdayStr = yesterday.toISOString().split("T")[0];
 
-  const diffMs = today.getTime() - targetDate.getTime();
-  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+  // Simple string comparison for allowed dates
+  if (dateString === todayStr || dateString === yesterdayStr) {
+    return { allowed: true };
+  }
+
+  // Parse dates for more detailed comparison
+  const [targetYear, targetMonth, targetDay] = dateString.split("-").map(Number);
+  const targetDate = new Date(Date.UTC(targetYear, targetMonth - 1, targetDay));
+
+  const todayUTC = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+
+  const diffMs = todayUTC.getTime() - targetDate.getTime();
+  const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24));
 
   // Future date
   if (diffDays < 0) {
@@ -875,7 +890,7 @@ export const publicRequestRedemption = createServerFn({ method: "POST" })
     await db.insert(schema.pointTransactions).values({
       memberId: data.memberId,
       amount: -reward.pointCost,
-      type: "spent",
+      type: "redeemed",
       description: `Requested: ${reward.name}`,
       rewardId: data.rewardId,
     });
@@ -884,7 +899,7 @@ export const publicRequestRedemption = createServerFn({ method: "POST" })
     await logAudit({
       familyId: family.id,
       action: "create",
-      entityType: "reward_redemption",
+      entityType: "reward",
       entityId: redemption.id,
       newValue: {
         memberId: data.memberId,
@@ -893,6 +908,7 @@ export const publicRequestRedemption = createServerFn({ method: "POST" })
         rewardName: reward.name,
         pointsSpent: reward.pointCost,
         source: "public_board",
+        redemption: true,
       },
     });
 

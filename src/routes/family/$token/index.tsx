@@ -28,9 +28,17 @@ import {
   togglePublicTodo,
 } from "../../../server/publicBoard";
 
+// Helper to get date string in local timezone
+function getLocalDateString(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
 export const Route = createFileRoute("/family/$token/")({
   loader: async ({ params: { token }, context: { queryClient } }) => {
-    const today = new Date().toISOString().split("T")[0];
+    const today = getLocalDateString(new Date());
 
     // Validate token format before making API calls
     // Share tokens are 64 character hex strings
@@ -347,23 +355,32 @@ function PublicFamilyBoard() {
 
   // Check if selected date is editable (today or yesterday only)
   const dateEditableInfo = useMemo(() => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    const now = new Date();
+    const todayStr = getLocalDateString(now);
 
+    // Calculate yesterday in local timezone
+    const yesterday = new Date(now);
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yesterdayStr = getLocalDateString(yesterday);
+
+    // Simple string comparison - today and yesterday are allowed
+    if (selectedDate === todayStr || selectedDate === yesterdayStr) {
+      return { isEditable: true, reason: undefined };
+    }
+
+    // Check if it's a future date or too far in the past
     const [year, month, day] = selectedDate.split("-").map(Number);
     const targetDate = new Date(year, month - 1, day);
     targetDate.setHours(0, 0, 0, 0);
 
-    const diffMs = today.getTime() - targetDate.getTime();
-    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+    const todayDate = new Date(now);
+    todayDate.setHours(0, 0, 0, 0);
 
-    if (diffDays < 0) {
+    if (targetDate > todayDate) {
       return { isEditable: false, reason: "Cannot complete tasks for future dates" };
     }
-    if (diffDays > 1) {
-      return { isEditable: false, reason: "Cannot modify tasks more than 1 day in the past" };
-    }
-    return { isEditable: true, reason: undefined };
+
+    return { isEditable: false, reason: "Cannot modify tasks more than 1 day in the past" };
   }, [selectedDate]);
 
   // Invalid token

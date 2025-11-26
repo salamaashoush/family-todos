@@ -1,9 +1,21 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { eq, desc, sql, and, or, ilike } from "drizzle-orm";
+import {
+  eq,
+  desc,
+  sql,
+  and,
+  or,
+  ilike,
+  gte,
+  lte,
+  asc,
+  inArray,
+} from "drizzle-orm";
 import { db, schema } from "../db";
 import { useAppSession } from "~/utils/session";
 import type { AccountStatus } from "../db/schema/auth";
+import type { AuditAction, AuditEntityType } from "../db/schema/audit";
 import { sanitizeSearchInput } from "../utils/security";
 
 // Helper to verify super admin access
@@ -47,35 +59,35 @@ export const checkSuperAdmin = createServerFn({ method: "GET" }).handler(
 );
 
 // Check if default admin password needs to be changed
-export const checkDefaultAdminSecurity = createServerFn({ method: "GET" }).handler(
-  async () => {
-    await requireSuperAdmin();
+export const checkDefaultAdminSecurity = createServerFn({
+  method: "GET",
+}).handler(async () => {
+  await requireSuperAdmin();
 
-    // Check if there's a default admin that hasn't changed their password
-    const [defaultAdmin] = await db
-      .select({
-        id: schema.adminUsers.id,
-        username: schema.adminUsers.username,
-        isDefaultAdmin: schema.adminUsers.isDefaultAdmin,
-        passwordChangedAt: schema.adminUsers.passwordChangedAt,
-      })
-      .from(schema.adminUsers)
-      .where(eq(schema.adminUsers.isDefaultAdmin, true))
-      .limit(1);
+  // Check if there's a default admin that hasn't changed their password
+  const [defaultAdmin] = await db
+    .select({
+      id: schema.adminUsers.id,
+      username: schema.adminUsers.username,
+      isDefaultAdmin: schema.adminUsers.isDefaultAdmin,
+      passwordChangedAt: schema.adminUsers.passwordChangedAt,
+    })
+    .from(schema.adminUsers)
+    .where(eq(schema.adminUsers.isDefaultAdmin, true))
+    .limit(1);
 
-    if (!defaultAdmin) {
-      return { needsPasswordChange: false };
-    }
-
-    // If default admin exists and password hasn't been changed, show warning
-    const needsPasswordChange = defaultAdmin.passwordChangedAt === null;
-
-    return {
-      needsPasswordChange,
-      defaultAdminUsername: defaultAdmin.username,
-    };
+  if (!defaultAdmin) {
+    return { needsPasswordChange: false };
   }
-);
+
+  // If default admin exists and password hasn't been changed, show warning
+  const needsPasswordChange = defaultAdmin.passwordChangedAt === null;
+
+  return {
+    needsPasswordChange,
+    defaultAdminUsername: defaultAdmin.username,
+  };
+});
 
 // Get dashboard stats
 export const getSuperAdminStats = createServerFn({ method: "GET" }).handler(
@@ -375,3 +387,274 @@ export const deleteUser = createServerFn({ method: "POST" })
 
     return { success: true };
   });
+
+// ============================================================
+// AUDIT LOG FUNCTIONS
+// ============================================================
+
+// Get audit logs with pagination and filtering
+const GetAuditLogsSchema = z.object({
+  page: z.number().min(1).default(1),
+  limit: z.number().min(1).max(100).default(50),
+  action: z.enum(["all", "create", "update", "delete"]).default("all"),
+  entityType: z
+    .enum([
+      "all",
+      "member",
+      "timeslot",
+      "todo",
+      "todo_completion",
+      "reward",
+      "achievement",
+      "family",
+      "user",
+      "settings",
+    ])
+    .default("all"),
+  familyId: z.number().optional(),
+  startDate: z.string().optional(),
+  endDate: z.string().optional(),
+});
+
+export const getAuditLogs = createServerFn({ method: "GET" })
+  .inputValidator(GetAuditLogsSchema)
+  .handler(async ({ data }) => {
+    await requireSuperAdmin();
+
+    const offset = (data.page - 1) * data.limit;
+    const conditions = [];
+
+    if (data.action !== "all") {
+      conditions.push(eq(schema.auditLogs.action, data.action as AuditAction));
+    }
+
+    if (data.entityType !== "all") {
+      conditions.push(
+        eq(schema.auditLogs.entityType, data.entityType as AuditEntityType)
+      );
+    }
+
+    if (data.familyId) {
+      conditions.push(eq(schema.auditLogs.familyId, data.familyId));
+    }
+
+    if (data.startDate) {
+      const startDate = new Date(data.startDate);
+      startDate.setHours(0, 0, 0, 0);
+      conditions.push(gte(schema.auditLogs.createdAt, startDate));
+    }
+
+    if (data.endDate) {
+      const endDate = new Date(data.endDate);
+      endDate.setHours(23, 59, 59, 999);
+      conditions.push(lte(schema.auditLogs.createdAt, endDate));
+    }
+
+    const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+
+    // Get audit logs with family and user info
+    const logs = await db
+      .select({
+        id: schema.auditLogs.id,
+        familyId: schema.auditLogs.familyId,
+        userId: schema.auditLogs.userId,
+        action: schema.auditLogs.action,
+        entityType: schema.auditLogs.entityType,
+        entityId: schema.auditLogs.entityId,
+        oldValue: schema.auditLogs.oldValue,
+        newValue: schema.auditLogs.newValue,
+        ipAddress: schema.auditLogs.ipAddress,
+        userAgent: schema.auditLogs.userAgent,
+        createdAt: schema.auditLogs.createdAt,
+      })
+      .from(schema.auditLogs)
+      .where(whereClause)
+      .orderBy(desc(schema.auditLogs.createdAt))
+      .limit(data.limit)
+      .offset(offset);
+
+    // Get total count
+    const [countResult] = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(schema.auditLogs)
+      .where(whereClause);
+
+    // Get family names for the logs
+    const familyIds = [
+      ...new Set(logs.filter((l) => l.familyId).map((l) => l.familyId!)),
+    ];
+    const familyNames: Record<number, string> = {};
+    if (familyIds.length > 0) {
+      const families = await db
+        .select({ id: schema.families.id, name: schema.families.name })
+        .from(schema.families)
+        .where(inArray(schema.families.id, familyIds));
+      families.forEach((f) => {
+        familyNames[f.id] = f.name;
+      });
+    }
+
+    // Get user names for the logs
+    const userIds = [
+      ...new Set(logs.filter((l) => l.userId).map((l) => l.userId!)),
+    ];
+    const userNames: Record<number, string> = {};
+    if (userIds.length > 0) {
+      const users = await db
+        .select({
+          id: schema.adminUsers.id,
+          username: schema.adminUsers.username,
+        })
+        .from(schema.adminUsers)
+        .where(inArray(schema.adminUsers.id, userIds));
+      users.forEach((u) => {
+        userNames[u.id] = u.username;
+      });
+    }
+
+    return {
+      logs: logs.map((log) => ({
+        ...log,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        oldValue: log.oldValue as any,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        newValue: log.newValue as any,
+        familyName: log.familyId ? familyNames[log.familyId] : null,
+        userName: log.userId ? userNames[log.userId] : null,
+      })),
+      pagination: {
+        page: data.page,
+        limit: data.limit,
+        total: countResult?.count ?? 0,
+        totalPages: Math.ceil((countResult?.count ?? 0) / data.limit),
+      },
+    };
+  });
+
+// Get audit statistics and analytics
+export const getAuditStats = createServerFn({ method: "GET" }).handler(
+  async () => {
+    await requireSuperAdmin();
+
+    // Get overall stats
+    const [overall] = await db
+      .select({
+        totalEvents: sql<number>`count(*)::int`,
+        todayEvents: sql<number>`count(*) filter (where ${schema.auditLogs.createdAt} >= current_date)::int`,
+        weekEvents: sql<number>`count(*) filter (where ${schema.auditLogs.createdAt} >= current_date - interval '7 days')::int`,
+        monthEvents: sql<number>`count(*) filter (where ${schema.auditLogs.createdAt} >= current_date - interval '30 days')::int`,
+      })
+      .from(schema.auditLogs);
+
+    // Get action breakdown
+    const actionBreakdown = await db
+      .select({
+        action: schema.auditLogs.action,
+        count: sql<number>`count(*)::int`,
+      })
+      .from(schema.auditLogs)
+      .groupBy(schema.auditLogs.action)
+      .orderBy(desc(sql`count(*)`));
+
+    // Get entity type breakdown
+    const entityBreakdown = await db
+      .select({
+        entityType: schema.auditLogs.entityType,
+        count: sql<number>`count(*)::int`,
+      })
+      .from(schema.auditLogs)
+      .groupBy(schema.auditLogs.entityType)
+      .orderBy(desc(sql`count(*)`));
+
+    // Get top families by activity (last 30 days)
+    const topFamilies = await db
+      .select({
+        familyId: schema.auditLogs.familyId,
+        familyName: schema.families.name,
+        count: sql<number>`count(*)::int`,
+      })
+      .from(schema.auditLogs)
+      .leftJoin(
+        schema.families,
+        eq(schema.auditLogs.familyId, schema.families.id)
+      )
+      .where(
+        and(
+          sql`${schema.auditLogs.familyId} IS NOT NULL`,
+          gte(
+            schema.auditLogs.createdAt,
+            sql`current_date - interval '30 days'`
+          )
+        )
+      )
+      .groupBy(schema.auditLogs.familyId, schema.families.name)
+      .orderBy(desc(sql`count(*)`))
+      .limit(10);
+
+    // Get activity timestamps for last 14 days
+    // Return raw timestamps so client can group by local date
+    const activityTimestamps = await db
+      .select({
+        createdAt: schema.auditLogs.createdAt,
+      })
+      .from(schema.auditLogs)
+      .where(gte(schema.auditLogs.createdAt, sql`now() - interval '14 days'`));
+
+    // Group by local date on the server for backwards compatibility
+    // Client can use activityTimestamps for local timezone grouping
+    const dailyActivity = await db
+      .select({
+        date: sql<string>`date(${schema.auditLogs.createdAt})::text`,
+        count: sql<number>`count(*)::int`,
+      })
+      .from(schema.auditLogs)
+      .where(gte(schema.auditLogs.createdAt, sql`now() - interval '14 days'`))
+      .groupBy(sql`date(${schema.auditLogs.createdAt})`)
+      .orderBy(asc(sql`date(${schema.auditLogs.createdAt})`));
+
+    // Get recent unique IPs (last 24 hours)
+    const [uniqueIps] = await db
+      .select({
+        count: sql<number>`count(distinct ${schema.auditLogs.ipAddress})::int`,
+      })
+      .from(schema.auditLogs)
+      .where(
+        and(
+          sql`${schema.auditLogs.ipAddress} IS NOT NULL`,
+          gte(schema.auditLogs.createdAt, sql`now() - interval '24 hours'`)
+        )
+      );
+
+    return {
+      overall: overall || {
+        totalEvents: 0,
+        todayEvents: 0,
+        weekEvents: 0,
+        monthEvents: 0,
+      },
+      actionBreakdown,
+      entityBreakdown,
+      topFamilies,
+      dailyActivity,
+      activityTimestamps: activityTimestamps.map((t) => t.createdAt.toISOString()),
+      uniqueIps24h: uniqueIps?.count ?? 0,
+    };
+  }
+);
+
+// Get all families for filter dropdown
+export const getAllFamilies = createServerFn({ method: "GET" }).handler(
+  async () => {
+    await requireSuperAdmin();
+
+    const families = await db
+      .select({
+        id: schema.families.id,
+        name: schema.families.name,
+      })
+      .from(schema.families)
+      .orderBy(asc(schema.families.name));
+
+    return { families };
+  }
+);

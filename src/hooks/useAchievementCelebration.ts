@@ -7,7 +7,7 @@ import type { RealtimeEvent } from '../server/realtime'
  * Queues multiple achievements and displays them one at a time
  */
 export function useAchievementCelebration() {
-  const [queue, setQueue] = useState<AchievementUnlockData[]>([])
+  const [_queue, setQueue] = useState<AchievementUnlockData[]>([])
   const [currentAchievement, setCurrentAchievement] = useState<AchievementUnlockData | null>(null)
 
   const handleAchievementEvent = useCallback((event: RealtimeEvent) => {

@@ -97,7 +97,7 @@ export const createTodo = createServerFn({ method: "POST" })
     }
 
     // Audit log
-    logCreate({
+    await logCreate({
       familyId,
       userId,
       entityType: "todo",
