@@ -9,6 +9,7 @@ export function MemberColumn({
   timeslots,
   todos,
   stats,
+  points,
   isTodoCompleted,
   onToggleTodo,
 }: MemberColumnProps) {
@@ -27,7 +28,7 @@ export function MemberColumn({
 
   return (
     <div className="bg-white rounded-2xl sm:rounded-3xl shadow-2xl overflow-hidden h-full flex flex-col">
-      <MemberHeader member={member} stats={stats} className="flex-shrink-0 rounded-t-2xl sm:rounded-t-3xl" />
+      <MemberHeader member={member} stats={stats} points={points} className="flex-shrink-0 rounded-t-2xl sm:rounded-t-3xl" />
 
       <div className="p-3 sm:p-4 space-y-3 sm:space-y-4 flex-1 overflow-y-auto">
         {timeslots.length === 0 && (

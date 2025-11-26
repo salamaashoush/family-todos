@@ -86,6 +86,7 @@ export function QuickCheckLayout({
   timeslots,
   todos,
   memberStats,
+  memberPoints,
   isTodoCompleted,
   onToggleTodo,
   currentTimeslotId,
@@ -97,6 +98,7 @@ export function QuickCheckLayout({
 
   const selectedMember = members[selectedMemberIndex]
   const selectedMemberStats = memberStats?.find((s) => s.memberId === selectedMember?.id)
+  const selectedMemberPoints = memberPoints?.find((p) => p.member_id === selectedMember?.id)?.total
 
   const memberTimeslots = useMemberTimeslots(timeslots, selectedMember?.id ?? 0)
 
@@ -186,7 +188,7 @@ export function QuickCheckLayout({
       </div>
 
       <div className="bg-white rounded-2xl overflow-hidden mb-4 shadow-lg">
-        <MemberHeader member={selectedMember} stats={selectedMemberStats} />
+        <MemberHeader member={selectedMember} stats={selectedMemberStats} points={selectedMemberPoints} />
         <div className="px-3 py-2">
           <div className="flex items-center justify-between text-sm text-gray-600 mb-2">
             <span>{memberDayProgress.completedCount} of {memberDayProgress.totalCount} tasks today</span>

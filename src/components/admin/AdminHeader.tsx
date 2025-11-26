@@ -57,7 +57,7 @@ export function AdminHeader({ username, shareToken }: AdminHeaderProps) {
           </div>
 
           <div className="flex items-center gap-1.5 sm:gap-2">
-            <div className="hidden sm:flex items-center gap-2 px-3 py-2 bg-gray-100 rounded-xl mr-1">
+            <div className="hidden sm:flex items-center gap-2 px-3 py-2 bg-gray-100 rounded-xl">
               <div className="w-7 h-7 rounded-full bg-gradient-to-br from-theme-primary to-theme-secondary flex items-center justify-center text-white text-sm font-bold">
                 {username.charAt(0).toUpperCase()}
               </div>
@@ -66,12 +66,12 @@ export function AdminHeader({ username, shareToken }: AdminHeaderProps) {
             {isSuperAdmin && (
               <Link
                 to="/super-admin"
-                className="flex items-center justify-center gap-2 p-2 sm:px-3 sm:py-2 rounded-xl bg-purple-100 hover:bg-purple-200 active:bg-purple-300 transition-colors min-h-[44px] min-w-[44px]"
+                className="flex items-center justify-center gap-2 p-2 sm:px-3 sm:py-2 rounded-xl bg-gray-100 hover:bg-gray-200 active:bg-gray-300 transition-colors min-h-[44px] min-w-[44px]"
                 aria-label="Super Admin Dashboard"
                 title="Super Admin Dashboard"
               >
-                <Shield className="w-5 h-5 text-purple-600" />
-                <span className="hidden lg:inline text-sm font-medium text-purple-600">Super Admin</span>
+                <Shield className="w-5 h-5 text-gray-600" />
+                <span className="hidden sm:inline text-sm font-medium text-gray-700">Super Admin</span>
               </Link>
             )}
             {shareToken && (
@@ -89,13 +89,13 @@ export function AdminHeader({ username, shareToken }: AdminHeaderProps) {
             )}
             <button
               onClick={handleLogout}
-              className="flex items-center justify-center gap-2 p-2 sm:px-3 sm:py-2 rounded-xl bg-red-100 hover:bg-red-200 active:bg-red-300 transition-colors min-h-[44px] min-w-[44px]"
+              className="flex items-center justify-center gap-2 p-2 sm:px-3 sm:py-2 rounded-xl bg-gray-100 hover:bg-gray-200 active:bg-gray-300 transition-colors min-h-[44px] min-w-[44px]"
               aria-label="Logout"
             >
-              <svg className="w-5 h-5 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <svg className="w-5 h-5 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
               </svg>
-              <span className="hidden sm:inline text-sm font-medium text-red-600">Logout</span>
+              <span className="hidden sm:inline text-sm font-medium text-gray-700">Logout</span>
             </button>
           </div>
         </div>

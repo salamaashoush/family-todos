@@ -4,6 +4,7 @@ import { eq, and, asc, inArray } from "drizzle-orm";
 import { db, schema } from "../db";
 import { getTenantContext, requireRole } from "../utils/tenant";
 import { logCreate, logUpdate, logDelete, sanitizeForAudit } from "../utils/audit";
+import { broadcastToFamily } from "./realtime";
 
 const GetTodosSchema = z.object({
   timeslotId: z.number().optional(),
@@ -104,6 +105,13 @@ export const createTodo = createServerFn({ method: "POST" })
       newValue: { ...sanitizeForAudit(todo), timeslotIds: data.timeslotIds },
     });
 
+    // Broadcast real-time update
+    broadcastToFamily(familyId, {
+      type: "data_refresh",
+      timestamp: Date.now(),
+      data: { entity: "todos", action: "created", entityId: todo.id },
+    });
+
     return {
       ...todo,
       timeslotIds: data.timeslotIds,
@@ -197,6 +205,13 @@ export const updateTodo = createServerFn({ method: "POST" })
         oldValue: sanitizeForAudit(oldTodo),
         newValue: sanitizeForAudit(todo),
       });
+
+      // Broadcast real-time update
+      broadcastToFamily(familyId, {
+        type: "data_refresh",
+        timestamp: Date.now(),
+        data: { entity: "todos", action: "updated", entityId: todo.id },
+      });
     }
 
     return todo;
@@ -240,6 +255,13 @@ export const deleteTodo = createServerFn({ method: "POST" })
         entityType: "todo",
         entityId: data.id,
         oldValue: sanitizeForAudit(oldTodo),
+      });
+
+      // Broadcast real-time update
+      broadcastToFamily(familyId, {
+        type: "data_refresh",
+        timestamp: Date.now(),
+        data: { entity: "todos", action: "deleted", entityId: data.id },
       });
     }
 

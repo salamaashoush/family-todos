@@ -9,11 +9,12 @@ interface MemberCardProps {
   todos: Todo[]
   timeslotId: number
   stats?: MemberStats | null
+  points?: number | null
   isTodoCompleted: (todoId: number, timeslotId: number, memberId: number) => boolean
   onToggleTodo: (todoId: number, timeslotId: number, memberId: number, isCompleted: boolean) => void
 }
 
-function MemberCard({ member, todos, timeslotId, stats, isTodoCompleted, onToggleTodo }: MemberCardProps) {
+function MemberCard({ member, todos, timeslotId, stats, points, isTodoCompleted, onToggleTodo }: MemberCardProps) {
   const { completedCount, totalCount, allCompleted } = useTimeslotProgress(todos, timeslotId, member.id, isTodoCompleted)
 
   const handleToggle = useCallback(
@@ -33,6 +34,7 @@ function MemberCard({ member, todos, timeslotId, stats, isTodoCompleted, onToggl
       <MemberHeader
         member={member}
         stats={stats}
+        points={points}
         variant={allCompleted ? 'complete' : 'compact'}
       />
 
@@ -60,6 +62,7 @@ interface TimeslotRowProps {
   members: Member[]
   todos: Todo[]
   memberStats?: MemberStats[]
+  memberPoints?: { member_id: number; total: number }[]
   isTodoCompleted: (todoId: number, timeslotId: number, memberId: number) => boolean
   onToggleTodo: (todoId: number, timeslotId: number, memberId: number, isCompleted: boolean) => void
   isCurrentTimeslot: boolean
@@ -72,6 +75,7 @@ function TimeslotRow({
   members,
   todos,
   memberStats,
+  memberPoints,
   isTodoCompleted,
   onToggleTodo,
   isCurrentTimeslot,
@@ -110,6 +114,7 @@ function TimeslotRow({
           <div className="flex gap-4 overflow-x-auto pb-4 -mb-4 snap-x snap-mandatory">
             {timeslotMembers.map((member) => {
               const stats = memberStats?.find((s) => s.memberId === member.id)
+              const points = memberPoints?.find((p) => p.member_id === member.id)?.total
               return (
                 <div key={member.id} className="snap-start">
                   <MemberCard
@@ -117,6 +122,7 @@ function TimeslotRow({
                     todos={timeslotTodos}
                     timeslotId={timeslot.id}
                     stats={stats}
+                    points={points}
                     isTodoCompleted={isTodoCompleted}
                     onToggleTodo={onToggleTodo}
                   />
@@ -135,6 +141,7 @@ export function TimeslotFocusLayout({
   timeslots,
   todos,
   memberStats,
+  memberPoints,
   isTodoCompleted,
   onToggleTodo,
   currentTimeslotId,
@@ -169,6 +176,7 @@ export function TimeslotFocusLayout({
           members={members}
           todos={todos}
           memberStats={memberStats}
+          memberPoints={memberPoints}
           isTodoCompleted={isTodoCompleted}
           onToggleTodo={onToggleTodo}
           isCurrentTimeslot={timeslot.id === currentTimeslotId}

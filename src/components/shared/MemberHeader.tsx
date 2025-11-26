@@ -4,11 +4,12 @@ import type { Member, MemberStats } from '../../types'
 interface MemberHeaderProps {
   member: Member
   stats?: MemberStats | null
+  points?: number | null
   variant?: 'default' | 'complete' | 'compact'
   className?: string
 }
 
-export function MemberHeader({ member, stats, variant = 'default', className = '' }: MemberHeaderProps) {
+export function MemberHeader({ member, stats, points, variant = 'default', className = '' }: MemberHeaderProps) {
   const isComplete = variant === 'complete'
   const isCompact = variant === 'compact'
 
@@ -52,6 +53,12 @@ export function MemberHeader({ member, stats, variant = 'default', className = '
                 <span className="flex items-center gap-0.5" title={`${stats.totalTasksCompleted} tasks`}>
                   <span className="text-green-300">✓</span>
                   <span>{stats.totalTasksCompleted}</span>
+                </span>
+              )}
+              {!isCompact && points !== undefined && points !== null && (
+                <span className="flex items-center gap-0.5" title={`${points} points`}>
+                  <span className="text-purple-300">&#9670;</span>
+                  <span>{points}p</span>
                 </span>
               )}
             </div>

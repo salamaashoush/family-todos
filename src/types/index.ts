@@ -19,6 +19,7 @@ export interface MemberColumnProps {
   todos: Todo[]
   completions: TodoCompletion[]
   stats?: MemberStats | null
+  points?: number | null
   isTodoCompleted: (todoId: number, timeslotId: number, memberId: number) => boolean
   onToggleTodo: (todoId: number, timeslotId: number, memberId: number, isCompleted: boolean) => void
 }
@@ -53,12 +54,18 @@ export interface WeeklyProgressDay {
 export type TimeslotWithMembers = Timeslot
 export type TodoWithTimeslots = Todo
 
+export interface MemberPoints {
+  member_id: number
+  total: number
+}
+
 export interface LayoutProps {
   members: Member[]
   timeslots: Timeslot[]
   todos: Todo[]
   completions: TodoCompletion[]
   memberStats?: MemberStats[]
+  memberPoints?: MemberPoints[]
   isTodoCompleted: (todoId: number, timeslotId: number, memberId: number) => boolean
   onToggleTodo: (todoId: number, timeslotId: number, memberId: number, isCompleted: boolean) => void
   currentTimeslotId: number | null

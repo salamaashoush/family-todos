@@ -101,7 +101,7 @@ export function LayoutSwitcher() {
                   Auto
                 </div>
                 <div className="text-xs text-gray-500 mt-0.5">
-                  {deviceType === 'mobile' ? 'Mobile' : deviceType === 'tablet' ? 'Tablet' : 'Desktop'} detected
+                  {deviceType === 'phone' ? 'Mobile' : deviceType === 'tablet' ? 'Tablet' : 'Desktop'} detected
                 </div>
               </div>
               {!isManualOverride && (

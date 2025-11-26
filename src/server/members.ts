@@ -4,6 +4,7 @@ import { eq, asc, and } from "drizzle-orm";
 import { db, schema } from "../db";
 import { getTenantContext, requireRole } from "../utils/tenant";
 import { logCreate, logUpdate, logDelete, sanitizeForAudit } from "../utils/audit";
+import { broadcastToFamily } from "./realtime";
 
 export const getMembers = createServerFn({ method: "GET" }).handler(
   async () => {
@@ -52,6 +53,13 @@ export const createMember = createServerFn({ method: "POST" })
       entityType: "member",
       entityId: member.id,
       newValue: sanitizeForAudit(member),
+    });
+
+    // Broadcast real-time update
+    broadcastToFamily(familyId, {
+      type: "data_refresh",
+      timestamp: Date.now(),
+      data: { entity: "members", action: "created", entityId: member.id },
     });
 
     return member;
@@ -121,6 +129,13 @@ export const updateMember = createServerFn({ method: "POST" })
         oldValue: sanitizeForAudit(oldMember),
         newValue: sanitizeForAudit(member),
       });
+
+      // Broadcast real-time update
+      broadcastToFamily(familyId, {
+        type: "data_refresh",
+        timestamp: Date.now(),
+        data: { entity: "members", action: "updated", entityId: member.id },
+      });
     }
 
     return member;
@@ -164,6 +179,13 @@ export const deleteMember = createServerFn({ method: "POST" })
         entityType: "member",
         entityId: data.id,
         oldValue: sanitizeForAudit(oldMember),
+      });
+
+      // Broadcast real-time update
+      broadcastToFamily(familyId, {
+        type: "data_refresh",
+        timestamp: Date.now(),
+        data: { entity: "members", action: "deleted", entityId: data.id },
       });
     }
 

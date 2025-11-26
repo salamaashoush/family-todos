@@ -7,6 +7,7 @@ export function MemberFocusLayout({
   todos,
   completions,
   memberStats,
+  memberPoints,
   isTodoCompleted,
   onToggleTodo,
 }: LayoutProps) {
@@ -15,6 +16,7 @@ export function MemberFocusLayout({
       {members.map((member: Member) => {
         const memberTimeslots = timeslots.filter((t: Timeslot) => t.memberIds?.includes(member.id))
         const stats = memberStats?.find((s) => s.memberId === member.id)
+        const points = memberPoints?.find((p) => p.member_id === member.id)?.total
         return (
           <div key={member.id} className="flex-shrink-0 w-80 sm:w-96 snap-start">
             <MemberColumn
@@ -23,6 +25,7 @@ export function MemberFocusLayout({
               todos={todos}
               completions={completions}
               stats={stats}
+              points={points}
               isTodoCompleted={isTodoCompleted}
               onToggleTodo={onToggleTodo}
             />

@@ -1,18 +1,20 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState, useCallback, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Toast, showToast } from "../../components/Toast";
-import { FloatingMenu } from "../../components/FloatingMenu";
-import { LayoutSwitcher } from "../../components/LayoutSwitcher";
-import { MemberFocusLayout } from "../../components/layouts/MemberFocusLayout";
-import { TimeslotFocusLayout } from "../../components/layouts/TimeslotFocusLayout";
-import { QuickCheckLayout } from "../../components/layouts/QuickCheckLayout";
-import { FamilyDashboardLayout } from "../../components/layouts/FamilyDashboardLayout";
-import { filterTimeslotsByDateString } from "../../utils/timeslots";
-import { DatePicker } from "../../components/DatePicker";
-import { ThemeSwitcher } from "../../components/ThemeSwitcher";
-import { useLayout, useCurrentTimeslot } from "../../contexts/LayoutContext";
-import { useCompletionCelebration } from "../../hooks/useCompletionCelebration";
+import { Toast, showToast } from "../../../components/Toast";
+import { FloatingMenu } from "../../../components/FloatingMenu";
+import { LayoutSwitcher } from "../../../components/LayoutSwitcher";
+import { MemberFocusLayout } from "../../../components/layouts/MemberFocusLayout";
+import { TimeslotFocusLayout } from "../../../components/layouts/TimeslotFocusLayout";
+import { QuickCheckLayout } from "../../../components/layouts/QuickCheckLayout";
+import { FamilyDashboardLayout } from "../../../components/layouts/FamilyDashboardLayout";
+import { filterTimeslotsByDateString } from "../../../utils/timeslots";
+import { DatePicker } from "../../../components/DatePicker";
+import { ThemeSwitcher } from "../../../components/ThemeSwitcher";
+import { useLayout, useCurrentTimeslot } from "../../../contexts/LayoutContext";
+import { useCompletionCelebration } from "../../../hooks/useCompletionCelebration";
+import { useRealtime, getClientId } from "../../../hooks/useRealtime";
+import type { RealtimeEvent } from "../../../server/realtime";
 import {
   getFamilyByShareToken,
   getPublicMembers,
@@ -20,10 +22,11 @@ import {
   getPublicTodos,
   getPublicCompletions,
   getPublicMemberStats,
+  getPublicMemberPoints,
   togglePublicTodo,
-} from "../../server/publicBoard";
+} from "../../../server/publicBoard";
 
-export const Route = createFileRoute("/family/$token")({
+export const Route = createFileRoute("/family/$token/")({
   loader: async ({ params: { token }, context: { queryClient } }) => {
     const today = new Date().toISOString().split("T")[0];
 
@@ -62,6 +65,10 @@ export const Route = createFileRoute("/family/$token")({
           queryClient.ensureQueryData({
             queryKey: ["public-member-stats", token],
             queryFn: () => getPublicMemberStats({ data: { token } }),
+          }),
+          queryClient.ensureQueryData({
+            queryKey: ["public-member-points", token],
+            queryFn: () => getPublicMemberPoints({ data: { token } }),
           }),
         ]);
       }
@@ -111,6 +118,44 @@ function PublicFamilyBoard() {
   // Layout context for multiple layouts and settings
   const { layout, settings, currentTimeslotId, isHydrated } = useLayout();
 
+  // Handle real-time events with toast notifications
+  const handleRealtimeEvent = useCallback((event: RealtimeEvent) => {
+    switch (event.type) {
+      case "task_completed":
+        if (event.memberName) {
+          showToast(`${event.memberName} completed a task!`, "success");
+        }
+        break;
+      case "task_uncompleted":
+        // No toast needed for uncomplete
+        break;
+      case "timeslot_completed":
+        if (event.memberName) {
+          showToast(`${event.memberName} completed all tasks in a time slot!`, "success");
+        }
+        break;
+      case "achievement_unlocked":
+        if (event.memberName && event.data.achievementName) {
+          showToast(`${event.memberName} unlocked "${event.data.achievementName}"!`, "success");
+        }
+        break;
+      case "achievement_revoked":
+        // No toast needed
+        break;
+      case "level_up":
+        if (event.memberName) {
+          showToast(`${event.memberName} reached Level ${event.data.newLevel}!`, "success");
+        }
+        break;
+      case "data_refresh":
+        // No toast needed - data will be auto-refreshed by useRealtime hook
+        break;
+    }
+  }, []);
+
+  // Connect to real-time updates
+  useRealtime(selectedDate, handleRealtimeEvent);
+
   // Fetch family info
   const {
     data: family,
@@ -154,6 +199,13 @@ function PublicFamilyBoard() {
   const { data: memberStats } = useQuery({
     queryKey: ["public-member-stats", token],
     queryFn: () => getPublicMemberStats({ data: { token } }),
+    enabled: !!family,
+  });
+
+  // Fetch member points for gamification display
+  const { data: memberPoints } = useQuery({
+    queryKey: ["public-member-points", token],
+    queryFn: () => getPublicMemberPoints({ data: { token } }),
     enabled: !!family,
   });
 
@@ -214,6 +266,13 @@ function PublicFamilyBoard() {
       queryClient.invalidateQueries({
         queryKey: ["public-completions", token, selectedDate],
       });
+      // Also invalidate stats and points since completing a task awards stars/points
+      queryClient.invalidateQueries({
+        queryKey: ["public-member-stats", token],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["public-member-points", token],
+      });
     },
   });
 
@@ -259,6 +318,7 @@ function PublicFamilyBoard() {
           memberId,
           date: selectedDate,
           completed: !isCompleted,
+          clientId: getClientId(),
         },
       });
     },
@@ -343,6 +403,7 @@ function PublicFamilyBoard() {
     todos: todos || [],
     completions: completions || [],
     memberStats: memberStats || [],
+    memberPoints: memberPoints || [],
     isTodoCompleted,
     onToggleTodo: handleToggleTodo,
     currentTimeslotId,
@@ -429,7 +490,7 @@ function PublicFamilyBoard() {
         )}
       </div>
 
-      <FloatingMenu />
+      <FloatingMenu token={token} />
     </div>
   );
 }

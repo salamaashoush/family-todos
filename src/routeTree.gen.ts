@@ -11,7 +11,6 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as VerifyEmailRouteImport } from './routes/verify-email'
 import { Route as SuperAdminRouteImport } from './routes/super-admin'
-import { Route as StatsRouteImport } from './routes/stats'
 import { Route as SignupRouteImport } from './routes/signup'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as LoginRouteImport } from './routes/login'
@@ -22,9 +21,10 @@ import { Route as AccountStatusRouteImport } from './routes/account-status'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as OnboardingIndexRouteImport } from './routes/onboarding/index'
 import { Route as UploadsSplatRouteImport } from './routes/uploads/$'
-import { Route as FamilyTokenRouteImport } from './routes/family/$token'
 import { Route as ApiSseRouteImport } from './routes/api/sse'
 import { Route as ApiHealthRouteImport } from './routes/api/health'
+import { Route as FamilyTokenIndexRouteImport } from './routes/family/$token/index'
+import { Route as FamilyTokenStatsRouteImport } from './routes/family/$token/stats'
 
 const VerifyEmailRoute = VerifyEmailRouteImport.update({
   id: '/verify-email',
@@ -34,11 +34,6 @@ const VerifyEmailRoute = VerifyEmailRouteImport.update({
 const SuperAdminRoute = SuperAdminRouteImport.update({
   id: '/super-admin',
   path: '/super-admin',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const StatsRoute = StatsRouteImport.update({
-  id: '/stats',
-  path: '/stats',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SignupRoute = SignupRouteImport.update({
@@ -91,11 +86,6 @@ const UploadsSplatRoute = UploadsSplatRouteImport.update({
   path: '/uploads/$',
   getParentRoute: () => rootRouteImport,
 } as any)
-const FamilyTokenRoute = FamilyTokenRouteImport.update({
-  id: '/family/$token',
-  path: '/family/$token',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const ApiSseRoute = ApiSseRouteImport.update({
   id: '/api/sse',
   path: '/api/sse',
@@ -105,6 +95,16 @@ const ApiHealthRoute = ApiHealthRouteImport.update({
   id: '/api/health',
   path: '/api/health',
   getParentRoute: () => rootRouteImport,
+} as any)
+const FamilyTokenIndexRoute = FamilyTokenIndexRouteImport.update({
+  id: '/family/$token/',
+  path: '/family/$token/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FamilyTokenStatsRoute = FamilyTokenStatsRouteImport.update({
+  id: '/stats',
+  path: '/stats',
+  getParentRoute: () => FamilyTokenRoute,
 } as any)
 
 export interface FileRoutesByFullPath {
@@ -116,14 +116,14 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/reset-password': typeof ResetPasswordRoute
   '/signup': typeof SignupRoute
-  '/stats': typeof StatsRoute
   '/super-admin': typeof SuperAdminRoute
   '/verify-email': typeof VerifyEmailRoute
   '/api/health': typeof ApiHealthRoute
   '/api/sse': typeof ApiSseRoute
-  '/family/$token': typeof FamilyTokenRoute
   '/uploads/$': typeof UploadsSplatRoute
   '/onboarding': typeof OnboardingIndexRoute
+  '/family/$token/stats': typeof FamilyTokenStatsRoute
+  '/family/$token': typeof FamilyTokenIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -134,14 +134,14 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/reset-password': typeof ResetPasswordRoute
   '/signup': typeof SignupRoute
-  '/stats': typeof StatsRoute
   '/super-admin': typeof SuperAdminRoute
   '/verify-email': typeof VerifyEmailRoute
   '/api/health': typeof ApiHealthRoute
   '/api/sse': typeof ApiSseRoute
-  '/family/$token': typeof FamilyTokenRoute
   '/uploads/$': typeof UploadsSplatRoute
   '/onboarding': typeof OnboardingIndexRoute
+  '/family/$token/stats': typeof FamilyTokenStatsRoute
+  '/family/$token': typeof FamilyTokenIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -153,14 +153,14 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/reset-password': typeof ResetPasswordRoute
   '/signup': typeof SignupRoute
-  '/stats': typeof StatsRoute
   '/super-admin': typeof SuperAdminRoute
   '/verify-email': typeof VerifyEmailRoute
   '/api/health': typeof ApiHealthRoute
   '/api/sse': typeof ApiSseRoute
-  '/family/$token': typeof FamilyTokenRoute
   '/uploads/$': typeof UploadsSplatRoute
   '/onboarding/': typeof OnboardingIndexRoute
+  '/family/$token/stats': typeof FamilyTokenStatsRoute
+  '/family/$token/': typeof FamilyTokenIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -173,14 +173,14 @@ export interface FileRouteTypes {
     | '/login'
     | '/reset-password'
     | '/signup'
-    | '/stats'
     | '/super-admin'
     | '/verify-email'
     | '/api/health'
     | '/api/sse'
-    | '/family/$token'
     | '/uploads/$'
     | '/onboarding'
+    | '/family/$token/stats'
+    | '/family/$token'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -191,14 +191,14 @@ export interface FileRouteTypes {
     | '/login'
     | '/reset-password'
     | '/signup'
-    | '/stats'
     | '/super-admin'
     | '/verify-email'
     | '/api/health'
     | '/api/sse'
-    | '/family/$token'
     | '/uploads/$'
     | '/onboarding'
+    | '/family/$token/stats'
+    | '/family/$token'
   id:
     | '__root__'
     | '/'
@@ -209,14 +209,14 @@ export interface FileRouteTypes {
     | '/login'
     | '/reset-password'
     | '/signup'
-    | '/stats'
     | '/super-admin'
     | '/verify-email'
     | '/api/health'
     | '/api/sse'
-    | '/family/$token'
     | '/uploads/$'
     | '/onboarding/'
+    | '/family/$token/stats'
+    | '/family/$token/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -228,14 +228,13 @@ export interface RootRouteChildren {
   LoginRoute: typeof LoginRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   SignupRoute: typeof SignupRoute
-  StatsRoute: typeof StatsRoute
   SuperAdminRoute: typeof SuperAdminRoute
   VerifyEmailRoute: typeof VerifyEmailRoute
   ApiHealthRoute: typeof ApiHealthRoute
   ApiSseRoute: typeof ApiSseRoute
-  FamilyTokenRoute: typeof FamilyTokenRoute
   UploadsSplatRoute: typeof UploadsSplatRoute
   OnboardingIndexRoute: typeof OnboardingIndexRoute
+  FamilyTokenIndexRoute: typeof FamilyTokenIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -252,13 +251,6 @@ declare module '@tanstack/react-router' {
       path: '/super-admin'
       fullPath: '/super-admin'
       preLoaderRoute: typeof SuperAdminRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/stats': {
-      id: '/stats'
-      path: '/stats'
-      fullPath: '/stats'
-      preLoaderRoute: typeof StatsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/signup': {
@@ -331,13 +323,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof UploadsSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/family/$token': {
-      id: '/family/$token'
-      path: '/family/$token'
-      fullPath: '/family/$token'
-      preLoaderRoute: typeof FamilyTokenRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/api/sse': {
       id: '/api/sse'
       path: '/api/sse'
@@ -352,6 +337,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiHealthRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/family/$token/': {
+      id: '/family/$token/'
+      path: '/family/$token'
+      fullPath: '/family/$token'
+      preLoaderRoute: typeof FamilyTokenIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/family/$token/stats': {
+      id: '/family/$token/stats'
+      path: '/stats'
+      fullPath: '/family/$token/stats'
+      preLoaderRoute: typeof FamilyTokenStatsRouteImport
+      parentRoute: typeof FamilyTokenRoute
+    }
   }
 }
 
@@ -364,14 +363,13 @@ const rootRouteChildren: RootRouteChildren = {
   LoginRoute: LoginRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   SignupRoute: SignupRoute,
-  StatsRoute: StatsRoute,
   SuperAdminRoute: SuperAdminRoute,
   VerifyEmailRoute: VerifyEmailRoute,
   ApiHealthRoute: ApiHealthRoute,
   ApiSseRoute: ApiSseRoute,
-  FamilyTokenRoute: FamilyTokenRoute,
   UploadsSplatRoute: UploadsSplatRoute,
   OnboardingIndexRoute: OnboardingIndexRoute,
+  FamilyTokenIndexRoute: FamilyTokenIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

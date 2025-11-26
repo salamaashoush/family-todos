@@ -1,7 +1,8 @@
 import { createFileRoute, redirect, useRouteContext, useSearch, useNavigate } from '@tanstack/react-router'
-import { useState, useRef, useEffect, useCallback, type ReactNode } from 'react'
+import { useState, useRef, useEffect, useCallback, useMemo, type ReactNode } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { z } from 'zod'
+import { useRealtime } from '../hooks/useRealtime'
 import { getAccountStatus } from '../server/auth'
 import { getOnboardingStatus } from '../server/onboarding'
 import { getMembers } from '../server/members'
@@ -172,6 +173,10 @@ function AdminPanel() {
     queryKey: ['share-token'],
     queryFn: () => getShareToken(),
   })
+
+  // Enable real-time updates
+  const today = useMemo(() => new Date().toISOString().split('T')[0], [])
+  useRealtime(today)
 
   const setActiveTab = useCallback((tabId: TabId) => {
     navigate({ to: '/admin', search: { tab: tabId }, replace: true })

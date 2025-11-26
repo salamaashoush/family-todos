@@ -5,6 +5,7 @@ import { db, schema } from "../db";
 import type { RedemptionStatus, TransactionType } from "../db/schema";
 import { getTenantContext, requireRole } from "../utils/tenant";
 import { logCreate, logUpdate, logDelete, sanitizeForAudit } from "../utils/audit";
+import { broadcastToFamily } from "./realtime";
 
 // Get all rewards
 export const getRewards = createServerFn({ method: "GET" }).handler(async () => {
@@ -66,6 +67,13 @@ export const createReward = createServerFn({ method: "POST" })
       entityType: "reward",
       entityId: reward.id,
       newValue: sanitizeForAudit(reward),
+    });
+
+    // Broadcast real-time update
+    broadcastToFamily(familyId, {
+      type: "data_refresh",
+      timestamp: Date.now(),
+      data: { entity: "rewards", action: "created", entityId: reward.id },
     });
 
     return reward;
@@ -136,6 +144,13 @@ export const updateReward = createServerFn({ method: "POST" })
         oldValue: sanitizeForAudit(oldReward),
         newValue: sanitizeForAudit(reward),
       });
+
+      // Broadcast real-time update
+      broadcastToFamily(familyId, {
+        type: "data_refresh",
+        timestamp: Date.now(),
+        data: { entity: "rewards", action: "updated", entityId: reward.id },
+      });
     }
 
     return reward;
@@ -180,6 +195,13 @@ export const deleteReward = createServerFn({ method: "POST" })
         entityType: "reward",
         entityId: data.id,
         oldValue: sanitizeForAudit(oldReward),
+      });
+
+      // Broadcast real-time update
+      broadcastToFamily(familyId, {
+        type: "data_refresh",
+        timestamp: Date.now(),
+        data: { entity: "rewards", action: "deleted", entityId: data.id },
       });
     }
 

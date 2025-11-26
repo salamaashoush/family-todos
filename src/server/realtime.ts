@@ -75,13 +75,26 @@ export type LevelUpEvent = {
   };
 };
 
+// CRUD events for data synchronization
+export type DataRefreshEvent = {
+  type: "data_refresh";
+  sourceClientId?: string;
+  timestamp: number;
+  data: {
+    entity: "members" | "todos" | "timeslots" | "rewards" | "completions";
+    action: "created" | "updated" | "deleted";
+    entityId?: number;
+  };
+};
+
 export type RealtimeEvent =
   | TaskCompletedEvent
   | TaskUncompletedEvent
   | TimeslotCompletedEvent
   | AchievementUnlockedEvent
   | AchievementRevokedEvent
-  | LevelUpEvent;
+  | LevelUpEvent
+  | DataRefreshEvent;
 
 export type SSEEvent = SSEConnectionEvent | RealtimeEvent;
 

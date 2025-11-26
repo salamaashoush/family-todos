@@ -18,7 +18,7 @@ function setClientId(id: string): void {
   }
 }
 
-function getClientId(): string | null {
+export function getClientId(): string | null {
   if (typeof window !== "undefined") {
     return (window as { __sseClientId?: string }).__sseClientId || null;
   }
@@ -37,40 +37,106 @@ function isRealtimeEvent(event: SSEEvent): event is RealtimeEvent {
 
 function invalidateQueries(
   queryClient: ReturnType<typeof useQueryClient>,
-  event: RealtimeEvent,
-  selectedDate: string
+  event: RealtimeEvent
 ): void {
   switch (event.type) {
     case "task_completed":
     case "task_uncompleted":
+      // Invalidate completions with predicate to match any date/token variations
       queryClient.invalidateQueries({
-        queryKey: ["completions", selectedDate],
+        predicate: (query) => query.queryKey[0] === "completions",
       });
       queryClient.invalidateQueries({
-        queryKey: ["memberStats", event.memberId],
+        predicate: (query) => query.queryKey[0] === "public-completions",
       });
       queryClient.invalidateQueries({
-        queryKey: ["weeklyProgress", event.memberId],
-        exact: false,
+        predicate: (query) => query.queryKey[0] === "memberStats",
+      });
+      queryClient.invalidateQueries({
+        predicate: (query) => query.queryKey[0] === "public-member-stats",
+      });
+      queryClient.invalidateQueries({
+        predicate: (query) => query.queryKey[0] === "weeklyProgress",
+      });
+      queryClient.invalidateQueries({
+        predicate: (query) => query.queryKey[0] === "memberPoints",
+      });
+      queryClient.invalidateQueries({
+        predicate: (query) => query.queryKey[0] === "public-member-points",
       });
       break;
 
     case "timeslot_completed":
       queryClient.invalidateQueries({
-        queryKey: ["completions", selectedDate],
+        predicate: (query) => query.queryKey[0] === "completions",
       });
       queryClient.invalidateQueries({
-        queryKey: ["memberStats", event.memberId],
+        predicate: (query) => query.queryKey[0] === "public-completions",
+      });
+      queryClient.invalidateQueries({
+        predicate: (query) => query.queryKey[0] === "memberStats",
+      });
+      queryClient.invalidateQueries({
+        predicate: (query) => query.queryKey[0] === "public-member-stats",
       });
       break;
 
     case "achievement_unlocked":
+    case "achievement_revoked":
       queryClient.invalidateQueries({
-        queryKey: ["memberAchievements", event.memberId],
+        predicate: (query) => query.queryKey[0] === "memberAchievements",
       });
       queryClient.invalidateQueries({
-        queryKey: ["memberStats", event.memberId],
+        predicate: (query) => query.queryKey[0] === "memberStats",
       });
+      queryClient.invalidateQueries({
+        predicate: (query) => query.queryKey[0] === "public-member-stats",
+      });
+      break;
+
+    case "level_up":
+      queryClient.invalidateQueries({
+        predicate: (query) => query.queryKey[0] === "memberStats",
+      });
+      queryClient.invalidateQueries({
+        predicate: (query) => query.queryKey[0] === "public-member-stats",
+      });
+      break;
+
+    case "data_refresh":
+      // Invalidate based on entity type
+      // Use predicate matching to handle query keys with additional parameters (token, date, etc.)
+      switch (event.data.entity) {
+        case "members":
+          queryClient.invalidateQueries({ queryKey: ["members"] });
+          queryClient.invalidateQueries({
+            predicate: (query) => query.queryKey[0] === "public-members",
+          });
+          break;
+        case "todos":
+          queryClient.invalidateQueries({ queryKey: ["todos"] });
+          queryClient.invalidateQueries({
+            predicate: (query) => query.queryKey[0] === "public-todos",
+          });
+          break;
+        case "timeslots":
+          queryClient.invalidateQueries({ queryKey: ["timeslots"] });
+          queryClient.invalidateQueries({
+            predicate: (query) => query.queryKey[0] === "public-timeslots",
+          });
+          break;
+        case "rewards":
+          queryClient.invalidateQueries({ queryKey: ["rewards"] });
+          break;
+        case "completions":
+          queryClient.invalidateQueries({
+            predicate: (query) => query.queryKey[0] === "completions",
+          });
+          queryClient.invalidateQueries({
+            predicate: (query) => query.queryKey[0] === "public-completions",
+          });
+          break;
+      }
       break;
   }
 }
@@ -79,27 +145,22 @@ function invalidateQueries(
  * Hook for realtime updates via Server-Sent Events
  * Implements exponential backoff for reconnection attempts
  *
- * @param selectedDate - Current selected date for invalidating queries
+ * @param _selectedDate - Unused, kept for API compatibility
  * @param onEvent - Optional callback for handling events (e.g., showing toasts)
  */
 export function useRealtime(
-  selectedDate: string,
+  _selectedDate: string,
   onEvent?: EventHandler
 ): void {
   const queryClient = useQueryClient();
   const retryCountRef = useRef(0);
   const reconnectDelayRef = useRef(INITIAL_RECONNECT_DELAY);
   const onEventRef = useRef(onEvent);
-  const selectedDateRef = useRef(selectedDate);
 
   // Keep refs updated with latest values without causing reconnection
   useEffect(() => {
     onEventRef.current = onEvent;
   }, [onEvent]);
-
-  useEffect(() => {
-    selectedDateRef.current = selectedDate;
-  }, [selectedDate]);
 
   useEffect(() => {
     let eventSource: EventSource | null = null;
@@ -160,7 +221,7 @@ export function useRealtime(
             return;
           }
 
-          invalidateQueries(queryClient, event, selectedDateRef.current);
+          invalidateQueries(queryClient, event);
           onEventRef.current?.(event);
         } catch (error) {
           console.error("[Realtime] Error parsing event:", error);

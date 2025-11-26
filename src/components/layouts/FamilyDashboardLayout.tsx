@@ -9,6 +9,7 @@ interface CurrentTimeslotCardProps {
   timeslot: Timeslot
   todos: Todo[]
   stats?: MemberStats | null
+  points?: number | null
   isTodoCompleted: (todoId: number, timeslotId: number, memberId: number) => boolean
   onToggleTodo: (todoId: number, timeslotId: number, memberId: number, isCompleted: boolean) => void
 }
@@ -18,6 +19,7 @@ function CurrentTimeslotCard({
   timeslot,
   todos,
   stats,
+  points,
   isTodoCompleted,
   onToggleTodo,
 }: CurrentTimeslotCardProps) {
@@ -47,6 +49,7 @@ function CurrentTimeslotCard({
       <MemberHeader
         member={member}
         stats={stats}
+        points={points}
         variant={allCompleted ? 'complete' : 'compact'}
       />
 
@@ -146,6 +149,7 @@ export function FamilyDashboardLayout({
   timeslots,
   todos,
   memberStats,
+  memberPoints,
   isTodoCompleted,
   onToggleTodo,
   currentTimeslotId,
@@ -223,6 +227,7 @@ export function FamilyDashboardLayout({
               <div className="flex gap-4 overflow-x-auto pb-2 -mb-2 snap-x snap-mandatory">
                 {currentTimeslotMembers.map((member) => {
                   const stats = memberStats?.find((s) => s.memberId === member.id)
+                  const points = memberPoints?.find((p) => p.member_id === member.id)?.total
                   return (
                     <div key={member.id} className="snap-start">
                       <CurrentTimeslotCard
@@ -230,6 +235,7 @@ export function FamilyDashboardLayout({
                         timeslot={currentTimeslot}
                         todos={todos}
                         stats={stats}
+                        points={points}
                         isTodoCompleted={isTodoCompleted}
                         onToggleTodo={onToggleTodo}
                       />

@@ -5,6 +5,7 @@ import { db, schema } from "../db";
 import type { RecurrenceType } from "../db/schema";
 import { getTenantContext, requireRole } from "../utils/tenant";
 import { logCreate, logUpdate, logDelete, sanitizeForAudit } from "../utils/audit";
+import { broadcastToFamily } from "./realtime";
 
 /**
  * Check if a timeslot should be shown on a given day of week
@@ -152,6 +153,13 @@ export const createTimeslot = createServerFn({ method: "POST" })
       newValue: { ...sanitizeForAudit(timeslot), memberIds: data.memberIds },
     });
 
+    // Broadcast real-time update
+    broadcastToFamily(familyId, {
+      type: "data_refresh",
+      timestamp: Date.now(),
+      data: { entity: "timeslots", action: "created", entityId: timeslot.id },
+    });
+
     return {
       ...timeslot,
       memberIds: data.memberIds,
@@ -256,6 +264,13 @@ export const updateTimeslot = createServerFn({ method: "POST" })
         oldValue: sanitizeForAudit(oldTimeslot),
         newValue: sanitizeForAudit(timeslot),
       });
+
+      // Broadcast real-time update
+      broadcastToFamily(familyId, {
+        type: "data_refresh",
+        timestamp: Date.now(),
+        data: { entity: "timeslots", action: "updated", entityId: timeslot.id },
+      });
     }
 
     return {
@@ -302,6 +317,13 @@ export const deleteTimeslot = createServerFn({ method: "POST" })
         entityType: "timeslot",
         entityId: data.id,
         oldValue: sanitizeForAudit(oldTimeslot),
+      });
+
+      // Broadcast real-time update
+      broadcastToFamily(familyId, {
+        type: "data_refresh",
+        timestamp: Date.now(),
+        data: { entity: "timeslots", action: "deleted", entityId: data.id },
       });
     }
 

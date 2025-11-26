@@ -1,6 +1,10 @@
 import { useState, useRef, useEffect } from 'react'
 import { Link } from '@tanstack/react-router'
 
+interface FloatingMenuProps {
+  token: string
+}
+
 const MenuIcon = () => (
   <svg className="w-6 h-6 sm:w-7 sm:h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
@@ -26,32 +30,7 @@ const StatsIcon = () => (
   </svg>
 )
 
-interface MenuItem {
-  to: string
-  icon: React.ReactNode
-  label: string
-  bgColor: string
-  hoverColor: string
-}
-
-const menuItems: MenuItem[] = [
-  {
-    to: '/admin',
-    icon: <AdminIcon />,
-    label: 'Admin Panel',
-    bgColor: 'bg-gradient-to-r from-theme-primary to-theme-secondary',
-    hoverColor: 'hover:from-theme-primary hover:to-pink-700',
-  },
-  {
-    to: '/stats',
-    icon: <StatsIcon />,
-    label: 'Stats & Rewards',
-    bgColor: 'bg-gradient-to-r from-yellow-500 to-orange-500',
-    hoverColor: 'hover:from-yellow-600 hover:to-orange-600',
-  },
-]
-
-export function FloatingMenu() {
+export function FloatingMenu({ token }: FloatingMenuProps) {
   const [isOpen, setIsOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
 
@@ -74,18 +53,23 @@ export function FloatingMenu() {
           isOpen ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4 pointer-events-none'
         }`}
       >
-        {menuItems.map((item, index) => (
-          <Link
-            key={item.to}
-            to={item.to}
-            onClick={() => setIsOpen(false)}
-            className={`flex items-center gap-3 px-4 py-3 rounded-xl text-white shadow-lg transition-all transform hover:scale-105 active:scale-95 ${item.bgColor} ${item.hoverColor}`}
-            style={{ transitionDelay: isOpen ? `${index * 50}ms` : '0ms' }}
-          >
-            {item.icon}
-            <span className="font-semibold whitespace-nowrap">{item.label}</span>
-          </Link>
-        ))}
+        <Link
+          to="/admin"
+          onClick={() => setIsOpen(false)}
+          className="flex items-center gap-3 px-4 py-3 rounded-xl text-white shadow-lg transition-all transform hover:scale-105 active:scale-95 bg-gradient-to-r from-theme-primary to-theme-secondary hover:from-theme-primary hover:to-pink-700"
+        >
+          <AdminIcon />
+          <span className="font-semibold whitespace-nowrap">Admin Panel</span>
+        </Link>
+        <Link
+          to="/family/$token/stats"
+          params={{ token }}
+          onClick={() => setIsOpen(false)}
+          className="flex items-center gap-3 px-4 py-3 rounded-xl text-white shadow-lg transition-all transform hover:scale-105 active:scale-95 bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600"
+        >
+          <StatsIcon />
+          <span className="font-semibold whitespace-nowrap">Stats & Rewards</span>
+        </Link>
       </div>
 
       {/* Main FAB button */}
