@@ -65,10 +65,9 @@ export function Modal({ isOpen, onClose, title, children, size = 'md' }: ModalPr
       aria-modal="true"
       aria-labelledby="modal-title"
     >
-      {/* Backdrop */}
+      {/* Backdrop - no click to close for better mobile UX */}
       <div
         className="fixed inset-0 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200"
-        onClick={onClose}
         aria-hidden="true"
       />
 
