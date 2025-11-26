@@ -8,7 +8,7 @@ import { UPLOAD_CONFIG } from '../../constants'
 import { getErrorMessage } from '../../utils/form'
 import { getDisplaySymbol } from '../../utils/symbols'
 import { showToast } from '../Toast'
-import { Button, Input, Textarea, FileInput, MultiSelect } from '../shared'
+import { Button, Input, Textarea, FileInput, MultiSelect, EmojiInput } from '../shared'
 import { Modal } from '../shared/Modal'
 import { TimeslotForm } from './TimeslotForm'
 import { MemberForm } from './MemberForm'
@@ -200,14 +200,12 @@ export function TodoForm({ todo, onSubmit, onCancel }: TodoFormProps) {
           <form.Field
             name="symbol"
             children={(field) => (
-              <Input
+              <EmojiInput
                 label="Symbol / Emoji"
-                type="text"
-                placeholder="e.g., emoji"
+                placeholder="Select emoji"
                 value={field.state.value}
-                onChange={(e) => field.handleChange(e.target.value)}
+                onChange={(value) => field.handleChange(value)}
                 onBlur={field.handleBlur}
-                className="text-2xl"
                 error={field.state.meta.isTouched ? getErrorMessage(field.state.meta.errors) : undefined}
               />
             )}

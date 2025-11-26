@@ -1,7 +1,7 @@
 import { useForm } from '@tanstack/react-form'
 import { z } from 'zod'
 import { getErrorMessage } from '../../utils/form'
-import { Button, Input } from '../shared'
+import { Button, Input, EmojiInput } from '../shared'
 
 const quickTaskSchema = z.object({
   title: z.string().min(1, 'Title is required').max(200, 'Title must be less than 200 characters'),
@@ -94,14 +94,12 @@ export function QuickTaskForm({ timeslotId, timeslotName, onSubmit, onCancel }: 
         <form.Field
           name="symbol"
           children={(field) => (
-            <Input
+            <EmojiInput
               label="Emoji"
-              type="text"
-              placeholder="e.g. emoji"
+              placeholder="Pick"
               value={field.state.value}
-              onChange={(e) => field.handleChange(e.target.value)}
+              onChange={(value) => field.handleChange(value)}
               onBlur={field.handleBlur}
-              className="text-xl text-center"
             />
           )}
         />
