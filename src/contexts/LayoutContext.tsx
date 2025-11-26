@@ -83,11 +83,9 @@ export function LayoutProvider({ children }: LayoutProviderProps) {
   }, [isHydrated])
 
   const layout = useMemo((): LayoutId => {
+    // Manual selection always takes priority
     if (manualLayout) {
-      const layoutConfig = layouts[manualLayout]
-      if (typeof window !== 'undefined' && window.innerWidth >= layoutConfig.minWidth) {
-        return manualLayout
-      }
+      return manualLayout
     }
 
     if (settings.autoSwitchEnabled) {
