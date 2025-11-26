@@ -1,6 +1,10 @@
 import { useEffect, useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import type { RealtimeEvent, SSEEvent, SSEConnectionEvent } from "../server/realtime";
+import type {
+  RealtimeEvent,
+  SSEEvent,
+  SSEConnectionEvent,
+} from "../server/realtime";
 
 const SSE_ENDPOINT = "/api/sse";
 const INITIAL_RECONNECT_DELAY = 1000;
@@ -9,13 +13,13 @@ const MAX_RETRIES = 10;
 
 // Store client ID on window so it persists and is accessible client-side only
 function setClientId(id: string): void {
-  if (typeof window !== 'undefined') {
+  if (typeof window !== "undefined") {
     (window as { __sseClientId?: string }).__sseClientId = id;
   }
 }
 
 function getClientId(): string | null {
-  if (typeof window !== 'undefined') {
+  if (typeof window !== "undefined") {
     return (window as { __sseClientId?: string }).__sseClientId || null;
   }
   return null;
@@ -86,11 +90,16 @@ export function useRealtime(
   const retryCountRef = useRef(0);
   const reconnectDelayRef = useRef(INITIAL_RECONNECT_DELAY);
   const onEventRef = useRef(onEvent);
+  const selectedDateRef = useRef(selectedDate);
 
-  // Keep the ref updated with the latest callback without causing reconnection
+  // Keep refs updated with latest values without causing reconnection
   useEffect(() => {
     onEventRef.current = onEvent;
   }, [onEvent]);
+
+  useEffect(() => {
+    selectedDateRef.current = selectedDate;
+  }, [selectedDate]);
 
   useEffect(() => {
     let eventSource: EventSource | null = null;
@@ -143,11 +152,15 @@ export function useRealtime(
 
           // Skip events from this client (own actions)
           const currentClientId = getClientId();
-          if (event.sourceClientId && currentClientId && event.sourceClientId === currentClientId) {
+          if (
+            event.sourceClientId &&
+            currentClientId &&
+            event.sourceClientId === currentClientId
+          ) {
             return;
           }
 
-          invalidateQueries(queryClient, event, selectedDate);
+          invalidateQueries(queryClient, event, selectedDateRef.current);
           onEventRef.current?.(event);
         } catch (error) {
           console.error("[Realtime] Error parsing event:", error);
@@ -182,5 +195,5 @@ export function useRealtime(
         eventSource.close();
       }
     };
-  }, [queryClient, selectedDate]);
+  }, [queryClient]);
 }

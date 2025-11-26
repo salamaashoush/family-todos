@@ -1,5 +1,3 @@
-"use server";
-
 export type SSEConnectionEvent = {
   type: "connected";
   clientId: string;
@@ -67,14 +65,27 @@ interface SSEConnection {
   clientId: string;
 }
 
-const connections = new Map<string, SSEConnection>();
-const encoder = new TextEncoder();
+// Use globalThis to ensure the connections map is shared across all server contexts
+// This is necessary because Nitro/Vite may bundle server code into different chunks
+declare global {
+  // eslint-disable-next-line no-var
+  var __sseConnections: Map<string, SSEConnection> | undefined;
+}
 
+if (!globalThis.__sseConnections) {
+  globalThis.__sseConnections = new Map<string, SSEConnection>();
+}
+
+const connections = globalThis.__sseConnections;
+const encoder = new TextEncoder();
 
 /**
  * Add a new SSE connection to the pool
  */
-export function addSSEConnection(controller: ReadableStreamDefaultController, clientId: string): void {
+export function addSSEConnection(
+  controller: ReadableStreamDefaultController,
+  clientId: string
+): void {
   connections.set(clientId, { controller, clientId });
 }
 
