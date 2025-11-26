@@ -26,18 +26,20 @@ RUN bun run build
 FROM oven/bun:1-slim AS release
 WORKDIR /usr/src/app
 
-# Copy production node_modules
+# Copy production node_modules (needed for drizzle-orm in migrations)
 COPY --from=install /temp/prod/node_modules node_modules
 
 # Copy the build output
 COPY --from=prerelease /usr/src/app/.output .output
 COPY --from=prerelease /usr/src/app/package.json .
 
-# Copy drizzle migrations and migrate script
+# Copy drizzle SQL migration files
 COPY --from=prerelease /usr/src/app/drizzle drizzle
-COPY --from=prerelease /usr/src/app/src/db src/db
 
-# Copy public directory (if it exists)
+# Copy only the migrate script (not the full src/db which has schema dependencies)
+COPY --from=prerelease /usr/src/app/src/db/migrate.ts src/db/migrate.ts
+
+# Copy public directory for static assets (icons, manifest, etc.)
 COPY --from=prerelease /usr/src/app/public ./public
 
 # Create directory for persistent data with proper permissions
