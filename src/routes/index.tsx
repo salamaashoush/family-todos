@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from '@tanstack/react-router'
+import { createFileRoute, Link, redirect } from '@tanstack/react-router'
 import { useState, useCallback, useMemo } from 'react'
 import { Header } from '../components/Header'
 import { Toast } from '../components/Toast'
@@ -19,8 +19,23 @@ import { getMembers } from '../server/members'
 import { getTimeslots } from '../server/timeslots'
 import { getTodos } from '../server/todos'
 import { getTodoCompletions } from '../server/completions'
+import { getOnboardingStatus } from '../server/onboarding'
 
 export const Route = createFileRoute('/')({
+  beforeLoad: async () => {
+    // Check authentication and onboarding status
+    const status = await getOnboardingStatus()
+
+    // Redirect to signup if not authenticated
+    if (!status.isAuthenticated) {
+      throw redirect({ to: '/signup' })
+    }
+
+    // Redirect to onboarding if not completed
+    if (!status.isOnboarded) {
+      throw redirect({ to: '/onboarding' })
+    }
+  },
   loader: async ({ context: { queryClient } }) => {
     const date = new Date().toISOString().split('T')[0]
 

@@ -10,9 +10,11 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as StatsRouteImport } from './routes/stats'
+import { Route as SignupRouteImport } from './routes/signup'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as OnboardingIndexRouteImport } from './routes/onboarding/index'
 import { Route as UploadsSplatRouteImport } from './routes/uploads/$'
 import { Route as ApiSseRouteImport } from './routes/api/sse'
 import { Route as ApiHealthRouteImport } from './routes/api/health'
@@ -20,6 +22,11 @@ import { Route as ApiHealthRouteImport } from './routes/api/health'
 const StatsRoute = StatsRouteImport.update({
   id: '/stats',
   path: '/stats',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SignupRoute = SignupRouteImport.update({
+  id: '/signup',
+  path: '/signup',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LoginRoute = LoginRouteImport.update({
@@ -35,6 +42,11 @@ const AdminRoute = AdminRouteImport.update({
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OnboardingIndexRoute = OnboardingIndexRouteImport.update({
+  id: '/onboarding/',
+  path: '/onboarding/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const UploadsSplatRoute = UploadsSplatRouteImport.update({
@@ -57,29 +69,35 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
   '/login': typeof LoginRoute
+  '/signup': typeof SignupRoute
   '/stats': typeof StatsRoute
   '/api/health': typeof ApiHealthRoute
   '/api/sse': typeof ApiSseRoute
   '/uploads/$': typeof UploadsSplatRoute
+  '/onboarding': typeof OnboardingIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
   '/login': typeof LoginRoute
+  '/signup': typeof SignupRoute
   '/stats': typeof StatsRoute
   '/api/health': typeof ApiHealthRoute
   '/api/sse': typeof ApiSseRoute
   '/uploads/$': typeof UploadsSplatRoute
+  '/onboarding': typeof OnboardingIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
   '/login': typeof LoginRoute
+  '/signup': typeof SignupRoute
   '/stats': typeof StatsRoute
   '/api/health': typeof ApiHealthRoute
   '/api/sse': typeof ApiSseRoute
   '/uploads/$': typeof UploadsSplatRoute
+  '/onboarding/': typeof OnboardingIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -87,38 +105,46 @@ export interface FileRouteTypes {
     | '/'
     | '/admin'
     | '/login'
+    | '/signup'
     | '/stats'
     | '/api/health'
     | '/api/sse'
     | '/uploads/$'
+    | '/onboarding'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/admin'
     | '/login'
+    | '/signup'
     | '/stats'
     | '/api/health'
     | '/api/sse'
     | '/uploads/$'
+    | '/onboarding'
   id:
     | '__root__'
     | '/'
     | '/admin'
     | '/login'
+    | '/signup'
     | '/stats'
     | '/api/health'
     | '/api/sse'
     | '/uploads/$'
+    | '/onboarding/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AdminRoute: typeof AdminRoute
   LoginRoute: typeof LoginRoute
+  SignupRoute: typeof SignupRoute
   StatsRoute: typeof StatsRoute
   ApiHealthRoute: typeof ApiHealthRoute
   ApiSseRoute: typeof ApiSseRoute
   UploadsSplatRoute: typeof UploadsSplatRoute
+  OnboardingIndexRoute: typeof OnboardingIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -128,6 +154,13 @@ declare module '@tanstack/react-router' {
       path: '/stats'
       fullPath: '/stats'
       preLoaderRoute: typeof StatsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/signup': {
+      id: '/signup'
+      path: '/signup'
+      fullPath: '/signup'
+      preLoaderRoute: typeof SignupRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/login': {
@@ -149,6 +182,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/onboarding/': {
+      id: '/onboarding/'
+      path: '/onboarding'
+      fullPath: '/onboarding'
+      preLoaderRoute: typeof OnboardingIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/uploads/$': {
@@ -179,10 +219,12 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRoute: AdminRoute,
   LoginRoute: LoginRoute,
+  SignupRoute: SignupRoute,
   StatsRoute: StatsRoute,
   ApiHealthRoute: ApiHealthRoute,
   ApiSseRoute: ApiSseRoute,
   UploadsSplatRoute: UploadsSplatRoute,
+  OnboardingIndexRoute: OnboardingIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

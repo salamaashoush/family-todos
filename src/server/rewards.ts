@@ -3,29 +3,30 @@ import { z } from "zod";
 import { eq, and, asc, desc, sql } from "drizzle-orm";
 import { db, schema } from "../db";
 import type { RedemptionStatus, TransactionType } from "../db/schema";
-
-// For now, we'll use a default family ID of 1
-// This will be replaced with session-based family ID in multi-tenancy phase
-const DEFAULT_FAMILY_ID = 1;
+import { getTenantContext, requireRole } from "../utils/tenant";
 
 // Get all rewards
 export const getRewards = createServerFn({ method: "GET" }).handler(async () => {
+  const { familyId } = await getTenantContext();
+
   return db
     .select()
     .from(schema.rewards)
-    .where(eq(schema.rewards.familyId, DEFAULT_FAMILY_ID))
+    .where(eq(schema.rewards.familyId, familyId))
     .orderBy(asc(schema.rewards.pointCost));
 });
 
 // Get active rewards only
 export const getActiveRewards = createServerFn({ method: "GET" }).handler(
   async () => {
+    const { familyId } = await getTenantContext();
+
     return db
       .select()
       .from(schema.rewards)
       .where(
         and(
-          eq(schema.rewards.familyId, DEFAULT_FAMILY_ID),
+          eq(schema.rewards.familyId, familyId),
           eq(schema.rewards.isActive, true)
         )
       )
@@ -44,10 +45,12 @@ const CreateRewardSchema = z.object({
 export const createReward = createServerFn({ method: "POST" })
   .inputValidator(CreateRewardSchema)
   .handler(async ({ data }) => {
+    const { familyId } = await requireRole(["owner", "admin"]);
+
     const [reward] = await db
       .insert(schema.rewards)
       .values({
-        familyId: DEFAULT_FAMILY_ID,
+        familyId,
         name: data.name,
         description: data.description || null,
         icon: data.icon || null,
@@ -71,6 +74,8 @@ const UpdateRewardSchema = z.object({
 export const updateReward = createServerFn({ method: "POST" })
   .inputValidator(UpdateRewardSchema)
   .handler(async ({ data }) => {
+    const { familyId } = await requireRole(["owner", "admin"]);
+
     const updateData: Partial<{
       name: string;
       description: string | null;
@@ -94,7 +99,7 @@ export const updateReward = createServerFn({ method: "POST" })
       .where(
         and(
           eq(schema.rewards.id, data.id),
-          eq(schema.rewards.familyId, DEFAULT_FAMILY_ID)
+          eq(schema.rewards.familyId, familyId)
         )
       )
       .returning();
@@ -110,12 +115,14 @@ const DeleteRewardSchema = z.object({
 export const deleteReward = createServerFn({ method: "POST" })
   .inputValidator(DeleteRewardSchema)
   .handler(async ({ data }) => {
+    const { familyId } = await requireRole(["owner", "admin"]);
+
     await db
       .delete(schema.rewards)
       .where(
         and(
           eq(schema.rewards.id, data.id),
-          eq(schema.rewards.familyId, DEFAULT_FAMILY_ID)
+          eq(schema.rewards.familyId, familyId)
         )
       );
 

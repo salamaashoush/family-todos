@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { addSSEConnection, removeSSEConnection } from "../../server/realtime";
+import { useAppSession } from "../../utils/session";
 
 const KEEP_ALIVE_INTERVAL = 30000; // 30 seconds
 
@@ -13,6 +14,7 @@ function generateClientId(): string {
 interface SSEController extends ReadableStreamDefaultController {
   cleanup?: () => void;
   clientId?: string;
+  familyId?: number;
 }
 
 /**
@@ -54,14 +56,23 @@ export const Route = createFileRoute("/api/sse")({
   server: {
     handlers: {
       GET: async () => {
+        // Get family ID from session
+        const session = await useAppSession();
+        const familyId = session.data.currentFamilyId;
+
+        // If no family ID, use a default guest family (ID 0) for non-authenticated users
+        // This allows the app to work without authentication during development
+        const effectiveFamilyId = familyId ?? 0;
+
         const clientId = generateClientId();
 
         const stream = new ReadableStream({
           start(controller: SSEController) {
             controller.clientId = clientId;
+            controller.familyId = effectiveFamilyId;
 
-            // Register connection with client ID
-            addSSEConnection(controller, clientId);
+            // Register connection with client ID and family ID
+            addSSEConnection(controller, clientId, effectiveFamilyId);
 
             // Send initial connection event with client ID
             sendConnectionEvent(controller, clientId);
@@ -72,7 +83,7 @@ export const Route = createFileRoute("/api/sse")({
             // Store cleanup function
             controller.cleanup = () => {
               clearInterval(keepAlive);
-              removeSSEConnection(clientId);
+              removeSSEConnection(clientId, effectiveFamilyId);
             };
           },
 

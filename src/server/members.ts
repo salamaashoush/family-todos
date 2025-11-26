@@ -2,17 +2,16 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { eq, asc, and } from "drizzle-orm";
 import { db, schema } from "../db";
-
-// For now, we'll use a default family ID of 1
-// This will be replaced with session-based family ID in multi-tenancy phase
-const DEFAULT_FAMILY_ID = 1;
+import { getTenantContext, requireRole } from "../utils/tenant";
 
 export const getMembers = createServerFn({ method: "GET" }).handler(
   async () => {
+    const { familyId } = await getTenantContext();
+
     const members = await db
       .select()
       .from(schema.members)
-      .where(eq(schema.members.familyId, DEFAULT_FAMILY_ID))
+      .where(eq(schema.members.familyId, familyId))
       .orderBy(asc(schema.members.createdAt));
 
     return members;
@@ -28,10 +27,12 @@ const CreateMemberSchema = z.object({
 export const createMember = createServerFn({ method: "POST" })
   .inputValidator(CreateMemberSchema)
   .handler(async ({ data }) => {
+    const { familyId } = await requireRole(["owner", "admin"]);
+
     const [member] = await db
       .insert(schema.members)
       .values({
-        familyId: DEFAULT_FAMILY_ID,
+        familyId,
         name: data.name,
         avatar: data.avatar || null,
         isParent: data.isParent ?? false,
@@ -56,6 +57,8 @@ const UpdateMemberSchema = z.object({
 export const updateMember = createServerFn({ method: "POST" })
   .inputValidator(UpdateMemberSchema)
   .handler(async ({ data }) => {
+    const { familyId } = await requireRole(["owner", "admin"]);
+
     const updateData: Partial<{
       name: string;
       avatar: string | null;
@@ -81,7 +84,7 @@ export const updateMember = createServerFn({ method: "POST" })
       .where(
         and(
           eq(schema.members.id, data.id),
-          eq(schema.members.familyId, DEFAULT_FAMILY_ID)
+          eq(schema.members.familyId, familyId)
         )
       )
       .returning();
@@ -96,12 +99,14 @@ const DeleteMemberSchema = z.object({
 export const deleteMember = createServerFn({ method: "POST" })
   .inputValidator(DeleteMemberSchema)
   .handler(async ({ data }) => {
+    const { familyId } = await requireRole(["owner", "admin"]);
+
     await db
       .delete(schema.members)
       .where(
         and(
           eq(schema.members.id, data.id),
-          eq(schema.members.familyId, DEFAULT_FAMILY_ID)
+          eq(schema.members.familyId, familyId)
         )
       );
 

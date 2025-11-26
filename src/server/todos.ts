@@ -2,10 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { eq, and, asc, inArray } from "drizzle-orm";
 import { db, schema } from "../db";
-
-// For now, we'll use a default family ID of 1
-// This will be replaced with session-based family ID in multi-tenancy phase
-const DEFAULT_FAMILY_ID = 1;
+import { getTenantContext, requireRole } from "../utils/tenant";
 
 const GetTodosSchema = z.object({
   timeslotId: z.number().optional(),
@@ -14,11 +11,13 @@ const GetTodosSchema = z.object({
 export const getTodos = createServerFn({ method: "GET" })
   .inputValidator(GetTodosSchema)
   .handler(async ({ data }) => {
+    const { familyId } = await getTenantContext();
+
     // Get all todos for the family
     const todos = await db
       .select()
       .from(schema.todos)
-      .where(eq(schema.todos.familyId, DEFAULT_FAMILY_ID))
+      .where(eq(schema.todos.familyId, familyId))
       .orderBy(asc(schema.todos.position), asc(schema.todos.createdAt));
 
     // Get all timeslot assignments for these todos
@@ -69,11 +68,13 @@ const CreateTodoSchema = z.object({
 export const createTodo = createServerFn({ method: "POST" })
   .inputValidator(CreateTodoSchema)
   .handler(async ({ data }) => {
+    const { familyId } = await requireRole(["owner", "admin"]);
+
     // Insert the todo
     const [todo] = await db
       .insert(schema.todos)
       .values({
-        familyId: DEFAULT_FAMILY_ID,
+        familyId,
         title: data.title,
         description: data.description || null,
         imageUrl: data.imageUrl || null,
@@ -113,6 +114,8 @@ const UpdateTodoSchema = z.object({
 export const updateTodo = createServerFn({ method: "POST" })
   .inputValidator(UpdateTodoSchema)
   .handler(async ({ data }) => {
+    const { familyId } = await requireRole(["owner", "admin"]);
+
     const updateData: Partial<{
       title: string;
       description: string | null;
@@ -139,7 +142,7 @@ export const updateTodo = createServerFn({ method: "POST" })
       .where(
         and(
           eq(schema.todos.id, data.id),
-          eq(schema.todos.familyId, DEFAULT_FAMILY_ID)
+          eq(schema.todos.familyId, familyId)
         )
       )
       .returning();
@@ -172,12 +175,14 @@ const DeleteTodoSchema = z.object({
 export const deleteTodo = createServerFn({ method: "POST" })
   .inputValidator(DeleteTodoSchema)
   .handler(async ({ data }) => {
+    const { familyId } = await requireRole(["owner", "admin"]);
+
     await db
       .delete(schema.todos)
       .where(
         and(
           eq(schema.todos.id, data.id),
-          eq(schema.todos.familyId, DEFAULT_FAMILY_ID)
+          eq(schema.todos.familyId, familyId)
         )
       );
 

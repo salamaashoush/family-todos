@@ -1,4 +1,4 @@
-import { createFileRoute, useRouter } from '@tanstack/react-router'
+import { createFileRoute, useRouter, Link } from '@tanstack/react-router'
 import { useMutation } from '@tanstack/react-query'
 import { login } from '../server/auth'
 import { Input, Button } from '../components/shared'
@@ -72,10 +72,19 @@ function LoginPage() {
           </Button>
         </form>
 
-        <div className="mt-6 text-center">
+        <div className="mt-6 text-center space-y-2">
+          <p className="text-gray-600">
+            Don't have an account?{" "}
+            <Link
+              to="/signup"
+              className="text-theme-primary hover:text-theme-secondary font-semibold transition-colors"
+            >
+              Sign up
+            </Link>
+          </p>
           <button
             onClick={() => router.navigate({ to: '/' })}
-            className="text-theme-primary hover:text-theme-secondary font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-theme-primary/50 rounded-lg px-2 py-1"
+            className="text-gray-500 hover:text-gray-700 text-sm transition-colors focus:outline-none"
             type="button"
           >
             Back to Family Board

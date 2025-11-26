@@ -2,6 +2,7 @@ import { createFileRoute, redirect, useRouteContext, useSearch, useNavigate } fr
 import { useState, useRef, useEffect, useCallback, type ReactNode } from 'react'
 import { z } from 'zod'
 import { checkAuth } from '../server/auth'
+import { getOnboardingStatus } from '../server/onboarding'
 import { getMembers } from '../server/members'
 import { getTimeslots } from '../server/timeslots'
 import { getTodos } from '../server/todos'
@@ -25,10 +26,18 @@ const searchSchema = z.object({
 export const Route = createFileRoute('/admin')({
   validateSearch: searchSchema,
   beforeLoad: async () => {
+    // Check authentication
     const auth = await checkAuth()
     if (!auth.authenticated) {
       throw redirect({ to: '/login' })
     }
+
+    // Check onboarding status
+    const status = await getOnboardingStatus()
+    if (!status.isOnboarded) {
+      throw redirect({ to: '/onboarding' })
+    }
+
     return auth
   },
   loader: async ({ context: { queryClient } }) => {

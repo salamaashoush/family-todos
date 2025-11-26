@@ -3,7 +3,7 @@ import { z } from "zod";
 import { eq, and, sql, count } from "drizzle-orm";
 import { db, schema } from "../db";
 import { updateStats } from "./statistics";
-import { broadcast } from "./realtime";
+import { broadcastToFamily } from "./realtime";
 
 /**
  * Check if a timeslot is scheduled for a given date based on recurrence rules
@@ -202,19 +202,21 @@ export const completeTodo = createServerFn({ method: "POST" })
 
       // Broadcast realtime event
       const [member] = await db
-        .select({ name: schema.members.name })
+        .select({ name: schema.members.name, familyId: schema.members.familyId })
         .from(schema.members)
         .where(eq(schema.members.id, data.memberId))
         .limit(1);
 
-      broadcast({
-        type: "task_completed",
-        sourceClientId: data.clientId ?? undefined,
-        memberId: data.memberId,
-        timestamp: Date.now(),
-        memberName: member?.name,
-        data: { todoId: data.todoId, timeslotId: data.timeslotId },
-      });
+      if (member) {
+        broadcastToFamily(member.familyId, {
+          type: "task_completed",
+          sourceClientId: data.clientId ?? undefined,
+          memberId: data.memberId,
+          timestamp: Date.now(),
+          memberName: member.name,
+          data: { todoId: data.todoId, timeslotId: data.timeslotId },
+        });
+      }
 
       return completion;
     } catch {
@@ -308,19 +310,21 @@ export const uncompleteTodo = createServerFn({ method: "POST" })
     // Broadcast realtime event
     if (wasDeleted) {
       const [member] = await db
-        .select({ name: schema.members.name })
+        .select({ name: schema.members.name, familyId: schema.members.familyId })
         .from(schema.members)
         .where(eq(schema.members.id, data.memberId))
         .limit(1);
 
-      broadcast({
-        type: "task_uncompleted",
-        sourceClientId: data.clientId ?? undefined,
-        memberId: data.memberId,
-        timestamp: Date.now(),
-        memberName: member?.name,
-        data: { todoId: data.todoId, timeslotId: data.timeslotId },
-      });
+      if (member) {
+        broadcastToFamily(member.familyId, {
+          type: "task_uncompleted",
+          sourceClientId: data.clientId ?? undefined,
+          memberId: data.memberId,
+          timestamp: Date.now(),
+          memberName: member.name,
+          data: { todoId: data.todoId, timeslotId: data.timeslotId },
+        });
+      }
     }
 
     return { success: true };
@@ -386,18 +390,20 @@ async function checkAndCompleteTimeslot(
 
         // Broadcast timeslot completion event
         const [member] = await db
-          .select({ name: schema.members.name })
+          .select({ name: schema.members.name, familyId: schema.members.familyId })
           .from(schema.members)
           .where(eq(schema.members.id, memberId))
           .limit(1);
 
-        broadcast({
-          type: "timeslot_completed",
-          memberId,
-          memberName: member?.name,
-          timestamp: Date.now(),
-          data: { timeslotId: timeslotId },
-        });
+        if (member) {
+          broadcastToFamily(member.familyId, {
+            type: "timeslot_completed",
+            memberId,
+            memberName: member.name,
+            timestamp: Date.now(),
+            data: { timeslotId: timeslotId },
+          });
+        }
       }
     } catch {
       // Ignore duplicate errors (timeslot already completed)

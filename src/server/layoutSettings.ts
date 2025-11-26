@@ -7,10 +7,7 @@ import {
   DEFAULT_LAYOUT_SETTINGS,
   LAYOUT_IDS,
 } from "../config/layouts";
-
-// For now, we'll use a default family ID of 1
-// This will be replaced with session-based family ID in multi-tenancy phase
-const DEFAULT_FAMILY_ID = 1;
+import { getTenantContext, requireRole } from "../utils/tenant";
 
 const LayoutIdSchema = z.enum(LAYOUT_IDS);
 
@@ -29,10 +26,12 @@ const LayoutSettingsSchema = z.object({
 
 export const getLayoutSettings = createServerFn({ method: "GET" }).handler(
   async () => {
+    const { familyId } = await getTenantContext();
+
     const rows = await db
       .select()
       .from(schema.layoutSettings)
-      .where(eq(schema.layoutSettings.familyId, DEFAULT_FAMILY_ID));
+      .where(eq(schema.layoutSettings.familyId, familyId));
 
     const settings: LayoutSettings = { ...DEFAULT_LAYOUT_SETTINGS };
 
@@ -66,6 +65,8 @@ export const getLayoutSettings = createServerFn({ method: "GET" }).handler(
 export const updateLayoutSettings = createServerFn({ method: "POST" })
   .inputValidator(LayoutSettingsSchema)
   .handler(async ({ data }) => {
+    const { familyId } = await requireRole(["owner", "admin"]);
+
     const updates: { key: string; value: string }[] = [];
 
     if (data.autoSwitchEnabled !== undefined) {
@@ -95,7 +96,7 @@ export const updateLayoutSettings = createServerFn({ method: "POST" })
       await db
         .insert(schema.layoutSettings)
         .values({
-          familyId: DEFAULT_FAMILY_ID,
+          familyId,
           key,
           value,
         })

@@ -1,12 +1,9 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { eq, asc, sql } from "drizzle-orm";
+import { eq, asc, sql, or } from "drizzle-orm";
 import { db, schema } from "../db";
-import { broadcast } from "./realtime";
-
-// For now, we'll use a default family ID of 1
-// This will be replaced with session-based family ID in multi-tenancy phase
-const DEFAULT_FAMILY_ID = 1;
+import { broadcastToFamily } from "./realtime";
+import { getTenantContext } from "../utils/tenant";
 
 const GetStatsSchema = z.object({
   memberId: z.number(),
@@ -34,12 +31,17 @@ export const getMemberStats = createServerFn({ method: "GET" })
 
 export const getAllAchievements = createServerFn({ method: "GET" }).handler(
   async () => {
+    const { familyId } = await getTenantContext();
+
     // Get global achievements and family-specific achievements
     const achievements = await db
       .select()
       .from(schema.achievements)
       .where(
-        sql`${schema.achievements.isGlobal} = true OR ${schema.achievements.familyId} = ${DEFAULT_FAMILY_ID}`
+        or(
+          eq(schema.achievements.isGlobal, true),
+          eq(schema.achievements.familyId, familyId)
+        )
       )
       .orderBy(asc(schema.achievements.requirementValue));
 
@@ -54,6 +56,8 @@ const GetMemberAchievementsSchema = z.object({
 export const getMemberAchievements = createServerFn({ method: "GET" })
   .inputValidator(GetMemberAchievementsSchema)
   .handler(async ({ data }) => {
+    const { familyId } = await getTenantContext();
+
     // LEFT JOIN to get achievements with earned status
     const achievements = await db
       .select({
@@ -75,7 +79,10 @@ export const getMemberAchievements = createServerFn({ method: "GET" })
         sql`${schema.achievements.id} = ${schema.memberAchievements.achievementId} AND ${schema.memberAchievements.memberId} = ${data.memberId}`
       )
       .where(
-        sql`${schema.achievements.isGlobal} = true OR ${schema.achievements.familyId} = ${DEFAULT_FAMILY_ID}`
+        or(
+          eq(schema.achievements.isGlobal, true),
+          eq(schema.achievements.familyId, familyId)
+        )
       )
       .orderBy(asc(schema.achievements.requirementValue));
 
@@ -166,12 +173,24 @@ async function checkAchievements(memberId: number) {
 
   if (!stats) return;
 
+  // Get member's family ID
+  const [member] = await db
+    .select({ familyId: schema.members.familyId })
+    .from(schema.members)
+    .where(eq(schema.members.id, memberId))
+    .limit(1);
+
+  if (!member) return;
+
   // Get all achievements (global + family-specific)
   const achievements = await db
     .select()
     .from(schema.achievements)
     .where(
-      sql`${schema.achievements.isGlobal} = true OR ${schema.achievements.familyId} = ${DEFAULT_FAMILY_ID}`
+      or(
+        eq(schema.achievements.isGlobal, true),
+        eq(schema.achievements.familyId, member.familyId)
+      )
     );
 
   for (const achievement of achievements) {
@@ -225,22 +244,24 @@ async function checkAchievements(memberId: number) {
         }
 
         // Broadcast achievement unlocked event
-        const [member] = await db
-          .select({ name: schema.members.name })
+        const [memberForBroadcast] = await db
+          .select({ name: schema.members.name, familyId: schema.members.familyId })
           .from(schema.members)
           .where(eq(schema.members.id, memberId))
           .limit(1);
 
-        broadcast({
-          type: "achievement_unlocked",
-          memberId,
-          memberName: member?.name,
-          timestamp: Date.now(),
-          data: {
-            achievementId: achievement.id,
-            achievementName: achievement.name,
-          },
-        });
+        if (memberForBroadcast) {
+          broadcastToFamily(memberForBroadcast.familyId, {
+            type: "achievement_unlocked",
+            memberId,
+            memberName: memberForBroadcast.name,
+            timestamp: Date.now(),
+            data: {
+              achievementId: achievement.id,
+              achievementName: achievement.name,
+            },
+          });
+        }
       } catch {
         // Achievement already exists
       }

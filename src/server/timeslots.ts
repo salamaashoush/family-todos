@@ -3,10 +3,7 @@ import { z } from "zod";
 import { eq, and, asc, inArray } from "drizzle-orm";
 import { db, schema } from "../db";
 import type { RecurrenceType } from "../db/schema";
-
-// For now, we'll use a default family ID of 1
-// This will be replaced with session-based family ID in multi-tenancy phase
-const DEFAULT_FAMILY_ID = 1;
+import { getTenantContext, requireRole } from "../utils/tenant";
 
 /**
  * Check if a timeslot should be shown on a given day of week
@@ -44,13 +41,15 @@ const GetTimeslotsSchema = z.object({
 export const getTimeslots = createServerFn({ method: "GET" })
   .inputValidator(GetTimeslotsSchema)
   .handler(async ({ data }) => {
+    const { familyId } = await getTenantContext();
+
     // Get active timeslots for the family
     const timeslots = await db
       .select()
       .from(schema.timeslots)
       .where(
         and(
-          eq(schema.timeslots.familyId, DEFAULT_FAMILY_ID),
+          eq(schema.timeslots.familyId, familyId),
           eq(schema.timeslots.isActive, true)
         )
       )
@@ -117,11 +116,13 @@ const CreateTimeslotSchema = z.object({
 export const createTimeslot = createServerFn({ method: "POST" })
   .inputValidator(CreateTimeslotSchema)
   .handler(async ({ data }) => {
+    const { familyId } = await requireRole(["owner", "admin"]);
+
     // Insert the timeslot
     const [timeslot] = await db
       .insert(schema.timeslots)
       .values({
-        familyId: DEFAULT_FAMILY_ID,
+        familyId,
         name: data.name,
         description: data.description || null,
         startTime: data.startTime,
@@ -162,6 +163,8 @@ const UpdateTimeslotSchema = z.object({
 export const updateTimeslot = createServerFn({ method: "POST" })
   .inputValidator(UpdateTimeslotSchema)
   .handler(async ({ data }) => {
+    const { familyId } = await requireRole(["owner", "admin"]);
+
     const updateData: Partial<{
       name: string;
       description: string | null;
@@ -192,7 +195,7 @@ export const updateTimeslot = createServerFn({ method: "POST" })
       .where(
         and(
           eq(schema.timeslots.id, data.id),
-          eq(schema.timeslots.familyId, DEFAULT_FAMILY_ID)
+          eq(schema.timeslots.familyId, familyId)
         )
       )
       .returning();
@@ -234,12 +237,14 @@ const DeleteTimeslotSchema = z.object({
 export const deleteTimeslot = createServerFn({ method: "POST" })
   .inputValidator(DeleteTimeslotSchema)
   .handler(async ({ data }) => {
+    const { familyId } = await requireRole(["owner", "admin"]);
+
     await db
       .delete(schema.timeslots)
       .where(
         and(
           eq(schema.timeslots.id, data.id),
-          eq(schema.timeslots.familyId, DEFAULT_FAMILY_ID)
+          eq(schema.timeslots.familyId, familyId)
         )
       );
 
