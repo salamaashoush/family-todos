@@ -325,17 +325,60 @@ function ServiceWorkerRegistration() {
     <script
       dangerouslySetInnerHTML={{
         __html: `
-          if ('serviceWorker' in navigator) {
+          (function() {
+            if (!('serviceWorker' in navigator)) return;
+
             window.addEventListener('load', function() {
               navigator.serviceWorker.register('/sw.js')
                 .then(function(registration) {
-                  console.log('ServiceWorker registration successful with scope: ', registration.scope);
+                  console.log('[App] SW registered, scope:', registration.scope);
+
+                  // Check for updates periodically (every 60 seconds)
+                  setInterval(function() {
+                    registration.update().catch(function(err) {
+                      console.warn('[App] SW update check failed:', err);
+                    });
+                  }, 60000);
+
+                  // Listen for new service worker installing
+                  registration.addEventListener('updatefound', function() {
+                    var newWorker = registration.installing;
+                    if (!newWorker) return;
+
+                    console.log('[App] New SW installing...');
+
+                    newWorker.addEventListener('statechange', function() {
+                      if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                        // New SW installed but waiting - auto-activate it
+                        console.log('[App] New SW installed, activating...');
+                        newWorker.postMessage({ type: 'SKIP_WAITING' });
+                      }
+                    });
+                  });
                 })
                 .catch(function(err) {
-                  console.log('ServiceWorker registration failed: ', err);
+                  console.error('[App] SW registration failed:', err);
                 });
+
+              // Listen for SW messages
+              navigator.serviceWorker.addEventListener('message', function(event) {
+                if (event.data && event.data.type === 'SW_UPDATED') {
+                  console.log('[App] SW updated to version:', event.data.version);
+                  // Optionally reload to get fresh content
+                  // window.location.reload();
+                }
+              });
+
+              // Handle controller change (new SW took over)
+              var refreshing = false;
+              navigator.serviceWorker.addEventListener('controllerchange', function() {
+                if (refreshing) return;
+                refreshing = true;
+                console.log('[App] New SW controller, reloading...');
+                window.location.reload();
+              });
             });
-          }
+          })();
         `,
       }}
     />

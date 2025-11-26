@@ -1,51 +1,71 @@
 // Service Worker for Family Todos PWA
-const CACHE_NAME = 'family-todos-v1';
-const OFFLINE_URL = '/offline.html';
+// Version is used to bust cache on updates - increment this when deploying new versions
+const SW_VERSION = '1.0.0';
+const CACHE_NAME = `family-todos-${SW_VERSION}`;
 
-// Assets to cache on install
-const PRECACHE_ASSETS = [
-  '/',
-  '/manifest.json',
+// Only cache truly static assets that rarely change
+const STATIC_ASSETS = [
+  '/offline.html',
   '/icon-192.png',
   '/icon-512.png',
   '/apple-touch-icon.png',
-  '/favicon.ico'
 ];
 
-// Install event - cache essential assets
+// Install event - cache static assets only
 self.addEventListener('install', (event) => {
+  console.log(`[SW ${SW_VERSION}] Installing...`);
+
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      // Cache precache assets but don't fail if some aren't available
-      return Promise.allSettled(
-        PRECACHE_ASSETS.map((url) =>
-          cache.add(url).catch((err) => {
-            console.warn(`Failed to cache ${url}:`, err);
-          })
-        )
-      );
-    })
+    caches.open(CACHE_NAME)
+      .then((cache) => {
+        console.log(`[SW ${SW_VERSION}] Caching static assets`);
+        return cache.addAll(STATIC_ASSETS);
+      })
+      .then(() => {
+        // Force activation - don't wait for old SW to release
+        console.log(`[SW ${SW_VERSION}] Skip waiting`);
+        return self.skipWaiting();
+      })
+      .catch((err) => {
+        console.error(`[SW ${SW_VERSION}] Install failed:`, err);
+      })
   );
-  // Activate immediately
-  self.skipWaiting();
 });
 
-// Activate event - clean up old caches
+// Activate event - clean up ALL old caches
 self.addEventListener('activate', (event) => {
+  console.log(`[SW ${SW_VERSION}] Activating...`);
+
   event.waitUntil(
-    caches.keys().then((cacheNames) => {
-      return Promise.all(
-        cacheNames
-          .filter((cacheName) => cacheName !== CACHE_NAME)
-          .map((cacheName) => caches.delete(cacheName))
-      );
-    })
+    caches.keys()
+      .then((cacheNames) => {
+        return Promise.all(
+          cacheNames.map((cacheName) => {
+            // Delete any cache that isn't the current version
+            if (cacheName !== CACHE_NAME) {
+              console.log(`[SW ${SW_VERSION}] Deleting old cache: ${cacheName}`);
+              return caches.delete(cacheName);
+            }
+          })
+        );
+      })
+      .then(() => {
+        // Take control of all clients immediately
+        console.log(`[SW ${SW_VERSION}] Claiming clients`);
+        return self.clients.claim();
+      })
+      .then(() => {
+        // Notify all clients about the update
+        return self.clients.matchAll().then((clients) => {
+          clients.forEach((client) => {
+            client.postMessage({ type: 'SW_UPDATED', version: SW_VERSION });
+          });
+        });
+      })
   );
-  // Take control of all clients immediately
-  self.clients.claim();
 });
 
-// Fetch event - network first, fallback to cache
+// Fetch event - Network first, with offline fallback for navigation only
 self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
@@ -60,7 +80,7 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Skip API requests (they should go to network)
+  // Skip API requests - always go to network
   if (url.pathname.startsWith('/api/') || url.pathname.startsWith('/_server/')) {
     return;
   }
@@ -70,78 +90,74 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // For navigation requests, use network-first strategy
+  // Skip hot module replacement in development
+  if (url.pathname.includes('__vite') || url.pathname.includes('.hot-update.')) {
+    return;
+  }
+
+  // For navigation requests - network first, offline fallback
   if (request.mode === 'navigate') {
     event.respondWith(
       fetch(request)
-        .then((response) => {
-          // Clone and cache the response
-          const responseClone = response.clone();
-          caches.open(CACHE_NAME).then((cache) => {
-            cache.put(request, responseClone);
-          });
-          return response;
-        })
         .catch(() => {
-          // Return cached version or offline page
-          return caches.match(request).then((cachedResponse) => {
-            return cachedResponse || caches.match(OFFLINE_URL);
-          });
+          // Only show offline page when network fails
+          return caches.match('/offline.html');
         })
     );
     return;
   }
 
-  // For static assets, use cache-first strategy
-  if (
-    url.pathname.match(/\.(js|css|png|jpg|jpeg|gif|svg|ico|woff|woff2|ttf|eot)$/) ||
-    url.pathname.startsWith('/assets/')
-  ) {
+  // For static assets (icons, etc.) - cache first, network fallback
+  if (STATIC_ASSETS.some(asset => url.pathname.endsWith(asset.replace('/', '')))) {
     event.respondWith(
-      caches.match(request).then((cachedResponse) => {
-        if (cachedResponse) {
-          // Return cached version and update cache in background
-          fetch(request).then((response) => {
-            caches.open(CACHE_NAME).then((cache) => {
-              cache.put(request, response);
-            });
-          });
-          return cachedResponse;
-        }
-
-        // Not in cache, fetch and cache
-        return fetch(request).then((response) => {
-          const responseClone = response.clone();
-          caches.open(CACHE_NAME).then((cache) => {
-            cache.put(request, responseClone);
-          });
-          return response;
-        });
-      })
+      caches.match(request)
+        .then((cachedResponse) => {
+          if (cachedResponse) {
+            return cachedResponse;
+          }
+          return fetch(request);
+        })
     );
     return;
   }
 
-  // Default: network first, cache fallback
-  event.respondWith(
-    fetch(request)
-      .then((response) => {
-        // Clone and cache successful responses
-        if (response.ok) {
-          const responseClone = response.clone();
-          caches.open(CACHE_NAME).then((cache) => {
-            cache.put(request, responseClone);
-          });
-        }
-        return response;
-      })
-      .catch(() => caches.match(request))
-  );
+  // Everything else - network only (no caching of JS/CSS to avoid stale code)
+  // This ensures users always get the latest version
 });
 
-// Handle messages from clients
+// Handle messages from the app
 self.addEventListener('message', (event) => {
-  if (event.data && event.data.type === 'SKIP_WAITING') {
-    self.skipWaiting();
+  const { type } = event.data || {};
+
+  switch (type) {
+    case 'SKIP_WAITING':
+      // Force this SW to activate immediately
+      self.skipWaiting();
+      break;
+
+    case 'GET_VERSION':
+      // Return current SW version
+      event.ports[0]?.postMessage({ version: SW_VERSION });
+      break;
+
+    case 'CLEAR_CACHE':
+      // Allow app to force cache clear
+      caches.keys().then((cacheNames) => {
+        return Promise.all(
+          cacheNames.map((cacheName) => caches.delete(cacheName))
+        );
+      }).then(() => {
+        event.ports[0]?.postMessage({ success: true });
+      });
+      break;
   }
+});
+
+// Handle errors
+self.addEventListener('error', (event) => {
+  console.error(`[SW ${SW_VERSION}] Error:`, event.error);
+});
+
+self.addEventListener('unhandledrejection', (event) => {
+  console.error(`[SW ${SW_VERSION}] Unhandled rejection:`, event.reason);
 });
