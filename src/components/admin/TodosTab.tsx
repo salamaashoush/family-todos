@@ -19,7 +19,7 @@ import { useTodoMutations } from '../../hooks/useAdminMutations'
 import { Modal } from '../shared/Modal'
 import { ConfirmDialog } from '../shared/ConfirmDialog'
 import { TodoForm } from './TodoForm'
-import { SwipeableCard } from './SwipeableCard'
+import { AdminCard } from './AdminCard'
 import { SortableItem } from './SortableItem'
 import type { Todo, Timeslot } from '../../types'
 
@@ -386,11 +386,8 @@ export function TodosTab() {
         </DndContext>
       ) : (
         <div className="space-y-3">
-          <p className="text-sm text-gray-500 px-1">
-            Swipe left on a card to reveal edit/delete actions
-          </p>
           {filteredTodos.map((todo: Todo) => (
-            <SwipeableCard
+            <AdminCard
               key={todo.id}
               onDelete={() => setDeletingTodo(todo)}
               onEdit={() => openEditModal(todo)}
@@ -424,7 +421,7 @@ export function TodosTab() {
                   )}
                 </div>
               </div>
-            </SwipeableCard>
+            </AdminCard>
           ))}
         </div>
       )}

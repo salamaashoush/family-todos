@@ -4,7 +4,7 @@ import { useMemberMutations } from '../../hooks/useAdminMutations'
 import { Modal } from '../shared/Modal'
 import { ConfirmDialog } from '../shared/ConfirmDialog'
 import { MemberForm } from './MemberForm'
-import { SwipeableCard } from './SwipeableCard'
+import { AdminCard } from './AdminCard'
 import type { Member } from '../../types'
 
 export function MembersTab() {
@@ -206,11 +206,8 @@ export function MembersTab() {
         </div>
       ) : (
         <div className="space-y-3">
-          <p className="text-sm text-gray-500 px-1">
-            Swipe left on a card to reveal edit/delete actions
-          </p>
           {filteredMembers.map((member: Member) => (
-            <SwipeableCard
+            <AdminCard
               key={member.id}
               onDelete={() => setDeletingMember(member)}
               onEdit={() => openEditModal(member)}
@@ -239,7 +236,7 @@ export function MembersTab() {
                   )}
                 </div>
               </div>
-            </SwipeableCard>
+            </AdminCard>
           ))}
         </div>
       )}

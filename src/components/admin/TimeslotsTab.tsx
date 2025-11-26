@@ -19,7 +19,7 @@ import { useTimeslotMutations } from '../../hooks/useAdminMutations'
 import { Modal } from '../shared/Modal'
 import { ConfirmDialog } from '../shared/ConfirmDialog'
 import { TimeslotForm } from './TimeslotForm'
-import { SwipeableCard } from './SwipeableCard'
+import { AdminCard } from './AdminCard'
 import { SortableItem } from './SortableItem'
 import type { Timeslot, Member } from '../../types'
 
@@ -131,8 +131,7 @@ export function TimeslotsTab() {
   }
 
   const saveReordering = () => {
-    localTimeslots.forEach((timeslot, index) => {
-      // Save order by updating timeslots
+    localTimeslots.forEach((timeslot) => {
       update.mutate({
         data: {
           id: timeslot.id,
@@ -388,11 +387,8 @@ export function TimeslotsTab() {
         </DndContext>
       ) : (
         <div className="space-y-3">
-          <p className="text-sm text-gray-500 px-1">
-            Swipe left on a card to reveal edit/delete actions
-          </p>
           {filteredTimeslots.map((timeslot: Timeslot) => (
-            <SwipeableCard
+            <AdminCard
               key={timeslot.id}
               onDelete={() => setDeletingTimeslot(timeslot)}
               onEdit={() => openEditModal(timeslot)}
@@ -436,7 +432,7 @@ export function TimeslotsTab() {
                   )}
                 </div>
               </div>
-            </SwipeableCard>
+            </AdminCard>
           ))}
         </div>
       )}
