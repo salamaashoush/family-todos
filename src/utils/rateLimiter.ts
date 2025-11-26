@@ -20,35 +20,35 @@ interface RateLimitConfig {
 
 // Different rate limit configurations for different use cases
 const RATE_LIMIT_CONFIGS: Record<string, RateLimitConfig> = {
-  // Login attempts - strict limits
+  // Login attempts
   login: {
-    maxAttempts: 5,
-    windowMs: 15 * 60 * 1000, // 15 minutes
-    blockDurationMs: 30 * 60 * 1000, // 30 minutes
-  },
-  // Public board mutations - moderate limits per token
-  publicBoard: {
-    maxAttempts: 60, // 60 toggles per window
-    windowMs: 5 * 60 * 1000, // 5 minutes
-    blockDurationMs: 15 * 60 * 1000, // 15 minutes
-  },
-  // Username/email availability checks - prevent enumeration
-  enumeration: {
     maxAttempts: 10,
-    windowMs: 60 * 1000, // 1 minute
+    windowMs: 15 * 60 * 1000, // 15 minutes
     blockDurationMs: 5 * 60 * 1000, // 5 minutes
+  },
+  // Public board mutations - generous limits per token
+  publicBoard: {
+    maxAttempts: 200, // 200 toggles per window
+    windowMs: 5 * 60 * 1000, // 5 minutes
+    blockDurationMs: 2 * 60 * 1000, // 2 minutes
+  },
+  // Username/email availability checks
+  enumeration: {
+    maxAttempts: 30,
+    windowMs: 60 * 1000, // 1 minute
+    blockDurationMs: 1 * 60 * 1000, // 1 minute
   },
   // Password reset requests
   passwordReset: {
-    maxAttempts: 3,
+    maxAttempts: 5,
     windowMs: 60 * 60 * 1000, // 1 hour
-    blockDurationMs: 60 * 60 * 1000, // 1 hour
+    blockDurationMs: 15 * 60 * 1000, // 15 minutes
   },
   // Email verification resend
   emailVerification: {
-    maxAttempts: 5,
+    maxAttempts: 10,
     windowMs: 60 * 60 * 1000, // 1 hour
-    blockDurationMs: 60 * 60 * 1000, // 1 hour
+    blockDurationMs: 15 * 60 * 1000, // 15 minutes
   },
 };
 
