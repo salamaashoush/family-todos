@@ -3,9 +3,22 @@ import { useMembers } from '../../hooks/useQueries'
 import { useMemberMutations } from '../../hooks/useAdminMutations'
 import { Modal } from '../shared/Modal'
 import { ConfirmDialog } from '../shared/ConfirmDialog'
+import { Button } from '../shared/Button'
 import { MemberForm } from './MemberForm'
 import { AdminCard } from './AdminCard'
 import type { Member } from '../../types'
+
+const PlusIcon = () => (
+  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+  </svg>
+)
+
+const TrashIcon = () => (
+  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+  </svg>
+)
 
 export function MembersTab() {
   const { data: members, isLoading } = useMembers()
@@ -94,15 +107,10 @@ export function MembersTab() {
       <div className="flex flex-col gap-4">
         <div className="flex items-center justify-between">
           <h2 className="text-xl sm:text-2xl font-bold text-gray-800">Family Members</h2>
-          <button
-            onClick={openAddModal}
-            className="px-4 py-2 sm:px-6 sm:py-3 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white font-bold rounded-xl shadow-lg transition-all flex items-center gap-2 min-h-[48px]"
-          >
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-            </svg>
+          <Button onClick={openAddModal} leftIcon={<PlusIcon />}>
             <span className="hidden sm:inline">Add Member</span>
-          </button>
+            <span className="sm:hidden">Add</span>
+          </Button>
         </div>
 
         {/* Search */}
@@ -145,21 +153,21 @@ export function MembersTab() {
               </span>
             </div>
             <div className="flex items-center gap-2">
-              <button
+              <Button
+                variant="ghost"
+                size="sm"
                 onClick={() => setSelectedIds(new Set())}
-                className="px-3 py-2 text-gray-600 hover:bg-gray-200 rounded-lg transition-colors min-h-[44px]"
               >
                 Cancel
-              </button>
-              <button
+              </Button>
+              <Button
+                variant="danger"
+                size="sm"
                 onClick={() => setShowBulkDelete(true)}
-                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-lg transition-colors min-h-[44px] flex items-center gap-2"
+                leftIcon={<TrashIcon />}
               >
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                </svg>
                 Delete
-              </button>
+              </Button>
             </div>
           </div>
         )}
@@ -195,12 +203,9 @@ export function MembersTab() {
           ) : (
             <>
               <p className="text-lg mb-4">No family members yet</p>
-              <button
-                onClick={openAddModal}
-                className="px-6 py-3 bg-gradient-to-r from-theme-primary to-theme-secondary text-white font-bold rounded-xl hover:shadow-lg transition-all"
-              >
+              <Button onClick={openAddModal} leftIcon={<PlusIcon />}>
                 Add Your First Member
-              </button>
+              </Button>
             </>
           )}
         </div>

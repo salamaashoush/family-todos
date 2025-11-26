@@ -4,6 +4,7 @@ import { z } from 'zod'
 import { useImageUpload } from '../../hooks/useImageUpload'
 import { UPLOAD_CONFIG } from '../../constants'
 import { showToast } from '../Toast'
+import { Button } from '../shared/Button'
 import type { Member } from '../../types'
 
 const memberSchema = z.object({
@@ -146,20 +147,17 @@ export function MemberForm({ member, onSubmit, onCancel }: MemberFormProps) {
         selector={(state) => [state.canSubmit, state.isSubmitting]}
         children={([canSubmit, isSubmitting]) => (
           <div className="flex gap-3 pt-4">
-            <button
+            <Button
               type="submit"
               disabled={!canSubmit || isUploading}
-              className="flex-1 px-6 py-3 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 disabled:from-gray-400 disabled:to-gray-500 text-white font-bold rounded-xl shadow-lg hover:shadow-xl transition-all transform hover:scale-105 active:scale-95 disabled:cursor-not-allowed disabled:transform-none"
+              isLoading={isUploading || isSubmitting}
+              fullWidth
             >
-              {isUploading || isSubmitting ? 'Saving...' : member ? 'Update Member' : 'Add Member'}
-            </button>
-            <button
-              type="button"
-              onClick={onCancel}
-              className="px-6 py-3 bg-gray-400 hover:bg-gray-500 text-white font-bold rounded-xl transition-colors"
-            >
+              {member ? 'Update Member' : 'Add Member'}
+            </Button>
+            <Button type="button" variant="secondary" onClick={onCancel}>
               Cancel
-            </button>
+            </Button>
           </div>
         )}
       />

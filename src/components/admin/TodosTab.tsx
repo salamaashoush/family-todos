@@ -18,10 +18,30 @@ import { useTodos, useTimeslots } from '../../hooks/useQueries'
 import { useTodoMutations } from '../../hooks/useAdminMutations'
 import { Modal } from '../shared/Modal'
 import { ConfirmDialog } from '../shared/ConfirmDialog'
+import { Button } from '../shared/Button'
+import { Select } from '../shared/Select'
 import { TodoForm } from './TodoForm'
 import { AdminCard } from './AdminCard'
 import { SortableItem } from './SortableItem'
 import type { Todo, Timeslot } from '../../types'
+
+const PlusIcon = () => (
+  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+  </svg>
+)
+
+const ReorderIcon = () => (
+  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8h16M4 16h16" />
+  </svg>
+)
+
+const TrashIcon = () => (
+  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+  </svg>
+)
 
 interface TodoFormData {
   title: string
@@ -186,26 +206,19 @@ export function TodosTab() {
           <h2 className="text-xl sm:text-2xl font-bold text-gray-800">Tasks</h2>
           <div className="flex items-center gap-2">
             {!isReordering && (
-              <button
+              <Button
+                variant="secondary"
                 onClick={startReordering}
                 disabled={!canReorder || !todos?.length}
-                className="px-3 py-2 bg-gray-100 hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed text-gray-700 font-medium rounded-xl transition-colors min-h-[48px] flex items-center gap-2"
+                leftIcon={<ReorderIcon />}
               >
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8h16M4 16h16" />
-                </svg>
                 <span className="hidden sm:inline">Reorder</span>
-              </button>
+              </Button>
             )}
-            <button
-              onClick={openAddModal}
-              className="px-4 py-2 sm:px-6 sm:py-3 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white font-bold rounded-xl shadow-lg transition-all flex items-center gap-2 min-h-[48px]"
-            >
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-              </svg>
+            <Button onClick={openAddModal} leftIcon={<PlusIcon />}>
               <span className="hidden sm:inline">Add Task</span>
-            </button>
+              <span className="sm:hidden">Add</span>
+            </Button>
           </div>
         </div>
 
@@ -219,18 +232,12 @@ export function TodosTab() {
               <span className="font-medium">Drag tasks to reorder</span>
             </div>
             <div className="flex items-center gap-2">
-              <button
-                onClick={cancelReordering}
-                className="px-3 py-2 text-gray-600 hover:bg-gray-200 rounded-lg transition-colors min-h-[44px]"
-              >
+              <Button variant="ghost" size="sm" onClick={cancelReordering}>
                 Cancel
-              </button>
-              <button
-                onClick={saveReordering}
-                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition-colors min-h-[44px]"
-              >
+              </Button>
+              <Button size="sm" onClick={saveReordering}>
                 Save Order
-              </button>
+              </Button>
             </div>
           </div>
         )}
@@ -255,10 +262,9 @@ export function TodosTab() {
                 className="w-full pl-10 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:border-theme-primary focus:outline-none transition-colors min-h-[48px]"
               />
             </div>
-            <select
+            <Select
               value={filterTimeslot ?? ''}
               onChange={(e) => setFilterTimeslot(e.target.value ? Number(e.target.value) : null)}
-              className="px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-theme-primary focus:outline-none transition-colors min-h-[48px] bg-white"
             >
               <option value="">All Time Slots</option>
               {timeslots?.map((ts: Timeslot) => (
@@ -266,7 +272,7 @@ export function TodosTab() {
                   {ts.name}
                 </option>
               ))}
-            </select>
+            </Select>
           </div>
         )}
 
@@ -291,21 +297,21 @@ export function TodosTab() {
               </span>
             </div>
             <div className="flex items-center gap-2">
-              <button
+              <Button
+                variant="ghost"
+                size="sm"
                 onClick={() => setSelectedIds(new Set())}
-                className="px-3 py-2 text-gray-600 hover:bg-gray-200 rounded-lg transition-colors min-h-[44px]"
               >
                 Cancel
-              </button>
-              <button
+              </Button>
+              <Button
+                variant="danger"
+                size="sm"
                 onClick={() => setShowBulkDelete(true)}
-                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-lg transition-colors min-h-[44px] flex items-center gap-2"
+                leftIcon={<TrashIcon />}
               >
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                </svg>
                 Delete
-              </button>
+              </Button>
             </div>
           </div>
         )}
@@ -344,12 +350,9 @@ export function TodosTab() {
           ) : (
             <>
               <p className="text-lg mb-4">No tasks yet</p>
-              <button
-                onClick={openAddModal}
-                className="px-6 py-3 bg-gradient-to-r from-theme-primary to-theme-secondary text-white font-bold rounded-xl hover:shadow-lg transition-all"
-              >
+              <Button onClick={openAddModal} leftIcon={<PlusIcon />}>
                 Create Your First Task
-              </button>
+              </Button>
             </>
           )}
         </div>

@@ -2,6 +2,8 @@ import { useEffect } from 'react'
 import { useForm } from '@tanstack/react-form'
 import { z } from 'zod'
 import { useMembers } from '../../hooks/useQueries'
+import { Button } from '../shared/Button'
+import { Select } from '../shared/Select'
 import type { Timeslot, Member } from '../../types'
 
 const timeslotSchema = z.object({
@@ -102,15 +104,15 @@ export function TimeslotForm({ timeslot, onSubmit, onCancel }: TimeslotFormProps
           children={(field) => (
             <div>
               <label className="block text-sm font-bold text-gray-700 mb-2">Repeat Schedule</label>
-              <select
+              <Select
                 value={field.state.value}
                 onChange={(e) => field.handleChange(e.target.value as TimeslotFormData['recurrence_type'])}
-                className="w-full px-4 py-3 border-2 border-theme-primary/20 rounded-xl focus:outline-none focus:ring-2 focus:ring-theme-primary focus:border-transparent"
+                fullWidth
               >
                 <option value="daily">Every Day</option>
                 <option value="weekly">Every Week</option>
                 <option value="none">One Time Only</option>
-              </select>
+              </Select>
             </div>
           )}
         />
@@ -211,20 +213,17 @@ export function TimeslotForm({ timeslot, onSubmit, onCancel }: TimeslotFormProps
         selector={(state) => [state.canSubmit, state.isSubmitting]}
         children={([canSubmit, isSubmitting]) => (
           <div className="flex gap-3 pt-4">
-            <button
+            <Button
               type="submit"
               disabled={!canSubmit}
-              className="flex-1 px-6 py-3 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 disabled:from-gray-400 disabled:to-gray-500 text-white font-bold rounded-xl shadow-lg hover:shadow-xl transition-all transform hover:scale-105 active:scale-95 disabled:cursor-not-allowed disabled:transform-none"
+              isLoading={isSubmitting}
+              fullWidth
             >
-              {isSubmitting ? 'Saving...' : timeslot ? 'Update Time Slot' : 'Create Time Slot'}
-            </button>
-            <button
-              type="button"
-              onClick={onCancel}
-              className="px-6 py-3 bg-gray-400 hover:bg-gray-500 text-white font-bold rounded-xl transition-colors"
-            >
+              {timeslot ? 'Update Time Slot' : 'Create Time Slot'}
+            </Button>
+            <Button type="button" variant="secondary" onClick={onCancel}>
               Cancel
-            </button>
+            </Button>
           </div>
         )}
       />

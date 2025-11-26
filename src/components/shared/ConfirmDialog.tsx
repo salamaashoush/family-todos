@@ -1,3 +1,6 @@
+import { useEffect, useRef } from 'react'
+import { Button } from './Button'
+
 interface ConfirmDialogProps {
   isOpen: boolean
   onClose: () => void
@@ -19,6 +22,36 @@ export function ConfirmDialog({
   cancelText = 'Cancel',
   variant = 'danger',
 }: ConfirmDialogProps) {
+  const dialogRef = useRef<HTMLDivElement>(null)
+
+  // Handle escape key
+  useEffect(() => {
+    if (!isOpen) return
+
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose()
+      }
+    }
+
+    document.addEventListener('keydown', handleEscape)
+    return () => document.removeEventListener('keydown', handleEscape)
+  }, [isOpen, onClose])
+
+  // Lock body scroll
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = 'hidden'
+      dialogRef.current?.focus()
+    } else {
+      document.body.style.overflow = ''
+    }
+
+    return () => {
+      document.body.style.overflow = ''
+    }
+  }, [isOpen])
+
   if (!isOpen) return null
 
   const handleConfirm = () => {
@@ -27,11 +60,25 @@ export function ConfirmDialog({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="fixed inset-0 bg-black/50" onClick={onClose} />
-      <div className="relative bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      role="alertdialog"
+      aria-modal="true"
+      aria-labelledby="confirm-title"
+      aria-describedby="confirm-message"
+    >
+      <div
+        className="fixed inset-0 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200"
+        onClick={onClose}
+        aria-hidden="true"
+      />
+      <div
+        ref={dialogRef}
+        tabIndex={-1}
+        className="relative bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden animate-in zoom-in-95 duration-200"
+      >
         <div className="p-6">
-          <div className="flex items-center gap-4 mb-4">
+          <div className="flex items-start gap-4">
             <div
               className={`w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 ${
                 variant === 'danger' ? 'bg-red-100' : 'bg-yellow-100'
@@ -67,29 +114,23 @@ export function ConfirmDialog({
                 </svg>
               )}
             </div>
-            <div>
-              <h3 className="text-lg font-bold text-gray-900">{title}</h3>
-              <p className="text-gray-600 mt-1">{message}</p>
+            <div className="flex-1">
+              <h3 id="confirm-title" className="text-lg font-bold text-gray-900">
+                {title}
+              </h3>
+              <p id="confirm-message" className="text-gray-600 mt-1">
+                {message}
+              </p>
             </div>
           </div>
         </div>
         <div className="flex gap-3 p-4 bg-gray-50 border-t border-gray-200">
-          <button
-            onClick={onClose}
-            className="flex-1 px-4 py-3 bg-gray-200 hover:bg-gray-300 active:bg-gray-400 text-gray-800 font-semibold rounded-xl transition-colors min-h-[48px]"
-          >
+          <Button variant="secondary" onClick={onClose} fullWidth>
             {cancelText}
-          </button>
-          <button
-            onClick={handleConfirm}
-            className={`flex-1 px-4 py-3 font-semibold rounded-xl transition-colors min-h-[48px] ${
-              variant === 'danger'
-                ? 'bg-red-600 hover:bg-red-700 active:bg-red-800 text-white'
-                : 'bg-yellow-500 hover:bg-yellow-600 active:bg-yellow-700 text-white'
-            }`}
-          >
+          </Button>
+          <Button variant="danger" onClick={handleConfirm} fullWidth>
             {confirmText}
-          </button>
+          </Button>
         </div>
       </div>
     </div>
