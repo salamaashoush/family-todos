@@ -18,6 +18,7 @@ import {
 } from "../server/statistics";
 import { getWeeklyProgress } from "../server/progress";
 import { getMemberPoints } from "../server/rewards";
+import { useCurrentFamilyId } from "./useFamilyContext";
 import type { TodoCompletion } from "../types";
 
 // Get client ID from window if available (client-side only)
@@ -29,68 +30,86 @@ function getClientId(): string | null {
 }
 
 export function useMembers() {
+  const familyId = useCurrentFamilyId();
   return useQuery({
-    queryKey: ["members"],
+    queryKey: ["members", familyId],
     queryFn: () => getMembers(),
+    enabled: familyId !== undefined,
   });
 }
 
 export function useTimeslots(date?: string) {
+  const familyId = useCurrentFamilyId();
   return useQuery({
-    queryKey: ["timeslots", date],
+    queryKey: ["timeslots", familyId, date],
     queryFn: () => getTimeslots({ data: { date } }),
+    enabled: familyId !== undefined,
   });
 }
 
 export function useTodos() {
+  const familyId = useCurrentFamilyId();
   return useQuery({
-    queryKey: ["todos"],
+    queryKey: ["todos", familyId],
     queryFn: () => getTodos({ data: {} }),
+    enabled: familyId !== undefined,
   });
 }
 
 export function useCompletions(selectedDate: string) {
+  const familyId = useCurrentFamilyId();
   return useQuery({
-    queryKey: ["completions", selectedDate],
+    queryKey: ["completions", familyId, selectedDate],
     queryFn: () => getTodoCompletions({ data: { date: selectedDate } }),
+    enabled: familyId !== undefined,
   });
 }
 
 export function useMemberStats(memberId: number) {
+  const familyId = useCurrentFamilyId();
   return useQuery({
-    queryKey: ["memberStats", memberId],
+    queryKey: ["memberStats", familyId, memberId],
     queryFn: () => getMemberStats({ data: { memberId } }),
+    enabled: familyId !== undefined,
   });
 }
 
 export function useMemberAchievements(memberId: number) {
+  const familyId = useCurrentFamilyId();
   return useQuery({
-    queryKey: ["memberAchievements", memberId],
+    queryKey: ["memberAchievements", familyId, memberId],
     queryFn: () => getMemberAchievements({ data: { memberId } }),
+    enabled: familyId !== undefined,
   });
 }
 
 export function useAllAchievements() {
+  const familyId = useCurrentFamilyId();
   return useQuery({
-    queryKey: ["achievements"],
+    queryKey: ["achievements", familyId],
     queryFn: () => getAllAchievements(),
+    enabled: familyId !== undefined,
   });
 }
 
 export function useWeeklyProgress(memberId: number, startDate: string) {
+  const familyId = useCurrentFamilyId();
   return useQuery({
-    queryKey: ["weeklyProgress", memberId, startDate],
+    queryKey: ["weeklyProgress", familyId, memberId, startDate],
     queryFn: () =>
       getWeeklyProgress({
         data: { memberId, startDate },
       }),
+    enabled: familyId !== undefined,
   });
 }
 
 export function useMemberPoints(memberId: number) {
+  const familyId = useCurrentFamilyId();
   return useQuery({
-    queryKey: ["memberPoints", memberId],
+    queryKey: ["memberPoints", familyId, memberId],
     queryFn: () => getMemberPoints({ data: { memberId } }),
+    enabled: familyId !== undefined,
   });
 }
 
@@ -100,10 +119,12 @@ interface ToggleTodoParams {
   memberId: number;
   selectedDate: string;
   isCompleted: boolean;
+  familyId?: number;
 }
 
 export function useToggleTodoMutation() {
   const queryClient = useQueryClient();
+  const familyId = useCurrentFamilyId();
 
   return useMutation({
     mutationFn: async ({
@@ -147,18 +168,19 @@ export function useToggleTodoMutation() {
     }: ToggleTodoParams) => {
       // Cancel any outgoing refetches to avoid overwriting optimistic update
       await queryClient.cancelQueries({
-        queryKey: ["completions", selectedDate],
+        queryKey: ["completions", familyId, selectedDate],
       });
 
       // Snapshot the previous value
       const previousCompletions = queryClient.getQueryData<TodoCompletion[]>([
         "completions",
+        familyId,
         selectedDate,
       ]);
 
       // Optimistically update completions
       queryClient.setQueryData<TodoCompletion[]>(
-        ["completions", selectedDate],
+        ["completions", familyId, selectedDate],
         (old) => {
           if (!old) return old;
 
@@ -187,38 +209,39 @@ export function useToggleTodoMutation() {
         }
       );
 
-      return { previousCompletions, memberId, selectedDate };
+      return { previousCompletions, memberId, selectedDate, familyId };
     },
 
     onError: (_err, variables, context) => {
       // Rollback on error
       if (context?.previousCompletions) {
         queryClient.setQueryData(
-          ["completions", variables.selectedDate],
+          ["completions", context.familyId, variables.selectedDate],
           context.previousCompletions
         );
       }
     },
 
-    onSettled: (_data, _error, variables) => {
+    onSettled: (_data, _error, variables, context) => {
+      const fId = context?.familyId;
       // Invalidate to refetch fresh data - use specific member ID
       queryClient.invalidateQueries({
-        queryKey: ["completions", variables.selectedDate],
+        queryKey: ["completions", fId, variables.selectedDate],
       });
       queryClient.invalidateQueries({
-        queryKey: ["memberStats", variables.memberId],
+        queryKey: ["memberStats", fId, variables.memberId],
       });
       queryClient.invalidateQueries({
-        queryKey: ["memberAchievements", variables.memberId],
+        queryKey: ["memberAchievements", fId, variables.memberId],
       });
       // Invalidate weekly progress for this specific member
       queryClient.invalidateQueries({
-        queryKey: ["weeklyProgress", variables.memberId],
+        queryKey: ["weeklyProgress", fId, variables.memberId],
         exact: false,
       });
       // Invalidate member points for rewards
       queryClient.invalidateQueries({
-        queryKey: ["memberPoints", variables.memberId],
+        queryKey: ["memberPoints", fId, variables.memberId],
       });
     },
   });

@@ -4,6 +4,11 @@ import { eq, sql } from "drizzle-orm";
 import { db, schema } from "../db";
 import { useAppSession } from "~/utils/session";
 import { verifyPassword } from "../utils/password";
+import {
+  checkLoginRateLimit,
+  recordFailedLogin,
+  clearLoginRateLimit,
+} from "../utils/rateLimiter";
 
 const LoginSchema = z.object({
   username: z.string().min(1),
@@ -13,6 +18,14 @@ const LoginSchema = z.object({
 export const login = createServerFn({ method: "POST" })
   .inputValidator(LoginSchema)
   .handler(async ({ data }) => {
+    // Check rate limit using username as identifier
+    const rateLimit = checkLoginRateLimit(data.username);
+    if (!rateLimit.allowed) {
+      throw new Error(
+        `Too many login attempts. Please try again in ${Math.ceil(rateLimit.retryAfter! / 60)} minutes.`
+      );
+    }
+
     const [adminUser] = await db
       .select()
       .from(schema.adminUsers)
@@ -26,13 +39,18 @@ export const login = createServerFn({ method: "POST" })
         data.password,
         "$argon2id$v=19$m=65536,t=3,p=4$dummy"
       );
+      recordFailedLogin(data.username);
       throw new Error("Invalid credentials");
     }
 
     const isValid = await verifyPassword(data.password, adminUser.passwordHash);
     if (!isValid) {
+      recordFailedLogin(data.username);
       throw new Error("Invalid credentials");
     }
+
+    // Clear rate limit on successful login
+    clearLoginRateLimit(data.username);
 
     // Update last login timestamp
     await db
@@ -131,6 +149,42 @@ export const switchFamily = createServerFn({ method: "POST" })
 
     return { success: true };
   });
+
+// Get user's families with details
+export const getUserFamilies = createServerFn({ method: "GET" }).handler(
+  async () => {
+    const session = await useAppSession();
+
+    if (!session.data.isAuthenticated || !session.data.adminUserId) {
+      return { families: [], currentFamilyId: undefined };
+    }
+
+    const familyIds = session.data.familyIds || [];
+    if (familyIds.length === 0) {
+      return { families: [], currentFamilyId: undefined };
+    }
+
+    // Get family details
+    const families = await db
+      .select({
+        id: schema.families.id,
+        name: schema.families.name,
+        slug: schema.families.slug,
+        role: schema.userFamilies.role,
+      })
+      .from(schema.families)
+      .innerJoin(
+        schema.userFamilies,
+        eq(schema.families.id, schema.userFamilies.familyId)
+      )
+      .where(eq(schema.userFamilies.userId, session.data.adminUserId));
+
+    return {
+      families,
+      currentFamilyId: session.data.currentFamilyId,
+    };
+  }
+);
 
 // Re-export AdminUser type for backwards compatibility
 export type { AdminUser } from "../db/schema";

@@ -4,6 +4,7 @@ import { eq, or } from "drizzle-orm";
 import { db, schema } from "../db";
 import { useAppSession } from "~/utils/session";
 import { hashPassword } from "../utils/password";
+import { sendVerificationEmail } from "./emailVerification";
 
 const SignUpSchema = z.object({
   username: z
@@ -53,6 +54,9 @@ export const signUp = createServerFn({ method: "POST" })
       })
       .returning();
 
+    // Send verification email
+    await sendVerificationEmail({ data: { userId: user.id } });
+
     // Set session - user is authenticated but has no family yet
     const session = await useAppSession();
     await session.update({
@@ -64,7 +68,7 @@ export const signUp = createServerFn({ method: "POST" })
       currentFamilyRole: undefined,
     });
 
-    return { success: true, userId: user.id };
+    return { success: true, userId: user.id, emailSent: true };
   });
 
 // Check if username is available

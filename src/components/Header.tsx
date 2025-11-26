@@ -2,6 +2,7 @@ import { Link } from '@tanstack/react-router'
 import { ThemeSwitcher } from './ThemeSwitcher'
 import { LayoutSwitcher } from './LayoutSwitcher'
 import { DatePicker } from './DatePicker'
+import { FamilySelector } from './FamilySelector'
 
 interface HeaderProps {
   selectedDate: string
@@ -36,6 +37,7 @@ export function Header({ selectedDate, onDateChange }: HeaderProps) {
           </Link>
 
           <div className="flex items-center gap-1.5 sm:gap-2">
+            <FamilySelector />
             <DatePicker selectedDate={selectedDate} onDateChange={onDateChange} />
             <LayoutSwitcher />
             <ThemeSwitcher />

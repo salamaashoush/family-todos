@@ -15,6 +15,20 @@
       "when": 1764158955393,
       "tag": "0001_seed_data",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1764168881538,
+      "tag": "0002_typical_overlord",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1764169266232,
+      "tag": "0003_old_black_bird",
+      "breakpoints": true
     }
   ]
 }
