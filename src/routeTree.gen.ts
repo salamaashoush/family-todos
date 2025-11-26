@@ -15,6 +15,7 @@ import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as UploadsSplatRouteImport } from './routes/uploads/$'
 import { Route as ApiSseRouteImport } from './routes/api/sse'
+import { Route as ApiHealthRouteImport } from './routes/api/health'
 
 const StatsRoute = StatsRouteImport.update({
   id: '/stats',
@@ -46,12 +47,18 @@ const ApiSseRoute = ApiSseRouteImport.update({
   path: '/api/sse',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiHealthRoute = ApiHealthRouteImport.update({
+  id: '/api/health',
+  path: '/api/health',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
   '/login': typeof LoginRoute
   '/stats': typeof StatsRoute
+  '/api/health': typeof ApiHealthRoute
   '/api/sse': typeof ApiSseRoute
   '/uploads/$': typeof UploadsSplatRoute
 }
@@ -60,6 +67,7 @@ export interface FileRoutesByTo {
   '/admin': typeof AdminRoute
   '/login': typeof LoginRoute
   '/stats': typeof StatsRoute
+  '/api/health': typeof ApiHealthRoute
   '/api/sse': typeof ApiSseRoute
   '/uploads/$': typeof UploadsSplatRoute
 }
@@ -69,20 +77,36 @@ export interface FileRoutesById {
   '/admin': typeof AdminRoute
   '/login': typeof LoginRoute
   '/stats': typeof StatsRoute
+  '/api/health': typeof ApiHealthRoute
   '/api/sse': typeof ApiSseRoute
   '/uploads/$': typeof UploadsSplatRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/admin' | '/login' | '/stats' | '/api/sse' | '/uploads/$'
+  fullPaths:
+    | '/'
+    | '/admin'
+    | '/login'
+    | '/stats'
+    | '/api/health'
+    | '/api/sse'
+    | '/uploads/$'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/admin' | '/login' | '/stats' | '/api/sse' | '/uploads/$'
+  to:
+    | '/'
+    | '/admin'
+    | '/login'
+    | '/stats'
+    | '/api/health'
+    | '/api/sse'
+    | '/uploads/$'
   id:
     | '__root__'
     | '/'
     | '/admin'
     | '/login'
     | '/stats'
+    | '/api/health'
     | '/api/sse'
     | '/uploads/$'
   fileRoutesById: FileRoutesById
@@ -92,6 +116,7 @@ export interface RootRouteChildren {
   AdminRoute: typeof AdminRoute
   LoginRoute: typeof LoginRoute
   StatsRoute: typeof StatsRoute
+  ApiHealthRoute: typeof ApiHealthRoute
   ApiSseRoute: typeof ApiSseRoute
   UploadsSplatRoute: typeof UploadsSplatRoute
 }
@@ -140,6 +165,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiSseRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/health': {
+      id: '/api/health'
+      path: '/api/health'
+      fullPath: '/api/health'
+      preLoaderRoute: typeof ApiHealthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -148,6 +180,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminRoute: AdminRoute,
   LoginRoute: LoginRoute,
   StatsRoute: StatsRoute,
+  ApiHealthRoute: ApiHealthRoute,
   ApiSseRoute: ApiSseRoute,
   UploadsSplatRoute: UploadsSplatRoute,
 }

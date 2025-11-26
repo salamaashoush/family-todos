@@ -47,9 +47,9 @@ interface TodoFormData {
   title: string
   description: string
   symbol: string
-  image_url: string
+  imageUrl: string
   position: number
-  timeslot_ids: number[]
+  timeslotIds: number[]
 }
 
 export function TodosTab() {
@@ -86,7 +86,7 @@ export function TodosTab() {
         todo.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
         todo.description?.toLowerCase().includes(searchQuery.toLowerCase())
       const matchesTimeslot =
-        filterTimeslot === null || todo.timeslot_ids?.includes(filterTimeslot)
+        filterTimeslot === null || todo.timeslotIds?.includes(filterTimeslot)
       return matchesSearch && matchesTimeslot
     })
   }, [todos, localTodos, isReordering, searchQuery, filterTimeslot])
@@ -158,9 +158,9 @@ export function TodosTab() {
             title: todo.title,
             description: todo.description || '',
             symbol: todo.symbol || '',
-            image_url: todo.image_url || '',
+            imageUrl: todo.imageUrl || '',
             position: index,
-            timeslot_ids: todo.timeslot_ids || [],
+            timeslotIds: todo.timeslotIds || [],
           },
         })
       }
@@ -407,9 +407,9 @@ export function TodosTab() {
                   {todo.description && (
                     <p className="text-sm text-gray-500 mt-1 line-clamp-2">{todo.description}</p>
                   )}
-                  {todo.timeslot_ids && todo.timeslot_ids.length > 0 && (
+                  {todo.timeslotIds && todo.timeslotIds.length > 0 && (
                     <div className="flex flex-wrap gap-1.5 mt-2">
-                      {todo.timeslot_ids.map((id: number) => {
+                      {todo.timeslotIds.map((id: number) => {
                         const timeslot = timeslots?.find((t: Timeslot) => t.id === id)
                         return timeslot ? (
                           <span

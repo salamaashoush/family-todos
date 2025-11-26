@@ -1,0 +1,39 @@
+services:
+  db:
+    image: postgres:latest
+    container_name: family-todos-db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: family_todos
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql
+    command: ["postgres", "-c", "ssl=off"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d family_todos"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  app:
+    build: .
+    container_name: family-todos-app
+    ports:
+      - "3000:3000"
+    environment:
+      - DATABASE_URL=postgres://postgres:postgres@db:5432/family_todos
+      - NODE_ENV=production
+      - DATA_DIR=/usr/src/app/data
+    volumes:
+      - app_data:/usr/src/app/data
+    depends_on:
+      db:
+        condition: service_healthy
+    profiles:
+      - full
+
+volumes:
+  postgres_data:
+  app_data:

@@ -140,7 +140,7 @@ export function useLayout() {
   return context
 }
 
-export function useCurrentTimeslot(timeslots: { id: number; start_time: string | null; end_time: string | null }[]) {
+export function useCurrentTimeslot(timeslots: { id: number; startTime: string; endTime: string }[]) {
   const { settings, setCurrentTimeslotId } = useLayout()
 
   useEffect(() => {
@@ -154,10 +154,10 @@ export function useCurrentTimeslot(timeslots: { id: number; start_time: string |
       const currentMinutes = now.getHours() * 60 + now.getMinutes()
 
       for (const timeslot of timeslots) {
-        if (!timeslot.start_time || !timeslot.end_time) continue
+        if (!timeslot.startTime || !timeslot.endTime) continue
 
-        const [startHour, startMin] = timeslot.start_time.split(':').map(Number)
-        const [endHour, endMin] = timeslot.end_time.split(':').map(Number)
+        const [startHour, startMin] = timeslot.startTime.split(':').map(Number)
+        const [endHour, endMin] = timeslot.endTime.split(':').map(Number)
 
         const startMinutes = startHour * 60 + startMin
         const endMinutes = endHour * 60 + endMin

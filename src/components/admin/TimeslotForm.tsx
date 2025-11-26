@@ -9,30 +9,30 @@ import type { Timeslot, Member } from '../../types'
 const timeslotSchema = z.object({
   name: z.string().min(1, 'Name is required').max(100, 'Name must be less than 100 characters'),
   description: z.string().max(500, 'Description must be less than 500 characters'),
-  start_time: z.string(),
-  end_time: z.string(),
-  recurrence_type: z.enum(['daily', 'weekly', 'monthly', 'none']),
-  recurrence_days: z.string(),
-  member_ids: z.array(z.number()).min(1, 'Select at least one family member'),
+  startTime: z.string(),
+  endTime: z.string(),
+  recurrenceType: z.enum(['daily', 'weekly', 'monthly', 'none']),
+  recurrenceDays: z.string(),
+  memberIds: z.array(z.number()).min(1, 'Select at least one family member'),
 }).refine(
   (data) => {
-    if (!data.start_time || !data.end_time) return true
-    return data.start_time < data.end_time
+    if (!data.startTime || !data.endTime) return true
+    return data.startTime < data.endTime
   },
   {
     message: 'End time must be after start time',
-    path: ['end_time'],
+    path: ['endTime'],
   }
 ).refine(
   (data) => {
-    if (data.recurrence_type === 'weekly') {
-      return data.recurrence_days.length > 0
+    if (data.recurrenceType === 'weekly') {
+      return data.recurrenceDays.length > 0
     }
     return true
   },
   {
     message: 'Select at least one day for weekly schedule',
-    path: ['recurrence_days'],
+    path: ['recurrenceDays'],
   }
 )
 
@@ -51,11 +51,11 @@ export function TimeslotForm({ timeslot, onSubmit, onCancel }: TimeslotFormProps
     defaultValues: {
       name: '',
       description: '',
-      start_time: '',
-      end_time: '',
-      recurrence_type: 'daily',
-      recurrence_days: '',
-      member_ids: [],
+      startTime: '',
+      endTime: '',
+      recurrenceType: 'daily',
+      recurrenceDays: '',
+      memberIds: [],
     } as TimeslotFormData,
     validators: {
       onChange: timeslotSchema,
@@ -70,11 +70,11 @@ export function TimeslotForm({ timeslot, onSubmit, onCancel }: TimeslotFormProps
     if (timeslot) {
       form.setFieldValue('name', timeslot.name)
       form.setFieldValue('description', timeslot.description || '')
-      form.setFieldValue('start_time', timeslot.start_time || '')
-      form.setFieldValue('end_time', timeslot.end_time || '')
-      form.setFieldValue('recurrence_type', timeslot.recurrence_type)
-      form.setFieldValue('recurrence_days', timeslot.recurrence_days || '')
-      form.setFieldValue('member_ids', timeslot.member_ids || [])
+      form.setFieldValue('startTime', timeslot.startTime || '')
+      form.setFieldValue('endTime', timeslot.endTime || '')
+      form.setFieldValue('recurrenceType', timeslot.recurrenceType)
+      form.setFieldValue('recurrenceDays', timeslot.recurrenceDays || '')
+      form.setFieldValue('memberIds', timeslot.memberIds || [])
     } else {
       form.reset()
     }
@@ -106,12 +106,12 @@ export function TimeslotForm({ timeslot, onSubmit, onCancel }: TimeslotFormProps
         />
 
         <form.Field
-          name="recurrence_type"
+          name="recurrenceType"
           children={(field) => (
             <Select
               label="Repeat Schedule"
               value={field.state.value}
-              onChange={(e) => field.handleChange(e.target.value as TimeslotFormData['recurrence_type'])}
+              onChange={(e) => field.handleChange(e.target.value as TimeslotFormData['recurrenceType'])}
               fullWidth
             >
               <option value="daily">Every Day</option>
@@ -123,11 +123,11 @@ export function TimeslotForm({ timeslot, onSubmit, onCancel }: TimeslotFormProps
       </div>
 
       <form.Subscribe
-        selector={(state) => state.values.recurrence_type}
+        selector={(state) => state.values.recurrenceType}
         children={(recurrenceType) =>
           recurrenceType === 'weekly' ? (
             <form.Field
-              name="recurrence_days"
+              name="recurrenceDays"
               children={(field) => {
                 const DAYS = [
                   { value: 'Mon', label: 'Mon' },
@@ -182,7 +182,7 @@ export function TimeslotForm({ timeslot, onSubmit, onCancel }: TimeslotFormProps
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <form.Field
-          name="start_time"
+          name="startTime"
           children={(field) => (
             <Input
               label="Start Time"
@@ -194,7 +194,7 @@ export function TimeslotForm({ timeslot, onSubmit, onCancel }: TimeslotFormProps
         />
 
         <form.Field
-          name="end_time"
+          name="endTime"
           children={(field) => (
             <Input
               label="End Time"
@@ -222,7 +222,7 @@ export function TimeslotForm({ timeslot, onSubmit, onCancel }: TimeslotFormProps
       />
 
       <form.Field
-        name="member_ids"
+        name="memberIds"
         children={(field) => (
           <div>
             <label className="block text-sm font-bold text-gray-700 mb-3">Assign to Family Members *</label>

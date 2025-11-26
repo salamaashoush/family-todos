@@ -7,8 +7,8 @@ import { Button, Input } from '../shared'
 type AdminUser = {
   id: number
   username: string
-  createdAt: string
-  lastLoginAt: string | null
+  createdAt: Date
+  lastLoginAt: Date | null
 }
 
 const adminUserSchema = z.object({

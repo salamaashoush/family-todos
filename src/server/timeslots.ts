@@ -1,34 +1,62 @@
 import { createServerFn } from "@tanstack/react-start";
-import { db, type Timeslot, type TimeslotMember } from "../db/schema";
 import { z } from "zod";
+import { eq, and, asc, inArray } from "drizzle-orm";
+import { db, schema } from "../db";
+import type { RecurrenceType } from "../db/schema";
+
+// For now, we'll use a default family ID of 1
+// This will be replaced with session-based family ID in multi-tenancy phase
+const DEFAULT_FAMILY_ID = 1;
 
 const GetTimeslotsSchema = z.object({
-  member_id: z.number().optional(),
+  memberId: z.number().optional(),
 });
 
 export const getTimeslots = createServerFn({ method: "GET" })
   .inputValidator(GetTimeslotsSchema)
   .handler(async ({ data }) => {
-    let query = "SELECT * FROM timeslots WHERE is_active = 1";
-    const params: number[] = [];
+    // Get active timeslots for the family
+    const timeslots = await db
+      .select()
+      .from(schema.timeslots)
+      .where(
+        and(
+          eq(schema.timeslots.familyId, DEFAULT_FAMILY_ID),
+          eq(schema.timeslots.isActive, true)
+        )
+      )
+      .orderBy(asc(schema.timeslots.startTime));
 
-    query += " ORDER BY start_time";
+    // Get all member assignments for these timeslots
+    const timeslotIds = timeslots.map((t) => t.id);
 
-    const timeslots = db.query<Timeslot, number[]>(query).all(...params);
+    let timeslotMembersMap: Map<number, number[]> = new Map();
 
-    const timeslotsWithMembers = timeslots.map((timeslot: Timeslot) => {
-      const members = db.query<TimeslotMember, [number]>(
-        "SELECT * FROM timeslot_members WHERE timeslot_id = ?"
-      ).all(timeslot.id);
+    if (timeslotIds.length > 0) {
+      const timeslotMembers = await db
+        .select()
+        .from(schema.timeslotMembers)
+        .where(inArray(schema.timeslotMembers.timeslotId, timeslotIds));
 
-      return {
-        ...timeslot,
-        member_ids: members.map((m: TimeslotMember) => m.member_id)
-      };
-    });
+      // Group member IDs by timeslot
+      for (const tm of timeslotMembers) {
+        const existing = timeslotMembersMap.get(tm.timeslotId) || [];
+        existing.push(tm.memberId);
+        timeslotMembersMap.set(tm.timeslotId, existing);
+      }
+    }
 
-    if (data.member_id) {
-      return timeslotsWithMembers.filter((t: Timeslot & { member_ids: number[] }) => t.member_ids.includes(data.member_id!));
+    // Combine timeslots with their member IDs
+    const timeslotsWithMembers = timeslots.map((timeslot) => ({
+      ...timeslot,
+      memberIds: timeslotMembersMap.get(timeslot.id) || [],
+    }));
+
+    // Filter by member if specified
+    if (data.memberId) {
+      return timeslotsWithMembers.filter((t) =>
+        t.memberIds.includes(data.memberId!)
+      );
     }
 
     return timeslotsWithMembers;
@@ -37,114 +65,124 @@ export const getTimeslots = createServerFn({ method: "GET" })
 const CreateTimeslotSchema = z.object({
   name: z.string().min(1),
   description: z.string().optional(),
-  start_time: z.string().optional(),
-  end_time: z.string().optional(),
-  recurrence_type: z.enum(["daily", "weekly", "monthly", "none"]).optional(),
-  recurrence_days: z.string().optional(),
-  member_ids: z.array(z.number()).min(1),
+  startTime: z.string(),
+  endTime: z.string(),
+  recurrenceType: z.enum(["daily", "weekly", "monthly", "none"]).optional(),
+  recurrenceDays: z.string().optional(),
+  memberIds: z.array(z.number()).min(1),
 });
 
 export const createTimeslot = createServerFn({ method: "POST" })
   .inputValidator(CreateTimeslotSchema)
   .handler(async ({ data }) => {
-    const result = db.run(
-      `INSERT INTO timeslots
-      (name, description, start_time, end_time, recurrence_type, recurrence_days)
-      VALUES (?, ?, ?, ?, ?, ?)`,
-      [
-        data.name,
-        data.description || null,
-        data.start_time || null,
-        data.end_time || null,
-        data.recurrence_type || "none",
-        data.recurrence_days || null,
-      ]
-    );
+    // Insert the timeslot
+    const [timeslot] = await db
+      .insert(schema.timeslots)
+      .values({
+        familyId: DEFAULT_FAMILY_ID,
+        name: data.name,
+        description: data.description || null,
+        startTime: data.startTime,
+        endTime: data.endTime,
+        recurrenceType: (data.recurrenceType || "none") as RecurrenceType,
+        recurrenceDays: data.recurrenceDays || null,
+      })
+      .returning();
 
-    const timeslotId = result.lastInsertRowid as number;
-
-    for (const memberId of data.member_ids) {
-      db.run(
-        `INSERT INTO timeslot_members (timeslot_id, member_id) VALUES (?, ?)`,
-        [timeslotId, memberId]
+    // Insert member assignments
+    if (data.memberIds.length > 0) {
+      await db.insert(schema.timeslotMembers).values(
+        data.memberIds.map((memberId) => ({
+          timeslotId: timeslot.id,
+          memberId,
+        }))
       );
     }
 
-    const timeslot = db
-      .query<Timeslot, [number]>("SELECT * FROM timeslots WHERE id = ?")
-      .get(timeslotId);
-
-    return timeslot;
+    return {
+      ...timeslot,
+      memberIds: data.memberIds,
+    };
   });
 
 const UpdateTimeslotSchema = z.object({
   id: z.number(),
   name: z.string().min(1).optional(),
   description: z.string().optional(),
-  start_time: z.string().optional(),
-  end_time: z.string().optional(),
-  recurrence_type: z.enum(["daily", "weekly", "monthly", "none"]).optional(),
-  recurrence_days: z.string().optional(),
-  is_active: z.number().optional(),
-  member_ids: z.array(z.number()).optional(),
+  startTime: z.string().optional(),
+  endTime: z.string().optional(),
+  recurrenceType: z.enum(["daily", "weekly", "monthly", "none"]).optional(),
+  recurrenceDays: z.string().optional(),
+  isActive: z.boolean().optional(),
+  memberIds: z.array(z.number()).optional(),
 });
 
 export const updateTimeslot = createServerFn({ method: "POST" })
   .inputValidator(UpdateTimeslotSchema)
   .handler(async ({ data }) => {
-    const updates: string[] = [];
-    const values: (string | number)[] = [];
+    const updateData: Partial<{
+      name: string;
+      description: string | null;
+      startTime: string;
+      endTime: string;
+      recurrenceType: RecurrenceType;
+      recurrenceDays: string | null;
+      isActive: boolean;
+      updatedAt: Date;
+    }> = {
+      updatedAt: new Date(),
+    };
 
-    if (data.name !== undefined) {
-      updates.push("name = ?");
-      values.push(data.name);
-    }
-    if (data.description !== undefined) {
-      updates.push("description = ?");
-      values.push(data.description);
-    }
-    if (data.start_time !== undefined) {
-      updates.push("start_time = ?");
-      values.push(data.start_time);
-    }
-    if (data.end_time !== undefined) {
-      updates.push("end_time = ?");
-      values.push(data.end_time);
-    }
-    if (data.recurrence_type !== undefined) {
-      updates.push("recurrence_type = ?");
-      values.push(data.recurrence_type);
-    }
-    if (data.recurrence_days !== undefined) {
-      updates.push("recurrence_days = ?");
-      values.push(data.recurrence_days);
-    }
-    if (data.is_active !== undefined) {
-      updates.push("is_active = ?");
-      values.push(data.is_active);
-    }
+    if (data.name !== undefined) updateData.name = data.name;
+    if (data.description !== undefined)
+      updateData.description = data.description;
+    if (data.startTime !== undefined) updateData.startTime = data.startTime;
+    if (data.endTime !== undefined) updateData.endTime = data.endTime;
+    if (data.recurrenceType !== undefined)
+      updateData.recurrenceType = data.recurrenceType;
+    if (data.recurrenceDays !== undefined)
+      updateData.recurrenceDays = data.recurrenceDays;
+    if (data.isActive !== undefined) updateData.isActive = data.isActive;
 
-    updates.push("updated_at = CURRENT_TIMESTAMP");
-    values.push(data.id);
+    const [timeslot] = await db
+      .update(schema.timeslots)
+      .set(updateData)
+      .where(
+        and(
+          eq(schema.timeslots.id, data.id),
+          eq(schema.timeslots.familyId, DEFAULT_FAMILY_ID)
+        )
+      )
+      .returning();
 
-    db.run(`UPDATE timeslots SET ${updates.join(", ")} WHERE id = ?`, values);
+    // Update member assignments if provided
+    if (data.memberIds !== undefined) {
+      // Delete existing assignments
+      await db
+        .delete(schema.timeslotMembers)
+        .where(eq(schema.timeslotMembers.timeslotId, data.id));
 
-    if (data.member_ids !== undefined) {
-      db.run("DELETE FROM timeslot_members WHERE timeslot_id = ?", [data.id]);
-
-      for (const memberId of data.member_ids) {
-        db.run(
-          `INSERT INTO timeslot_members (timeslot_id, member_id) VALUES (?, ?)`,
-          [data.id, memberId]
+      // Insert new assignments
+      if (data.memberIds.length > 0) {
+        await db.insert(schema.timeslotMembers).values(
+          data.memberIds.map((memberId) => ({
+            timeslotId: data.id,
+            memberId,
+          }))
         );
       }
     }
 
-    const timeslot = db
-      .query<Timeslot, [number]>("SELECT * FROM timeslots WHERE id = ?")
-      .get(data.id);
+    // Get updated member assignments
+    const memberAssignments = await db
+      .select()
+      .from(schema.timeslotMembers)
+      .where(eq(schema.timeslotMembers.timeslotId, data.id));
 
-    return timeslot;
+    return {
+      ...timeslot,
+      memberIds: memberAssignments.map((m) => m.memberId),
+    };
   });
 
 const DeleteTimeslotSchema = z.object({
@@ -154,6 +192,17 @@ const DeleteTimeslotSchema = z.object({
 export const deleteTimeslot = createServerFn({ method: "POST" })
   .inputValidator(DeleteTimeslotSchema)
   .handler(async ({ data }) => {
-    db.run("DELETE FROM timeslots WHERE id = ?", [data.id]);
+    await db
+      .delete(schema.timeslots)
+      .where(
+        and(
+          eq(schema.timeslots.id, data.id),
+          eq(schema.timeslots.familyId, DEFAULT_FAMILY_ID)
+        )
+      );
+
     return { success: true };
   });
+
+// Re-export types for backwards compatibility
+export type { Timeslot, TimeslotMember } from "../db/schema";

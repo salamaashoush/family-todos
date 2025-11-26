@@ -1,0 +1,20 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1764158955392,
+      "tag": "0000_foamy_boomerang",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1764158955393,
+      "tag": "0001_seed_data",
+      "breakpoints": true
+    }
+  ]
+}

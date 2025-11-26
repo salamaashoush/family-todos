@@ -11,8 +11,8 @@ export type TaskCompletedEvent = {
   memberName?: string;
   timestamp: number;
   data: {
-    todo_id: number;
-    timeslot_id: number;
+    todoId: number;
+    timeslotId: number;
   };
 };
 
@@ -23,8 +23,8 @@ export type TaskUncompletedEvent = {
   memberName?: string;
   timestamp: number;
   data: {
-    todo_id: number;
-    timeslot_id: number;
+    todoId: number;
+    timeslotId: number;
   };
 };
 
@@ -35,7 +35,7 @@ export type TimeslotCompletedEvent = {
   memberName?: string;
   timestamp: number;
   data: {
-    timeslot_id: number;
+    timeslotId: number;
   };
 };
 
@@ -46,8 +46,8 @@ export type AchievementUnlockedEvent = {
   memberName?: string;
   timestamp: number;
   data: {
-    achievement_id: number;
-    achievement_name: string;
+    achievementId: number;
+    achievementName: string;
   };
 };
 

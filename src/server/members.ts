@@ -1,12 +1,20 @@
 import { createServerFn } from "@tanstack/react-start";
-import { db, type Member } from "../db/schema";
 import { z } from "zod";
+import { eq, asc, and } from "drizzle-orm";
+import { db, schema } from "../db";
+
+// For now, we'll use a default family ID of 1
+// This will be replaced with session-based family ID in multi-tenancy phase
+const DEFAULT_FAMILY_ID = 1;
 
 export const getMembers = createServerFn({ method: "GET" }).handler(
   async () => {
-    const members = db
-      .query<Member, []>("SELECT * FROM members ORDER BY created_at ASC")
-      .all();
+    const members = await db
+      .select()
+      .from(schema.members)
+      .where(eq(schema.members.familyId, DEFAULT_FAMILY_ID))
+      .orderBy(asc(schema.members.createdAt));
+
     return members;
   }
 );
@@ -14,20 +22,26 @@ export const getMembers = createServerFn({ method: "GET" }).handler(
 const CreateMemberSchema = z.object({
   name: z.string().min(1),
   avatar: z.string().optional(),
-  is_parent: z.boolean().optional(),
+  isParent: z.boolean().optional(),
 });
 
 export const createMember = createServerFn({ method: "POST" })
   .inputValidator(CreateMemberSchema)
   .handler(async ({ data }) => {
-    const result = db.run(
-      "INSERT INTO members (name, avatar, is_parent) VALUES (?, ?, ?)",
-      [data.name, data.avatar || null, data.is_parent ? 1 : 0]
-    );
+    const [member] = await db
+      .insert(schema.members)
+      .values({
+        familyId: DEFAULT_FAMILY_ID,
+        name: data.name,
+        avatar: data.avatar || null,
+        isParent: data.isParent ?? false,
+      })
+      .returning();
 
-    const member = db
-      .query<Member, [number]>("SELECT * FROM members WHERE id = ?")
-      .get(result.lastInsertRowid as number);
+    // Initialize member stats
+    await db.insert(schema.memberStats).values({
+      memberId: member.id,
+    });
 
     return member;
   });
@@ -36,36 +50,41 @@ const UpdateMemberSchema = z.object({
   id: z.number(),
   name: z.string().min(1).optional(),
   avatar: z.string().optional(),
-  is_parent: z.boolean().optional(),
+  isParent: z.boolean().optional(),
 });
 
 export const updateMember = createServerFn({ method: "POST" })
   .inputValidator(UpdateMemberSchema)
   .handler(async ({ data }) => {
-    const updates: string[] = [];
-    const values: (string | number)[] = [];
+    const updateData: Partial<{
+      name: string;
+      avatar: string | null;
+      isParent: boolean;
+      updatedAt: Date;
+    }> = {
+      updatedAt: new Date(),
+    };
 
     if (data.name !== undefined) {
-      updates.push("name = ?");
-      values.push(data.name);
+      updateData.name = data.name;
     }
     if (data.avatar !== undefined) {
-      updates.push("avatar = ?");
-      values.push(data.avatar);
+      updateData.avatar = data.avatar;
     }
-    if (data.is_parent !== undefined) {
-      updates.push("is_parent = ?");
-      values.push(data.is_parent ? 1 : 0);
+    if (data.isParent !== undefined) {
+      updateData.isParent = data.isParent;
     }
 
-    updates.push("updated_at = CURRENT_TIMESTAMP");
-    values.push(data.id);
-
-    db.run(`UPDATE members SET ${updates.join(", ")} WHERE id = ?`, values);
-
-    const member = db
-      .query<Member, [number]>("SELECT * FROM members WHERE id = ?")
-      .get(data.id);
+    const [member] = await db
+      .update(schema.members)
+      .set(updateData)
+      .where(
+        and(
+          eq(schema.members.id, data.id),
+          eq(schema.members.familyId, DEFAULT_FAMILY_ID)
+        )
+      )
+      .returning();
 
     return member;
   });
@@ -77,6 +96,17 @@ const DeleteMemberSchema = z.object({
 export const deleteMember = createServerFn({ method: "POST" })
   .inputValidator(DeleteMemberSchema)
   .handler(async ({ data }) => {
-    db.run("DELETE FROM members WHERE id = ?", [data.id]);
+    await db
+      .delete(schema.members)
+      .where(
+        and(
+          eq(schema.members.id, data.id),
+          eq(schema.members.familyId, DEFAULT_FAMILY_ID)
+        )
+      );
+
     return { success: true };
   });
+
+// Re-export Member type for backwards compatibility
+export type { Member } from "../db/schema";

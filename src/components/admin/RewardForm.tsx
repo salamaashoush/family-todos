@@ -9,8 +9,8 @@ const rewardSchema = z.object({
   name: z.string().min(1, 'Name is required').max(100, 'Name must be less than 100 characters'),
   description: z.string().max(500, 'Description must be less than 500 characters'),
   icon: z.string().max(10, 'Icon must be less than 10 characters'),
-  point_cost: z.number().min(1, 'Point cost must be at least 1'),
-  is_active: z.boolean(),
+  pointCost: z.number().min(1, 'Point cost must be at least 1'),
+  isActive: z.boolean(),
 })
 
 type RewardFormData = z.infer<typeof rewardSchema>
@@ -27,8 +27,8 @@ export function RewardForm({ reward, onSubmit, onCancel }: RewardFormProps) {
       name: '',
       description: '',
       icon: '',
-      point_cost: 10,
-      is_active: true,
+      pointCost: 10,
+      isActive: true,
     } as RewardFormData,
     validators: {
       onChange: rewardSchema,
@@ -44,8 +44,8 @@ export function RewardForm({ reward, onSubmit, onCancel }: RewardFormProps) {
       form.setFieldValue('name', reward.name)
       form.setFieldValue('description', reward.description || '')
       form.setFieldValue('icon', reward.icon || '')
-      form.setFieldValue('point_cost', reward.point_cost)
-      form.setFieldValue('is_active', reward.is_active === 1)
+      form.setFieldValue('pointCost', reward.pointCost)
+      form.setFieldValue('isActive', reward.isActive)
     } else {
       form.reset()
     }
@@ -109,7 +109,7 @@ export function RewardForm({ reward, onSubmit, onCancel }: RewardFormProps) {
       />
 
       <form.Field
-        name="point_cost"
+        name="pointCost"
         children={(field) => (
           <div>
             <label className="block text-sm font-bold text-gray-700 mb-2">
@@ -147,7 +147,7 @@ export function RewardForm({ reward, onSubmit, onCancel }: RewardFormProps) {
 
       {reward && (
         <form.Field
-          name="is_active"
+          name="isActive"
           children={(field) => (
             <div className="flex items-center gap-3">
               <button

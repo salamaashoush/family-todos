@@ -5,9 +5,9 @@ import { LEVEL_PROGRESS, WEEK_DAYS } from '../constants'
 import type { StatsDisplayProps } from '../types'
 
 export function StatsDisplay({ stats, achievements }: StatsDisplayProps) {
-  const earnedAchievements = achievements.filter((a) => a.earned_at)
-  const nextAchievements = achievements.filter((a) => !a.earned_at).slice(0, 3)
-  const levelProgress = ((stats.total_stars % LEVEL_PROGRESS.STARS_PER_LEVEL) / LEVEL_PROGRESS.STARS_PER_LEVEL) * 100
+  const earnedAchievements = achievements.filter((a) => a.earnedAt)
+  const nextAchievements = achievements.filter((a) => !a.earnedAt).slice(0, 3)
+  const levelProgress = ((stats.totalStars % LEVEL_PROGRESS.STARS_PER_LEVEL) / LEVEL_PROGRESS.STARS_PER_LEVEL) * 100
   const [showWeeklyView, setShowWeeklyView] = useState(false)
 
   useLevelUpCelebration({
@@ -24,7 +24,7 @@ export function StatsDisplay({ stats, achievements }: StatsDisplayProps) {
   }, [])
 
   // Always call the hook (rules of hooks), but only use data when needed
-  const weeklyProgressQuery = useWeeklyProgress(stats.member_id, weekStart)
+  const weeklyProgressQuery = useWeeklyProgress(stats.memberId, weekStart)
   const weeklyProgress = showWeeklyView ? weeklyProgressQuery.data : undefined
   const weeklyLoading = weeklyProgressQuery.isLoading
 
@@ -36,7 +36,7 @@ export function StatsDisplay({ stats, achievements }: StatsDisplayProps) {
             <span className="text-2xl">⭐</span>
             <span className="text-xs font-bold text-gray-600">Level {stats.level}</span>
           </div>
-          <div className="text-2xl font-bold text-theme-primary">{stats.total_stars}</div>
+          <div className="text-2xl font-bold text-theme-primary">{stats.totalStars}</div>
           <div className="text-xs text-gray-500">Stars</div>
           <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
             <div
@@ -45,20 +45,20 @@ export function StatsDisplay({ stats, achievements }: StatsDisplayProps) {
             />
           </div>
           <div className="text-xs text-gray-500 mt-1 text-center">
-            {LEVEL_PROGRESS.STARS_PER_LEVEL - (stats.total_stars % LEVEL_PROGRESS.STARS_PER_LEVEL)} to Level {stats.level + 1}
+            {LEVEL_PROGRESS.STARS_PER_LEVEL - (stats.totalStars % LEVEL_PROGRESS.STARS_PER_LEVEL)} to Level {stats.level + 1}
           </div>
         </div>
 
         <div className="bg-white rounded-xl p-3 shadow-md border-2 border-orange-400">
           <div className="flex items-center gap-2 mb-1">
-            <span className="text-2xl">{stats.current_streak > 0 ? '🔥' : '💤'}</span>
+            <span className="text-2xl">{stats.currentStreak > 0 ? '🔥' : '💤'}</span>
             <span className="text-xs font-bold text-gray-600">Streak</span>
           </div>
-          <div className="text-2xl font-bold text-orange-600">{stats.current_streak}</div>
+          <div className="text-2xl font-bold text-orange-600">{stats.currentStreak}</div>
           <div className="text-xs text-gray-500">
-            {stats.current_streak === 1 ? 'Day' : 'Days'}
+            {stats.currentStreak === 1 ? 'Day' : 'Days'}
           </div>
-          <div className="text-xs text-gray-600 mt-2">Best: {stats.longest_streak}</div>
+          <div className="text-xs text-gray-600 mt-2">Best: {stats.longestStreak}</div>
         </div>
       </div>
 
@@ -69,7 +69,7 @@ export function StatsDisplay({ stats, achievements }: StatsDisplayProps) {
             <span className="text-xs font-bold text-gray-600">Tasks Completed</span>
           </div>
           <span className="text-lg font-bold text-theme-primary">
-            {stats.total_tasks_completed}
+            {stats.totalTasksCompleted}
           </span>
         </div>
         <div className="flex items-center justify-between">
@@ -78,7 +78,7 @@ export function StatsDisplay({ stats, achievements }: StatsDisplayProps) {
             <span className="text-xs font-bold text-gray-600">Timeslots Done</span>
           </div>
           <span className="text-lg font-bold text-green-600">
-            {stats.total_timeslots_completed}
+            {stats.totalTimeslotsCompleted}
           </span>
         </div>
       </div>
@@ -93,7 +93,7 @@ export function StatsDisplay({ stats, achievements }: StatsDisplayProps) {
               <div
                 key={achievement.id}
                 className="bg-gradient-to-br from-theme-primary to-theme-secondary text-white rounded-lg p-2 min-w-[80px] text-center shadow-lg flex-shrink-0"
-                title={achievement.description}
+                title={achievement.description ?? undefined}
               >
                 <div className="text-3xl mb-1">{achievement.icon}</div>
                 <div className="text-xs font-bold leading-tight">{achievement.name}</div>
@@ -122,7 +122,7 @@ export function StatsDisplay({ stats, achievements }: StatsDisplayProps) {
                   <div className="text-xs text-gray-500 truncate">{achievement.description}</div>
                 </div>
                 <span className="text-xs font-bold text-theme-primary flex-shrink-0">
-                  +{achievement.star_reward}⭐
+                  +{achievement.starReward}⭐
                 </span>
               </div>
             ))}
@@ -163,7 +163,7 @@ export function StatsDisplay({ stats, achievements }: StatsDisplayProps) {
               {weeklyProgress.map((day, index) => {
                 const today = new Date().toISOString().split('T')[0]
                 const isToday = day.date === today
-                const hasActivity = day.task_count > 0
+                const hasActivity = day.taskCount > 0
 
                 return (
                   <div
@@ -179,11 +179,11 @@ export function StatsDisplay({ stats, achievements }: StatsDisplayProps) {
                         hasActivity ? 'bg-green-500 text-white' : 'bg-gray-100 text-gray-400'
                       }`}
                     >
-                      {day.task_count}
+                      {day.taskCount}
                     </div>
-                    {day.timeslot_count > 0 && (
+                    {day.timeslotCount > 0 && (
                       <div className="mt-1 text-xs text-green-600 font-bold">
-                        {day.timeslot_count}
+                        {day.timeslotCount}
                       </div>
                     )}
                   </div>

@@ -39,13 +39,13 @@ interface RewardFormData {
   name: string
   description: string
   icon: string
-  point_cost: number
-  is_active: boolean
+  pointCost: number
+  isActive: boolean
 }
 
 type PendingRedemptionWithDetails = RewardRedemption & {
-  member_name: string
-  reward_name: string
+  memberName: string
+  rewardName: string
 }
 
 export function RewardsTab() {
@@ -79,8 +79,8 @@ export function RewardsTab() {
         reward.description?.toLowerCase().includes(searchQuery.toLowerCase())
       const matchesStatus =
         filterStatus === 'all' ||
-        (filterStatus === 'active' && reward.is_active === 1) ||
-        (filterStatus === 'inactive' && reward.is_active === 0)
+        (filterStatus === 'active' && reward.isActive) ||
+        (filterStatus === 'inactive' && !reward.isActive)
       return matchesSearch && matchesStatus
     })
   }, [rewards, searchQuery, filterStatus])
@@ -91,7 +91,7 @@ export function RewardsTab() {
         name: data.name,
         description: data.description || undefined,
         icon: data.icon || undefined,
-        point_cost: data.point_cost,
+        pointCost: data.pointCost,
       },
     })
     setIsModalOpen(false)
@@ -105,8 +105,8 @@ export function RewardsTab() {
         name: data.name,
         description: data.description || undefined,
         icon: data.icon || undefined,
-        point_cost: data.point_cost,
-        is_active: data.is_active,
+        pointCost: data.pointCost,
+        isActive: data.isActive,
       },
     })
     setIsModalOpen(false)
@@ -132,7 +132,7 @@ export function RewardsTab() {
       data: {
         id: redemption.id,
         status: 'approved',
-        admin_user_id: 1, // TODO: Get actual admin user ID
+        adminUserId: 1, // TODO: Get actual admin user ID
       },
     })
   }
@@ -142,7 +142,7 @@ export function RewardsTab() {
       data: {
         id: redemption.id,
         status: 'rejected',
-        admin_user_id: 1, // TODO: Get actual admin user ID
+        adminUserId: 1, // TODO: Get actual admin user ID
       },
     })
   }
@@ -152,7 +152,7 @@ export function RewardsTab() {
       data: {
         id: redemption.id,
         status: 'fulfilled',
-        admin_user_id: 1, // TODO: Get actual admin user ID
+        adminUserId: 1, // TODO: Get actual admin user ID
       },
     })
   }
@@ -359,7 +359,7 @@ export function RewardsTab() {
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
                         <h3 className="font-bold text-gray-800">{reward.name}</h3>
-                        {reward.is_active === 0 && (
+                        {!reward.isActive && (
                           <span className="text-xs bg-gray-200 text-gray-600 px-2 py-0.5 rounded-full">
                             Inactive
                           </span>
@@ -370,7 +370,7 @@ export function RewardsTab() {
                       )}
                       <div className="flex items-center gap-1 mt-1 text-yellow-600">
                         <StarIcon />
-                        <span className="font-bold">{reward.point_cost} points</span>
+                        <span className="font-bold">{reward.pointCost} points</span>
                       </div>
                     </div>
                   </div>
@@ -399,17 +399,17 @@ export function RewardsTab() {
                           <GiftIcon />
                         </div>
                         <div>
-                          <h4 className="font-bold text-gray-800">{redemption.reward_name}</h4>
+                          <h4 className="font-bold text-gray-800">{redemption.rewardName}</h4>
                           <p className="text-sm text-gray-600">
-                            Requested by <span className="font-medium">{redemption.member_name}</span>
+                            Requested by <span className="font-medium">{redemption.memberName}</span>
                           </p>
                           <div className="flex items-center gap-1 mt-1 text-yellow-600 text-sm">
                             <StarIcon />
-                            <span className="font-medium">{redemption.points_spent} points</span>
+                            <span className="font-medium">{redemption.pointsSpent} points</span>
                           </div>
                           <p className="text-xs text-gray-400 mt-1">
-                            {new Date(redemption.requested_at).toLocaleDateString()} at{' '}
-                            {new Date(redemption.requested_at).toLocaleTimeString()}
+                            {new Date(redemption.requestedAt).toLocaleDateString()} at{' '}
+                            {new Date(redemption.requestedAt).toLocaleTimeString()}
                           </p>
                         </div>
                       </div>

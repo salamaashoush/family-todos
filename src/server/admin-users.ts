@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { db } from "../db/schema";
-import type { AdminUser } from "../db/types";
+import { eq, asc, count } from "drizzle-orm";
+import { db, schema } from "../db";
 import { useAppSession } from "~/utils/session";
 import { hashPassword, verifyPassword } from "../utils/password";
 
@@ -24,9 +24,11 @@ export const changePassword = createServerFn({ method: "POST" })
       throw new Error("Not authenticated");
     }
 
-    const adminUser = db
-      .query<AdminUser, [number]>("SELECT * FROM admin_users WHERE id = ?")
-      .get(session.data.adminUserId);
+    const [adminUser] = await db
+      .select()
+      .from(schema.adminUsers)
+      .where(eq(schema.adminUsers.id, session.data.adminUserId))
+      .limit(1);
 
     if (!adminUser) {
       throw new Error("Admin user not found");
@@ -34,17 +36,18 @@ export const changePassword = createServerFn({ method: "POST" })
 
     const isValid = await verifyPassword(
       data.currentPassword,
-      adminUser.password_hash
+      adminUser.passwordHash
     );
     if (!isValid) {
       throw new Error("Current password is incorrect");
     }
 
     const newHash = await hashPassword(data.newPassword);
-    db.run(
-      "UPDATE admin_users SET password_hash = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
-      [newHash, adminUser.id]
-    );
+
+    await db
+      .update(schema.adminUsers)
+      .set({ passwordHash: newHash, updatedAt: new Date() })
+      .where(eq(schema.adminUsers.id, adminUser.id));
 
     return { success: true };
   });
@@ -57,9 +60,11 @@ export const getAdminProfile = createServerFn({ method: "GET" }).handler(
       throw new Error("Not authenticated");
     }
 
-    const adminUser = db
-      .query<AdminUser, [number]>("SELECT * FROM admin_users WHERE id = ?")
-      .get(session.data.adminUserId);
+    const [adminUser] = await db
+      .select()
+      .from(schema.adminUsers)
+      .where(eq(schema.adminUsers.id, session.data.adminUserId))
+      .limit(1);
 
     if (!adminUser) {
       throw new Error("Admin user not found");
@@ -68,8 +73,9 @@ export const getAdminProfile = createServerFn({ method: "GET" }).handler(
     return {
       id: adminUser.id,
       username: adminUser.username,
-      createdAt: adminUser.created_at,
-      lastLoginAt: adminUser.last_login_at,
+      email: adminUser.email,
+      createdAt: adminUser.createdAt,
+      lastLoginAt: adminUser.lastLoginAt,
     };
   }
 );
@@ -82,23 +88,24 @@ export const getAdminUsers = createServerFn({ method: "GET" }).handler(
       throw new Error("Not authenticated");
     }
 
-    const adminUsers = db
-      .query<AdminUser, []>(
-        "SELECT * FROM admin_users ORDER BY created_at ASC"
-      )
-      .all();
+    const adminUsers = await db
+      .select()
+      .from(schema.adminUsers)
+      .orderBy(asc(schema.adminUsers.createdAt));
 
     return adminUsers.map((u) => ({
       id: u.id,
       username: u.username,
-      createdAt: u.created_at,
-      lastLoginAt: u.last_login_at,
+      email: u.email,
+      createdAt: u.createdAt,
+      lastLoginAt: u.lastLoginAt,
     }));
   }
 );
 
 const CreateAdminUserSchema = z.object({
   username: z.string().min(3, "Username must be at least 3 characters"),
+  email: z.string().email("Invalid email").optional(),
   password: z
     .string()
     .min(8, "Password must be at least 8 characters")
@@ -116,28 +123,48 @@ export const createAdminUser = createServerFn({ method: "POST" })
       throw new Error("Not authenticated");
     }
 
-    const existing = db
-      .query<AdminUser, [string]>(
-        "SELECT * FROM admin_users WHERE username = ?"
-      )
-      .get(data.username);
+    // Check for existing username
+    const [existingUsername] = await db
+      .select()
+      .from(schema.adminUsers)
+      .where(eq(schema.adminUsers.username, data.username))
+      .limit(1);
 
-    if (existing) {
+    if (existingUsername) {
       throw new Error("Username already exists");
     }
 
-    const passwordHash = await hashPassword(data.password);
-    const result = db.run(
-      "INSERT INTO admin_users (username, password_hash) VALUES (?, ?)",
-      [data.username, passwordHash]
-    );
+    // Check for existing email if provided
+    if (data.email) {
+      const [existingEmail] = await db
+        .select()
+        .from(schema.adminUsers)
+        .where(eq(schema.adminUsers.email, data.email))
+        .limit(1);
 
-    return { id: result.lastInsertRowid as number, success: true };
+      if (existingEmail) {
+        throw new Error("Email already exists");
+      }
+    }
+
+    const passwordHash = await hashPassword(data.password);
+
+    const [newUser] = await db
+      .insert(schema.adminUsers)
+      .values({
+        username: data.username,
+        email: data.email || null,
+        passwordHash,
+      })
+      .returning();
+
+    return { id: newUser.id, success: true };
   });
 
 const UpdateAdminUserSchema = z.object({
   id: z.number(),
   username: z.string().min(3, "Username must be at least 3 characters"),
+  email: z.string().email("Invalid email").optional(),
 });
 
 export const updateAdminUser = createServerFn({ method: "POST" })
@@ -149,29 +176,37 @@ export const updateAdminUser = createServerFn({ method: "POST" })
       throw new Error("Not authenticated");
     }
 
-    const adminUser = db
-      .query<AdminUser, [number]>("SELECT * FROM admin_users WHERE id = ?")
-      .get(data.id);
+    const [adminUser] = await db
+      .select()
+      .from(schema.adminUsers)
+      .where(eq(schema.adminUsers.id, data.id))
+      .limit(1);
 
     if (!adminUser) {
       throw new Error("Admin user not found");
     }
 
+    // Check for duplicate username
     if (data.username !== adminUser.username) {
-      const existing = db
-        .query<AdminUser, [string]>(
-          "SELECT * FROM admin_users WHERE username = ?"
-        )
-        .get(data.username);
+      const [existing] = await db
+        .select()
+        .from(schema.adminUsers)
+        .where(eq(schema.adminUsers.username, data.username))
+        .limit(1);
+
       if (existing && existing.id !== data.id) {
         throw new Error("Username already exists");
       }
     }
 
-    db.run(
-      "UPDATE admin_users SET username = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
-      [data.username, data.id]
-    );
+    await db
+      .update(schema.adminUsers)
+      .set({
+        username: data.username,
+        email: data.email || null,
+        updatedAt: new Date(),
+      })
+      .where(eq(schema.adminUsers.id, data.id));
 
     return { success: true };
   });
@@ -193,14 +228,16 @@ export const deleteAdminUser = createServerFn({ method: "POST" })
       throw new Error("Cannot delete your own admin account");
     }
 
-    const count = db
-      .query<{ count: number }, []>("SELECT COUNT(*) as count FROM admin_users")
-      .get();
-    if (count && count.count <= 1) {
+    const [countResult] = await db
+      .select({ count: count() })
+      .from(schema.adminUsers);
+
+    if (countResult && countResult.count <= 1) {
       throw new Error("Cannot delete the last admin user");
     }
 
-    db.run("DELETE FROM admin_users WHERE id = ?", [data.id]);
+    await db.delete(schema.adminUsers).where(eq(schema.adminUsers.id, data.id));
+
     return { success: true };
   });
 
@@ -223,19 +260,25 @@ export const resetAdminPassword = createServerFn({ method: "POST" })
       throw new Error("Not authenticated");
     }
 
-    const adminUser = db
-      .query<AdminUser, [number]>("SELECT * FROM admin_users WHERE id = ?")
-      .get(data.id);
+    const [adminUser] = await db
+      .select()
+      .from(schema.adminUsers)
+      .where(eq(schema.adminUsers.id, data.id))
+      .limit(1);
 
     if (!adminUser) {
       throw new Error("Admin user not found");
     }
 
     const newHash = await hashPassword(data.newPassword);
-    db.run(
-      "UPDATE admin_users SET password_hash = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
-      [newHash, data.id]
-    );
+
+    await db
+      .update(schema.adminUsers)
+      .set({ passwordHash: newHash, updatedAt: new Date() })
+      .where(eq(schema.adminUsers.id, data.id));
 
     return { success: true };
   });
+
+// Re-export type for backwards compatibility
+export type { AdminUser } from "../db/schema";

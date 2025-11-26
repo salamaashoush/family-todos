@@ -151,18 +151,19 @@ export function FamilyDashboardLayout({
       })()
     : null
 
-  const emptyTimeslot: Timeslot = {
+  const emptyTimeslot = {
     id: 0,
     name: '',
     description: null,
-    start_time: null,
-    end_time: null,
-    recurrence_type: 'none',
-    recurrence_days: null,
-    is_active: 0,
-    created_at: '',
-    updated_at: '',
-    member_ids: [],
+    startTime: '',
+    endTime: '',
+    recurrenceType: 'none' as const,
+    recurrenceDays: null,
+    isActive: true,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    familyId: 1,
+    memberIds: [] as number[],
   }
 
   const currentTimeslotMembers = useTimeslotMembers(
@@ -185,9 +186,9 @@ export function FamilyDashboardLayout({
                   </span>
                 </div>
                 <h2 className="text-2xl sm:text-3xl font-bold text-white mt-2">{currentTimeslot.name}</h2>
-                {currentTimeslot.start_time && currentTimeslot.end_time && (
+                {currentTimeslot.startTime && currentTimeslot.endTime && (
                   <p className="text-white/80 text-sm sm:text-base">
-                    {currentTimeslot.start_time} - {currentTimeslot.end_time}
+                    {currentTimeslot.startTime} - {currentTimeslot.endTime}
                   </p>
                 )}
               </div>
@@ -195,8 +196,8 @@ export function FamilyDashboardLayout({
                 <div className="text-right">
                   <p className="text-white/70 text-xs sm:text-sm">Next up</p>
                   <p className="text-white font-semibold text-sm sm:text-base">{nextTimeslot.name}</p>
-                  {nextTimeslot.start_time && (
-                    <p className="text-white/70 text-xs">{nextTimeslot.start_time}</p>
+                  {nextTimeslot.startTime && (
+                    <p className="text-white/70 text-xs">{nextTimeslot.startTime}</p>
                   )}
                 </div>
               )}

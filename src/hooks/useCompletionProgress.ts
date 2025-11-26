@@ -30,12 +30,12 @@ export function useMemberDayProgress(
   isTodoCompleted: (todoId: number, timeslotId: number, memberId: number) => boolean
 ): CompletionProgress {
   return useMemo(() => {
-    const memberTimeslots = timeslots.filter((t) => t.member_ids?.includes(member.id))
+    const memberTimeslots = timeslots.filter((t) => t.memberIds?.includes(member.id))
     let completed = 0
     let total = 0
 
     for (const timeslot of memberTimeslots) {
-      const timeslotTodos = todos.filter((t) => t.timeslot_ids?.includes(timeslot.id))
+      const timeslotTodos = todos.filter((t) => t.timeslotIds?.includes(timeslot.id))
       for (const todo of timeslotTodos) {
         total++
         if (isTodoCompleted(todo.id, timeslot.id, member.id)) {
@@ -61,9 +61,9 @@ export function useOverallDayProgress(
     let total = 0
 
     for (const member of members) {
-      const memberTimeslots = timeslots.filter((t) => t.member_ids?.includes(member.id))
+      const memberTimeslots = timeslots.filter((t) => t.memberIds?.includes(member.id))
       for (const timeslot of memberTimeslots) {
-        const timeslotTodos = todos.filter((t) => t.timeslot_ids?.includes(timeslot.id))
+        const timeslotTodos = todos.filter((t) => t.timeslotIds?.includes(timeslot.id))
         for (const todo of timeslotTodos) {
           total++
           if (isTodoCompleted(todo.id, timeslot.id, member.id)) {
@@ -86,8 +86,8 @@ export function useTimeslotOverallProgress(
   isTodoCompleted: (todoId: number, timeslotId: number, memberId: number) => boolean
 ): CompletionProgress {
   return useMemo(() => {
-    const timeslotMembers = members.filter((m) => timeslot.member_ids?.includes(m.id))
-    const timeslotTodos = todos.filter((t) => t.timeslot_ids?.includes(timeslot.id))
+    const timeslotMembers = members.filter((m) => timeslot.memberIds?.includes(m.id))
+    const timeslotTodos = todos.filter((t) => t.timeslotIds?.includes(timeslot.id))
     let completed = 0
     let total = 0
 

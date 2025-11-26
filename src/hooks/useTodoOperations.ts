@@ -32,9 +32,9 @@ export function useIsTodoCompleted(completions: TodoCompletion[]) {
       return (
         completions?.some(
           (c) =>
-            c.todo_id === todoId &&
-            c.timeslot_id === timeslotId &&
-            c.member_id === memberId
+            c.todoId === todoId &&
+            c.timeslotId === timeslotId &&
+            c.memberId === memberId
         ) || false
       );
     },

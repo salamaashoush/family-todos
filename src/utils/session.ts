@@ -4,10 +4,15 @@ const SESSION_SECRET =
   process.env.SESSION_SECRET ||
   "change-this-secret-to-at-least-32-characters-long";
 
+type UserRole = "owner" | "admin" | "member";
+
 type SessionData = {
   username?: string;
   adminUserId?: number;
   isAuthenticated?: boolean;
+  familyIds?: number[];
+  currentFamilyId?: number;
+  currentFamilyRole?: UserRole;
 };
 
 export function useAppSession() {

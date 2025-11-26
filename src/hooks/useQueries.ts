@@ -59,14 +59,14 @@ export function useCompletions(selectedDate: string) {
 export function useMemberStats(memberId: number) {
   return useQuery({
     queryKey: ["memberStats", memberId],
-    queryFn: () => getMemberStats({ data: { member_id: memberId } }),
+    queryFn: () => getMemberStats({ data: { memberId } }),
   });
 }
 
 export function useMemberAchievements(memberId: number) {
   return useQuery({
     queryKey: ["memberAchievements", memberId],
-    queryFn: () => getMemberAchievements({ data: { member_id: memberId } }),
+    queryFn: () => getMemberAchievements({ data: { memberId } }),
   });
 }
 
@@ -82,7 +82,7 @@ export function useWeeklyProgress(memberId: number, startDate: string) {
     queryKey: ["weeklyProgress", memberId, startDate],
     queryFn: () =>
       getWeeklyProgress({
-        data: { member_id: memberId, start_date: startDate },
+        data: { memberId, startDate },
       }),
   });
 }
@@ -90,7 +90,7 @@ export function useWeeklyProgress(memberId: number, startDate: string) {
 export function useMemberPoints(memberId: number) {
   return useQuery({
     queryKey: ["memberPoints", memberId],
-    queryFn: () => getMemberPoints({ data: { member_id: memberId } }),
+    queryFn: () => getMemberPoints({ data: { memberId } }),
   });
 }
 
@@ -115,20 +115,20 @@ export function useToggleTodoMutation() {
     }: ToggleTodoParams) => {
       const clientId = getClientId();
       const data: {
-        todo_id: number;
-        timeslot_id: number;
-        member_id: number;
-        completion_date: string;
-        client_id?: string;
+        todoId: number;
+        timeslotId: number;
+        memberId: number;
+        completionDate: string;
+        clientId?: string;
       } = {
-        todo_id: todoId,
-        timeslot_id: timeslotId,
-        member_id: memberId,
-        completion_date: selectedDate,
+        todoId: todoId,
+        timeslotId: timeslotId,
+        memberId: memberId,
+        completionDate: selectedDate,
       };
 
       if (typeof clientId === 'string' && clientId.length > 0) {
-        data.client_id = clientId;
+        data.clientId = clientId;
       }
 
       if (isCompleted) {
@@ -167,20 +167,20 @@ export function useToggleTodoMutation() {
             return old.filter(
               (c) =>
                 !(
-                  c.todo_id === todoId &&
-                  c.timeslot_id === timeslotId &&
-                  c.member_id === memberId
+                  c.todoId === todoId &&
+                  c.timeslotId === timeslotId &&
+                  c.memberId === memberId
                 )
             );
           } else {
             // Add the completion (complete)
             const newCompletion: TodoCompletion = {
               id: Date.now(), // Temporary ID
-              todo_id: todoId,
-              timeslot_id: timeslotId,
-              member_id: memberId,
-              completion_date: selectedDate,
-              completed_at: new Date().toISOString(),
+              todoId: todoId,
+              timeslotId: timeslotId,
+              memberId: memberId,
+              completionDate: selectedDate,
+              completedAt: new Date(),
             };
             return [...old, newCompletion];
           }

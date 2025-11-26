@@ -61,10 +61,10 @@ export function TodoCheckbox({ todo, isCompleted, onToggle, size = 'md', showDet
         </div>
 
         <div className="flex-1 min-w-0">
-          {showDetails && todo.image_url && (
+          {showDetails && todo.imageUrl && (
             <div className="mb-2">
               <img
-                src={todo.image_url}
+                src={todo.imageUrl}
                 alt={todo.title}
                 className="w-16 h-16 sm:w-20 sm:h-20 object-cover rounded-lg"
               />

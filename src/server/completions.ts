@@ -1,12 +1,13 @@
 import { createServerFn } from "@tanstack/react-start";
-import { db, type TodoCompletion, type TimeslotCompletion, type Todo } from "../db/schema";
 import { z } from "zod";
+import { eq, and, sql, count } from "drizzle-orm";
+import { db, schema } from "../db";
 import { updateStats } from "./statistics";
 import { broadcast } from "./realtime";
 
 const GetCompletionsSchema = z.object({
   date: z.string().optional(),
-  member_id: z.number().optional(),
+  memberId: z.number().optional(),
 });
 
 export const getTodoCompletions = createServerFn({ method: "GET" })
@@ -14,17 +15,17 @@ export const getTodoCompletions = createServerFn({ method: "GET" })
   .handler(async ({ data }) => {
     const date = data.date || new Date().toISOString().split("T")[0];
 
-    let query = "SELECT * FROM todo_completions WHERE completion_date = ?";
-    const params: (string | number)[] = [date];
+    const conditions = [eq(schema.todoCompletions.completionDate, date)];
 
-    if (data.member_id) {
-      query += " AND member_id = ?";
-      params.push(data.member_id);
+    if (data.memberId) {
+      conditions.push(eq(schema.todoCompletions.memberId, data.memberId));
     }
 
-    const completions = db
-      .query<TodoCompletion, (string | number)[]>(query)
-      .all(...params);
+    const completions = await db
+      .select()
+      .from(schema.todoCompletions)
+      .where(and(...conditions));
+
     return completions;
   });
 
@@ -33,95 +34,108 @@ export const getTimeslotCompletions = createServerFn({ method: "GET" })
   .handler(async ({ data }) => {
     const date = data.date || new Date().toISOString().split("T")[0];
 
-    let query = "SELECT * FROM timeslot_completions WHERE completion_date = ?";
-    const params: (string | number)[] = [date];
+    const conditions = [eq(schema.timeslotCompletions.completionDate, date)];
 
-    if (data.member_id) {
-      query += " AND member_id = ?";
-      params.push(data.member_id);
+    if (data.memberId) {
+      conditions.push(eq(schema.timeslotCompletions.memberId, data.memberId));
     }
 
-    const completions = db
-      .query<TimeslotCompletion, (string | number)[]>(query)
-      .all(...params);
+    const completions = await db
+      .select()
+      .from(schema.timeslotCompletions)
+      .where(and(...conditions));
+
     return completions;
   });
 
 const CompleteTodoSchema = z.object({
-  todo_id: z.number(),
-  timeslot_id: z.number(),
-  member_id: z.number(),
-  completion_date: z.string().optional(),
-  client_id: z.string().nullish(),
+  todoId: z.number(),
+  timeslotId: z.number(),
+  memberId: z.number(),
+  completionDate: z.string().optional(),
+  clientId: z.string().nullish(),
 });
 
 export const completeTodo = createServerFn({ method: "POST" })
   .inputValidator(CompleteTodoSchema)
   .handler(async ({ data }) => {
     const completionDate =
-      data.completion_date || new Date().toISOString().split("T")[0];
+      data.completionDate || new Date().toISOString().split("T")[0];
 
     // Check if already completed
-    const existing = db
-      .query<
-        TodoCompletion,
-        [number, number, number, string]
-      >("SELECT * FROM todo_completions WHERE todo_id = ? AND timeslot_id = ? AND member_id = ? AND completion_date = ?")
-      .get(data.todo_id, data.timeslot_id, data.member_id, completionDate);
+    const [existing] = await db
+      .select()
+      .from(schema.todoCompletions)
+      .where(
+        and(
+          eq(schema.todoCompletions.todoId, data.todoId),
+          eq(schema.todoCompletions.timeslotId, data.timeslotId),
+          eq(schema.todoCompletions.memberId, data.memberId),
+          eq(schema.todoCompletions.completionDate, completionDate)
+        )
+      )
+      .limit(1);
 
     if (existing) {
       return existing;
     }
 
     try {
-      const result = db.run(
-        `INSERT INTO todo_completions (todo_id, timeslot_id, member_id, completion_date)
-         VALUES (?, ?, ?, ?)`,
-        [data.todo_id, data.timeslot_id, data.member_id, completionDate]
-      );
+      // Insert the completion
+      const [completion] = await db
+        .insert(schema.todoCompletions)
+        .values({
+          todoId: data.todoId,
+          timeslotId: data.timeslotId,
+          memberId: data.memberId,
+          completionDate: completionDate,
+        })
+        .returning();
 
-      const completion = db
-        .query<
-          TodoCompletion,
-          [number]
-        >("SELECT * FROM todo_completions WHERE id = ?")
-        .get(result.lastInsertRowid as number);
+      // Get todo for points and title
+      const [todo] = await db
+        .select()
+        .from(schema.todos)
+        .where(eq(schema.todos.id, data.todoId))
+        .limit(1);
 
       // Award points for completing this task
-      const todo = db
-        .query<Todo, [number]>("SELECT * FROM todos WHERE id = ?")
-        .get(data.todo_id);
-
       if (todo && todo.points > 0) {
-        db.run(
-          `INSERT INTO point_transactions (member_id, amount, type, description, todo_id) VALUES (?, ?, 'earned', ?, ?)`,
-          [data.member_id, todo.points, `Completed: ${todo.title}`, data.todo_id]
-        );
+        await db.insert(schema.pointTransactions).values({
+          memberId: data.memberId,
+          amount: todo.points,
+          type: "earned",
+          description: `Completed: ${todo.title}`,
+          todoId: data.todoId,
+        });
       }
 
       // Check and complete the timeslot this todo belongs to
-      checkAndCompleteTimeslot(
-        data.timeslot_id,
-        data.member_id,
+      await checkAndCompleteTimeslot(
+        data.timeslotId,
+        data.memberId,
         completionDate
       );
 
       // Update statistics and check achievements
       await updateStats({
-        data: { member_id: data.member_id, completion_date: completionDate },
+        data: { memberId: data.memberId, completionDate: completionDate },
       });
 
       // Broadcast realtime event
-      const member = db
-        .query("SELECT name FROM members WHERE id = ?")
-        .get(data.member_id) as { name: string } | undefined;
+      const [member] = await db
+        .select({ name: schema.members.name })
+        .from(schema.members)
+        .where(eq(schema.members.id, data.memberId))
+        .limit(1);
+
       broadcast({
         type: "task_completed",
-        sourceClientId: data.client_id ?? undefined,
-        memberId: data.member_id,
+        sourceClientId: data.clientId ?? undefined,
+        memberId: data.memberId,
         timestamp: Date.now(),
         memberName: member?.name,
-        data: { todo_id: data.todo_id, timeslot_id: data.timeslot_id },
+        data: { todoId: data.todoId, timeslotId: data.timeslotId },
       });
 
       return completion;
@@ -131,144 +145,182 @@ export const completeTodo = createServerFn({ method: "POST" })
   });
 
 const UncompleteTodoSchema = z.object({
-  todo_id: z.number(),
-  timeslot_id: z.number(),
-  member_id: z.number(),
-  completion_date: z.string().optional(),
-  client_id: z.string().nullish(),
+  todoId: z.number(),
+  timeslotId: z.number(),
+  memberId: z.number(),
+  completionDate: z.string().optional(),
+  clientId: z.string().nullish(),
 });
 
 export const uncompleteTodo = createServerFn({ method: "POST" })
   .inputValidator(UncompleteTodoSchema)
   .handler(async ({ data }) => {
     const completionDate =
-      data.completion_date || new Date().toISOString().split("T")[0];
+      data.completionDate || new Date().toISOString().split("T")[0];
 
-    const deleted = db.run(
-      "DELETE FROM todo_completions WHERE todo_id = ? AND timeslot_id = ? AND member_id = ? AND completion_date = ?",
-      [data.todo_id, data.timeslot_id, data.member_id, completionDate]
-    );
+    // Delete the completion and check if anything was deleted
+    const deleted = await db
+      .delete(schema.todoCompletions)
+      .where(
+        and(
+          eq(schema.todoCompletions.todoId, data.todoId),
+          eq(schema.todoCompletions.timeslotId, data.timeslotId),
+          eq(schema.todoCompletions.memberId, data.memberId),
+          eq(schema.todoCompletions.completionDate, completionDate)
+        )
+      )
+      .returning();
+
+    const wasDeleted = deleted.length > 0;
 
     // Only decrement stats if something was actually deleted
-    if (deleted.changes > 0) {
-      // Decrement stats (use MAX for SQLite compatibility)
-      db.run(
-        `UPDATE member_stats
-         SET total_stars = MAX(0, total_stars - 1),
-             total_tasks_completed = MAX(0, total_tasks_completed - 1),
-             updated_at = CURRENT_TIMESTAMP
-         WHERE member_id = ?`,
-        [data.member_id]
-      );
+    if (wasDeleted) {
+      // Decrement stats
+      await db
+        .update(schema.memberStats)
+        .set({
+          totalStars: sql`GREATEST(0, ${schema.memberStats.totalStars} - 1)`,
+          totalTasksCompleted: sql`GREATEST(0, ${schema.memberStats.totalTasksCompleted} - 1)`,
+          updatedAt: new Date(),
+        })
+        .where(eq(schema.memberStats.memberId, data.memberId));
+
+      // Get todo for points and title
+      const [todo] = await db
+        .select()
+        .from(schema.todos)
+        .where(eq(schema.todos.id, data.todoId))
+        .limit(1);
 
       // Remove points for uncompleting this task
-      const todo = db
-        .query<Todo, [number]>("SELECT * FROM todos WHERE id = ?")
-        .get(data.todo_id);
-
       if (todo && todo.points > 0) {
-        db.run(
-          `INSERT INTO point_transactions (member_id, amount, type, description, todo_id) VALUES (?, ?, 'adjustment', ?, ?)`,
-          [data.member_id, -todo.points, `Uncompleted: ${todo.title}`, data.todo_id]
-        );
+        await db.insert(schema.pointTransactions).values({
+          memberId: data.memberId,
+          amount: -todo.points,
+          type: "adjustment",
+          description: `Uncompleted: ${todo.title}`,
+          todoId: data.todoId,
+        });
       }
     }
 
-    // Remove timeslot completion if this was the last task
-    const deletedTimeslot = db.run(
-      "DELETE FROM timeslot_completions WHERE timeslot_id = ? AND member_id = ? AND completion_date = ?",
-      [data.timeslot_id, data.member_id, completionDate]
-    );
+    // Remove timeslot completion if this was completing the timeslot
+    const deletedTimeslot = await db
+      .delete(schema.timeslotCompletions)
+      .where(
+        and(
+          eq(schema.timeslotCompletions.timeslotId, data.timeslotId),
+          eq(schema.timeslotCompletions.memberId, data.memberId),
+          eq(schema.timeslotCompletions.completionDate, completionDate)
+        )
+      )
+      .returning();
 
     // Decrement timeslot completion count if something was deleted
-    if (deletedTimeslot.changes > 0) {
-      db.run(
-        `UPDATE member_stats
-         SET total_timeslots_completed = MAX(0, total_timeslots_completed - 1),
-             updated_at = CURRENT_TIMESTAMP
-         WHERE member_id = ?`,
-        [data.member_id]
-      );
+    if (deletedTimeslot.length > 0) {
+      await db
+        .update(schema.memberStats)
+        .set({
+          totalTimeslotsCompleted: sql`GREATEST(0, ${schema.memberStats.totalTimeslotsCompleted} - 1)`,
+          updatedAt: new Date(),
+        })
+        .where(eq(schema.memberStats.memberId, data.memberId));
     }
 
     // Broadcast realtime event
-    if (deleted.changes > 0) {
-      const member = db
-        .query("SELECT name FROM members WHERE id = ?")
-        .get(data.member_id) as { name: string } | undefined;
+    if (wasDeleted) {
+      const [member] = await db
+        .select({ name: schema.members.name })
+        .from(schema.members)
+        .where(eq(schema.members.id, data.memberId))
+        .limit(1);
+
       broadcast({
         type: "task_uncompleted",
-        sourceClientId: data.client_id ?? undefined,
-        memberId: data.member_id,
+        sourceClientId: data.clientId ?? undefined,
+        memberId: data.memberId,
         timestamp: Date.now(),
         memberName: member?.name,
-        data: { todo_id: data.todo_id, timeslot_id: data.timeslot_id },
+        data: { todoId: data.todoId, timeslotId: data.timeslotId },
       });
     }
 
     return { success: true };
   });
 
-function checkAndCompleteTimeslot(
+async function checkAndCompleteTimeslot(
   timeslotId: number,
   memberId: number,
   completionDate: string
 ) {
   // Get total todos for this timeslot via the junction table
-  const totalTodos = db
-    .query<
-      { count: number },
-      [number]
-    >("SELECT COUNT(*) as count FROM todo_timeslots WHERE timeslot_id = ?")
-    .get(timeslotId);
+  const [totalTodosResult] = await db
+    .select({ count: count() })
+    .from(schema.todoTimeslots)
+    .where(eq(schema.todoTimeslots.timeslotId, timeslotId));
+
+  const totalTodos = totalTodosResult?.count || 0;
 
   // Get completed todos for this timeslot
-  const completedTodos = db
-    .query<{ count: number }, [number, number, string]>(
-      `SELECT COUNT(*) as count
-     FROM todo_completions tc
-     JOIN todo_timeslots tt ON tc.todo_id = tt.todo_id
-     WHERE tt.timeslot_id = ? AND tc.member_id = ? AND tc.completion_date = ?`
+  const [completedTodosResult] = await db
+    .select({ count: count() })
+    .from(schema.todoCompletions)
+    .innerJoin(
+      schema.todoTimeslots,
+      eq(schema.todoCompletions.todoId, schema.todoTimeslots.todoId)
     )
-    .get(timeslotId, memberId, completionDate);
+    .where(
+      and(
+        eq(schema.todoTimeslots.timeslotId, timeslotId),
+        eq(schema.todoCompletions.memberId, memberId),
+        eq(schema.todoCompletions.completionDate, completionDate)
+      )
+    );
 
-  if (
-    totalTodos &&
-    completedTodos &&
-    totalTodos.count > 0 &&
-    totalTodos.count === completedTodos.count
-  ) {
+  const completedTodos = completedTodosResult?.count || 0;
+
+  // If all todos are completed, mark the timeslot as complete
+  if (totalTodos > 0 && totalTodos === completedTodos) {
     try {
-      const result = db.run(
-        `INSERT INTO timeslot_completions (timeslot_id, member_id, completion_date)
-         VALUES (?, ?, ?)`,
-        [timeslotId, memberId, completionDate]
-      );
+      const [inserted] = await db
+        .insert(schema.timeslotCompletions)
+        .values({
+          timeslotId,
+          memberId,
+          completionDate,
+        })
+        .returning();
 
       // Update timeslot completion stats if this is a new completion
-      if (result.changes > 0) {
-        db.run(
-          `UPDATE member_stats
-           SET total_timeslots_completed = total_timeslots_completed + 1,
-               updated_at = CURRENT_TIMESTAMP
-           WHERE member_id = ?`,
-          [memberId]
-        );
+      if (inserted) {
+        await db
+          .update(schema.memberStats)
+          .set({
+            totalTimeslotsCompleted: sql`${schema.memberStats.totalTimeslotsCompleted} + 1`,
+            updatedAt: new Date(),
+          })
+          .where(eq(schema.memberStats.memberId, memberId));
 
         // Broadcast timeslot completion event
-        const member = db
-          .query("SELECT name FROM members WHERE id = ?")
-          .get(memberId) as { name: string } | undefined;
+        const [member] = await db
+          .select({ name: schema.members.name })
+          .from(schema.members)
+          .where(eq(schema.members.id, memberId))
+          .limit(1);
+
         broadcast({
           type: "timeslot_completed",
           memberId,
           memberName: member?.name,
           timestamp: Date.now(),
-          data: { timeslot_id: timeslotId },
+          data: { timeslotId: timeslotId },
         });
       }
     } catch {
-      // Ignore duplicate errors
+      // Ignore duplicate errors (timeslot already completed)
     }
   }
 }
+
+// Re-export types for backwards compatibility
+export type { TodoCompletion, TimeslotCompletion } from "../db/schema";

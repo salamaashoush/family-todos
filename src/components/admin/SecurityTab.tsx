@@ -20,8 +20,9 @@ import { showToast } from '../Toast'
 type AdminUser = {
   id: number
   username: string
-  createdAt: string
-  lastLoginAt: string | null
+  email: string | null
+  createdAt: Date
+  lastLoginAt: Date | null
 }
 
 const PlusIcon = () => (

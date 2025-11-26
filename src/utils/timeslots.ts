@@ -13,18 +13,18 @@ export function getDayAbbreviation(date: Date): string {
  * Check if a timeslot should be shown on a given date based on its recurrence settings
  */
 export function shouldShowTimeslot(timeslot: Timeslot, date: Date): boolean {
-  const { recurrence_type, recurrence_days } = timeslot
+  const { recurrenceType, recurrenceDays } = timeslot
 
-  switch (recurrence_type) {
+  switch (recurrenceType) {
     case 'daily':
       // Daily timeslots show every day
       return true
 
     case 'weekly':
       // Weekly timeslots show only on specified days
-      if (!recurrence_days) return true // If no days specified, show always (fallback)
+      if (!recurrenceDays) return true // If no days specified, show always (fallback)
       const dayAbbr = getDayAbbreviation(date)
-      const days = recurrence_days.split(',').map((d) => d.trim())
+      const days = recurrenceDays.split(',').map((d: string) => d.trim())
       return days.includes(dayAbbr)
 
     case 'monthly':

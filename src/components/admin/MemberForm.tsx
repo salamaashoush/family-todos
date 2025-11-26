@@ -11,7 +11,7 @@ import type { Member } from '../../types'
 const memberSchema = z.object({
   name: z.string().min(1, 'Name is required').max(100, 'Name must be less than 100 characters'),
   avatar: z.string(),
-  is_parent: z.boolean(),
+  isParent: z.boolean(),
 })
 
 type MemberFormData = z.infer<typeof memberSchema>
@@ -36,7 +36,7 @@ export function MemberForm({ member, onSubmit, onCancel }: MemberFormProps) {
     defaultValues: {
       name: '',
       avatar: '',
-      is_parent: false,
+      isParent: false,
     } as MemberFormData,
     validators: {
       onChange: memberSchema,
@@ -62,7 +62,7 @@ export function MemberForm({ member, onSubmit, onCancel }: MemberFormProps) {
     if (member) {
       form.setFieldValue('name', member.name)
       form.setFieldValue('avatar', member.avatar || '')
-      form.setFieldValue('is_parent', member.is_parent === 1)
+      form.setFieldValue('isParent', member.isParent)
       setPreview(member.avatar || '')
     } else {
       form.reset()
@@ -113,11 +113,11 @@ export function MemberForm({ member, onSubmit, onCancel }: MemberFormProps) {
       </div>
 
       <form.Field
-        name="is_parent"
+        name="isParent"
         children={(field) => (
           <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl border-2 border-gray-200">
             <div>
-              <label htmlFor="is_parent" className="font-semibold text-gray-800">
+              <label htmlFor="isParent" className="font-semibold text-gray-800">
                 Parent / Adult
               </label>
               <p className="text-sm text-gray-600">
@@ -126,7 +126,7 @@ export function MemberForm({ member, onSubmit, onCancel }: MemberFormProps) {
             </div>
             <button
               type="button"
-              id="is_parent"
+              id="isParent"
               role="switch"
               aria-checked={field.state.value}
               onClick={() => field.handleChange(!field.state.value)}

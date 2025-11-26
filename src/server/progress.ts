@@ -1,46 +1,55 @@
 import { createServerFn } from "@tanstack/react-start";
-import { db, type TodoCompletion } from "../db/schema";
 import { z } from "zod";
+import { eq, and } from "drizzle-orm";
+import { db, schema } from "../db";
 
 const GetWeeklyProgressSchema = z.object({
-  member_id: z.number(),
-  start_date: z.string(), // ISO date string (YYYY-MM-DD)
+  memberId: z.number(),
+  startDate: z.string(), // ISO date string (YYYY-MM-DD)
 });
 
 export const getWeeklyProgress = createServerFn({ method: "GET" })
   .inputValidator(GetWeeklyProgressSchema)
   .handler(async ({ data }) => {
-    const { member_id, start_date } = data;
+    const { memberId, startDate } = data;
 
-    // Generate array of 7 dates starting from start_date
+    // Generate array of 7 dates starting from startDate
     const dates = Array.from({ length: 7 }, (_, i) => {
-      const date = new Date(start_date);
+      const date = new Date(startDate);
       date.setDate(date.getDate() + i);
       return date.toISOString().split("T")[0];
     });
 
     // Get completions for the week
-    const weekData = dates.map((date) => {
-      const completions = db
-        .query<
-          TodoCompletion,
-          [number, string]
-        >("SELECT * FROM todo_completions WHERE member_id = ? AND completion_date = ?")
-        .all(member_id, date);
+    const weekData = await Promise.all(
+      dates.map(async (date) => {
+        const completions = await db
+          .select()
+          .from(schema.todoCompletions)
+          .where(
+            and(
+              eq(schema.todoCompletions.memberId, memberId),
+              eq(schema.todoCompletions.completionDate, date)
+            )
+          );
 
-      const timeslotCompletions = db
-        .query<
-          { id: number },
-          [number, string]
-        >("SELECT id FROM timeslot_completions WHERE member_id = ? AND completion_date = ?")
-        .all(member_id, date);
+        const timeslotCompletions = await db
+          .select({ id: schema.timeslotCompletions.id })
+          .from(schema.timeslotCompletions)
+          .where(
+            and(
+              eq(schema.timeslotCompletions.memberId, memberId),
+              eq(schema.timeslotCompletions.completionDate, date)
+            )
+          );
 
-      return {
-        date,
-        task_count: completions.length,
-        timeslot_count: timeslotCompletions.length,
-      };
-    });
+        return {
+          date,
+          taskCount: completions.length,
+          timeslotCount: timeslotCompletions.length,
+        };
+      })
+    );
 
     return weekData;
   });

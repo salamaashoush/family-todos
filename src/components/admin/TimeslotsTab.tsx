@@ -46,11 +46,11 @@ const TrashIcon = () => (
 interface TimeslotFormData {
   name: string
   description: string
-  start_time: string
-  end_time: string
-  recurrence_type: 'daily' | 'weekly' | 'monthly' | 'none'
-  recurrence_days: string
-  member_ids: number[]
+  startTime: string
+  endTime: string
+  recurrenceType: 'daily' | 'weekly' | 'monthly' | 'none'
+  recurrenceDays: string
+  memberIds: number[]
 }
 
 export function TimeslotsTab() {
@@ -87,7 +87,7 @@ export function TimeslotsTab() {
         timeslot.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         timeslot.description?.toLowerCase().includes(searchQuery.toLowerCase())
       const matchesMember =
-        filterMember === null || timeslot.member_ids?.includes(filterMember)
+        filterMember === null || timeslot.memberIds?.includes(filterMember)
       return matchesSearch && matchesMember
     })
   }, [timeslots, localTimeslots, isReordering, searchQuery, filterMember])
@@ -157,11 +157,11 @@ export function TimeslotsTab() {
           id: timeslot.id,
           name: timeslot.name,
           description: timeslot.description || '',
-          start_time: timeslot.start_time || '',
-          end_time: timeslot.end_time || '',
-          recurrence_type: timeslot.recurrence_type || 'daily',
-          recurrence_days: timeslot.recurrence_days || '',
-          member_ids: timeslot.member_ids || [],
+          startTime: timeslot.startTime || '',
+          endTime: timeslot.endTime || '',
+          recurrenceType: timeslot.recurrenceType || 'daily',
+          recurrenceDays: timeslot.recurrenceDays || '',
+          memberIds: timeslot.memberIds || [],
         },
       })
     })
@@ -375,9 +375,9 @@ export function TimeslotsTab() {
                       </div>
                       <div className="min-w-0 flex-1">
                         <h3 className="font-bold text-gray-800 truncate">{timeslot.name}</h3>
-                        {timeslot.start_time && timeslot.end_time && (
+                        {timeslot.startTime && timeslot.endTime && (
                           <p className="text-sm text-gray-500">
-                            {timeslot.start_time} - {timeslot.end_time}
+                            {timeslot.startTime} - {timeslot.endTime}
                           </p>
                         )}
                       </div>
@@ -408,25 +408,25 @@ export function TimeslotsTab() {
                 <div className="min-w-0 flex-1">
                   <h3 className="font-bold text-gray-800">{timeslot.name}</h3>
                   <div className="flex flex-wrap items-center gap-2 mt-0.5">
-                    {timeslot.start_time && timeslot.end_time && (
+                    {timeslot.startTime && timeslot.endTime && (
                       <span className="text-sm text-gray-500 flex items-center gap-1">
                         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
-                        {timeslot.start_time} - {timeslot.end_time}
+                        {timeslot.startTime} - {timeslot.endTime}
                       </span>
                     )}
-                    {timeslot.recurrence_type === 'daily' && (
+                    {timeslot.recurrenceType === 'daily' && (
                       <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-medium">
                         Every day
                       </span>
                     )}
-                    {timeslot.recurrence_type === 'weekly' && timeslot.recurrence_days && (
+                    {timeslot.recurrenceType === 'weekly' && timeslot.recurrenceDays && (
                       <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-medium">
-                        {timeslot.recurrence_days}
+                        {timeslot.recurrenceDays}
                       </span>
                     )}
-                    {timeslot.recurrence_type === 'none' && (
+                    {timeslot.recurrenceType === 'none' && (
                       <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full font-medium">
                         One-time
                       </span>
@@ -435,9 +435,9 @@ export function TimeslotsTab() {
                   {timeslot.description && (
                     <p className="text-sm text-gray-500 mt-1 line-clamp-1">{timeslot.description}</p>
                   )}
-                  {timeslot.member_ids && timeslot.member_ids.length > 0 && (
+                  {timeslot.memberIds && timeslot.memberIds.length > 0 && (
                     <div className="flex flex-wrap gap-1.5 mt-2">
-                      {timeslot.member_ids.map((id: number) => {
+                      {timeslot.memberIds.map((id: number) => {
                         const member = members?.find((m: Member) => m.id === id)
                         return member ? (
                           <span

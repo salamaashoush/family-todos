@@ -16,7 +16,7 @@ export function MemberColumn({
   const { completedTimeslots, totalTimeslots } = useMemo(() => {
     const total = timeslots.length
     const completed = timeslots.filter((timeslot: Timeslot) => {
-      const timeslotTodos = todos.filter((t: Todo) => t.timeslot_ids?.includes(timeslot.id))
+      const timeslotTodos = todos.filter((t: Todo) => t.timeslotIds?.includes(timeslot.id))
       const completedCount = timeslotTodos.filter((t) => isTodoCompleted(t.id, timeslot.id, member.id)).length
       return timeslotTodos.length > 0 && completedCount === timeslotTodos.length
     }).length
@@ -39,7 +39,7 @@ export function MemberColumn({
           <div className="text-center text-gray-400 py-8">No timeslots yet</div>
         )}
         {timeslots.map((timeslot: Timeslot) => {
-          const timeslotTodos = todos.filter((t: Todo) => t.timeslot_ids?.includes(timeslot.id))
+          const timeslotTodos = todos.filter((t: Todo) => t.timeslotIds?.includes(timeslot.id))
           return (
             <TimeslotCard
               key={timeslot.id}

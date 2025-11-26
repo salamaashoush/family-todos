@@ -22,7 +22,7 @@ export function useCompletionCelebration({
       const timeslot = timeslots.find((t) => t.id === timeslotId)
       if (!timeslot) return
 
-      const timeslotTodos = todos.filter((t) => t.timeslot_ids?.includes(timeslotId))
+      const timeslotTodos = todos.filter((t) => t.timeslotIds?.includes(timeslotId))
       if (timeslotTodos.length === 0) return
 
       // Check if completing this todo will complete the timeslot
@@ -37,7 +37,7 @@ export function useCompletionCelebration({
         lastCelebrationRef.current = celebrationKey
 
         // Calculate overall progress for this member
-        const memberTimeslots = timeslots.filter((t) => t.member_ids?.includes(memberId))
+        const memberTimeslots = timeslots.filter((t) => t.memberIds?.includes(memberId))
         let completedTimeslots = 0
 
         for (const ts of memberTimeslots) {
@@ -46,7 +46,7 @@ export function useCompletionCelebration({
             completedTimeslots++
             continue
           }
-          const tsTodos = todos.filter((t) => t.timeslot_ids?.includes(ts.id))
+          const tsTodos = todos.filter((t) => t.timeslotIds?.includes(ts.id))
           if (tsTodos.length > 0 && tsTodos.every((t) => isTodoCompleted(t.id, ts.id, memberId))) {
             completedTimeslots++
           }

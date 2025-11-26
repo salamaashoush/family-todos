@@ -99,7 +99,7 @@ function Home() {
   const filteredMembers = useMemo(() => {
     if (!members) return []
     if (settings.showParentsInLayout) return members
-    return members.filter((m) => m.is_parent !== 1)
+    return members.filter((m) => !m.isParent)
   }, [members, settings.showParentsInLayout])
 
   const layoutProps = {

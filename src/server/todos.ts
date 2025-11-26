@@ -1,31 +1,56 @@
 import { createServerFn } from "@tanstack/react-start";
-import { db, type Todo, type TodoTimeslot } from "../db/schema";
 import { z } from "zod";
+import { eq, and, asc, inArray } from "drizzle-orm";
+import { db, schema } from "../db";
+
+// For now, we'll use a default family ID of 1
+// This will be replaced with session-based family ID in multi-tenancy phase
+const DEFAULT_FAMILY_ID = 1;
 
 const GetTodosSchema = z.object({
-  timeslot_id: z.number().optional(),
+  timeslotId: z.number().optional(),
 });
 
 export const getTodos = createServerFn({ method: "GET" })
   .inputValidator(GetTodosSchema)
   .handler(async ({ data }) => {
-    const query = "SELECT * FROM todos ORDER BY position, created_at";
+    // Get all todos for the family
+    const todos = await db
+      .select()
+      .from(schema.todos)
+      .where(eq(schema.todos.familyId, DEFAULT_FAMILY_ID))
+      .orderBy(asc(schema.todos.position), asc(schema.todos.createdAt));
 
-    const todos = db.query<Todo, []>(query).all();
+    // Get all timeslot assignments for these todos
+    const todoIds = todos.map((t) => t.id);
 
-    const todosWithTimeslots = todos.map((todo: Todo) => {
-      const timeslots = db.query<TodoTimeslot, [number]>(
-        "SELECT * FROM todo_timeslots WHERE todo_id = ?"
-      ).all(todo.id);
+    let todoTimeslotsMap: Map<number, number[]> = new Map();
 
-      return {
-        ...todo,
-        timeslot_ids: timeslots.map((t: TodoTimeslot) => t.timeslot_id)
-      };
-    });
+    if (todoIds.length > 0) {
+      const todoTimeslots = await db
+        .select()
+        .from(schema.todoTimeslots)
+        .where(inArray(schema.todoTimeslots.todoId, todoIds));
 
-    if (data.timeslot_id) {
-      return todosWithTimeslots.filter((t: Todo & { timeslot_ids: number[] }) => t.timeslot_ids.includes(data.timeslot_id!));
+      // Group timeslot IDs by todo
+      for (const tt of todoTimeslots) {
+        const existing = todoTimeslotsMap.get(tt.todoId) || [];
+        existing.push(tt.timeslotId);
+        todoTimeslotsMap.set(tt.todoId, existing);
+      }
+    }
+
+    // Combine todos with their timeslot IDs
+    const todosWithTimeslots = todos.map((todo) => ({
+      ...todo,
+      timeslotIds: todoTimeslotsMap.get(todo.id) || [],
+    }));
+
+    // Filter by timeslot if specified
+    if (data.timeslotId) {
+      return todosWithTimeslots.filter((t) =>
+        t.timeslotIds.includes(data.timeslotId!)
+      );
     }
 
     return todosWithTimeslots;
@@ -34,107 +59,108 @@ export const getTodos = createServerFn({ method: "GET" })
 const CreateTodoSchema = z.object({
   title: z.string().min(1),
   description: z.string().optional(),
-  image_url: z.string().optional(),
+  imageUrl: z.string().optional(),
   symbol: z.string().optional(),
   position: z.number().optional(),
   points: z.number().min(0).optional(),
-  timeslot_ids: z.array(z.number()).min(1),
+  timeslotIds: z.array(z.number()).min(1),
 });
 
 export const createTodo = createServerFn({ method: "POST" })
   .inputValidator(CreateTodoSchema)
   .handler(async ({ data }) => {
-    const result = db.run(
-      `INSERT INTO todos
-      (title, description, image_url, symbol, position, points)
-      VALUES (?, ?, ?, ?, ?, ?)`,
-      [
-        data.title,
-        data.description || null,
-        data.image_url || null,
-        data.symbol || null,
-        data.position || 0,
-        data.points ?? 5,
-      ]
-    );
+    // Insert the todo
+    const [todo] = await db
+      .insert(schema.todos)
+      .values({
+        familyId: DEFAULT_FAMILY_ID,
+        title: data.title,
+        description: data.description || null,
+        imageUrl: data.imageUrl || null,
+        symbol: data.symbol || null,
+        position: data.position || 0,
+        points: data.points ?? 5,
+      })
+      .returning();
 
-    const todoId = result.lastInsertRowid as number;
-
-    for (const timeslotId of data.timeslot_ids) {
-      db.run(
-        `INSERT INTO todo_timeslots (todo_id, timeslot_id) VALUES (?, ?)`,
-        [todoId, timeslotId]
+    // Insert timeslot assignments
+    if (data.timeslotIds.length > 0) {
+      await db.insert(schema.todoTimeslots).values(
+        data.timeslotIds.map((timeslotId) => ({
+          todoId: todo.id,
+          timeslotId,
+        }))
       );
     }
 
-    const todo = db
-      .query<Todo, [number]>("SELECT * FROM todos WHERE id = ?")
-      .get(todoId);
-
-    return todo;
+    return {
+      ...todo,
+      timeslotIds: data.timeslotIds,
+    };
   });
 
 const UpdateTodoSchema = z.object({
   id: z.number(),
   title: z.string().min(1).optional(),
   description: z.string().optional(),
-  image_url: z.string().optional(),
+  imageUrl: z.string().optional(),
   symbol: z.string().optional(),
   position: z.number().optional(),
   points: z.number().min(0).optional(),
-  timeslot_ids: z.array(z.number()).optional(),
+  timeslotIds: z.array(z.number()).optional(),
 });
 
 export const updateTodo = createServerFn({ method: "POST" })
   .inputValidator(UpdateTodoSchema)
   .handler(async ({ data }) => {
-    const updates: string[] = [];
-    const values: (string | number)[] = [];
+    const updateData: Partial<{
+      title: string;
+      description: string | null;
+      imageUrl: string | null;
+      symbol: string | null;
+      position: number;
+      points: number;
+      updatedAt: Date;
+    }> = {
+      updatedAt: new Date(),
+    };
 
-    if (data.title !== undefined) {
-      updates.push("title = ?");
-      values.push(data.title);
-    }
-    if (data.description !== undefined) {
-      updates.push("description = ?");
-      values.push(data.description);
-    }
-    if (data.image_url !== undefined) {
-      updates.push("image_url = ?");
-      values.push(data.image_url);
-    }
-    if (data.symbol !== undefined) {
-      updates.push("symbol = ?");
-      values.push(data.symbol);
-    }
-    if (data.position !== undefined) {
-      updates.push("position = ?");
-      values.push(data.position);
-    }
-    if (data.points !== undefined) {
-      updates.push("points = ?");
-      values.push(data.points);
-    }
+    if (data.title !== undefined) updateData.title = data.title;
+    if (data.description !== undefined)
+      updateData.description = data.description;
+    if (data.imageUrl !== undefined) updateData.imageUrl = data.imageUrl;
+    if (data.symbol !== undefined) updateData.symbol = data.symbol;
+    if (data.position !== undefined) updateData.position = data.position;
+    if (data.points !== undefined) updateData.points = data.points;
 
-    updates.push("updated_at = CURRENT_TIMESTAMP");
-    values.push(data.id);
+    const [todo] = await db
+      .update(schema.todos)
+      .set(updateData)
+      .where(
+        and(
+          eq(schema.todos.id, data.id),
+          eq(schema.todos.familyId, DEFAULT_FAMILY_ID)
+        )
+      )
+      .returning();
 
-    db.run(`UPDATE todos SET ${updates.join(", ")} WHERE id = ?`, values);
+    // Update timeslot assignments if provided
+    if (data.timeslotIds !== undefined) {
+      // Delete existing assignments
+      await db
+        .delete(schema.todoTimeslots)
+        .where(eq(schema.todoTimeslots.todoId, data.id));
 
-    if (data.timeslot_ids !== undefined) {
-      db.run("DELETE FROM todo_timeslots WHERE todo_id = ?", [data.id]);
-
-      for (const timeslotId of data.timeslot_ids) {
-        db.run(
-          `INSERT INTO todo_timeslots (todo_id, timeslot_id) VALUES (?, ?)`,
-          [data.id, timeslotId]
+      // Insert new assignments
+      if (data.timeslotIds.length > 0) {
+        await db.insert(schema.todoTimeslots).values(
+          data.timeslotIds.map((timeslotId) => ({
+            todoId: data.id,
+            timeslotId,
+          }))
         );
       }
     }
-
-    const todo = db
-      .query<Todo, [number]>("SELECT * FROM todos WHERE id = ?")
-      .get(data.id);
 
     return todo;
   });
@@ -146,6 +172,17 @@ const DeleteTodoSchema = z.object({
 export const deleteTodo = createServerFn({ method: "POST" })
   .inputValidator(DeleteTodoSchema)
   .handler(async ({ data }) => {
-    db.run("DELETE FROM todos WHERE id = ?", [data.id]);
+    await db
+      .delete(schema.todos)
+      .where(
+        and(
+          eq(schema.todos.id, data.id),
+          eq(schema.todos.familyId, DEFAULT_FAMILY_ID)
+        )
+      );
+
     return { success: true };
   });
+
+// Re-export types for backwards compatibility
+export type { Todo, TodoTimeslot } from "../db/schema";

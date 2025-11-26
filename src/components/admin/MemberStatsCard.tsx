@@ -70,11 +70,11 @@ export function MemberStatsCard({ member }: MemberStatsCardProps) {
   const { data: achievements, isLoading: achievementsLoading } = useMemberAchievements(member.id)
   const { data: points, isLoading: pointsLoading } = useMemberPoints(member.id)
 
-  const earnedCount = achievements?.filter((a: { earned_at: string | null }) => a.earned_at).length || 0
+  const earnedCount = achievements?.filter((a: { earnedAt: Date | null }) => a.earnedAt).length || 0
   const isLoading = statsLoading || achievementsLoading || pointsLoading
 
   const level = stats?.level || 1
-  const totalStars = stats?.total_stars || 0
+  const totalStars = stats?.totalStars || 0
   const levelProgress = ((totalStars % LEVEL_PROGRESS.STARS_PER_LEVEL) / LEVEL_PROGRESS.STARS_PER_LEVEL) * 100
   const starsToNextLevel = LEVEL_PROGRESS.STARS_PER_LEVEL - (totalStars % LEVEL_PROGRESS.STARS_PER_LEVEL)
 
@@ -139,28 +139,28 @@ export function MemberStatsCard({ member }: MemberStatsCardProps) {
             <StatRow
               icon={<FireIcon />}
               label="Current Streak"
-              value={`${stats?.current_streak || 0}d`}
+              value={`${stats?.currentStreak || 0}d`}
               color="text-orange-600"
               bgColor="bg-orange-50"
             />
             <StatRow
               icon={<TargetIcon />}
               label="Best Streak"
-              value={`${stats?.longest_streak || 0}d`}
+              value={`${stats?.longestStreak || 0}d`}
               color="text-red-600"
               bgColor="bg-red-50"
             />
             <StatRow
               icon={<CheckIcon />}
               label="Tasks Done"
-              value={stats?.total_tasks_completed || 0}
+              value={stats?.totalTasksCompleted || 0}
               color="text-green-600"
               bgColor="bg-green-50"
             />
             <StatRow
               icon={<ClockIcon />}
               label="Timeslots"
-              value={stats?.total_timeslots_completed || 0}
+              value={stats?.totalTimeslotsCompleted || 0}
               color="text-blue-600"
               bgColor="bg-blue-50"
             />

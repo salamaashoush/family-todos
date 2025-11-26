@@ -13,10 +13,10 @@ const todoSchema = z.object({
   title: z.string().min(1, 'Title is required').max(200, 'Title must be less than 200 characters'),
   description: z.string().max(1000, 'Description must be less than 1000 characters'),
   symbol: z.string().max(10, 'Symbol must be less than 10 characters'),
-  image_url: z.string(),
+  imageUrl: z.string(),
   position: z.number(),
   points: z.number().min(0, 'Points must be at least 0'),
-  timeslot_ids: z.array(z.number()).min(1, 'Select at least one time slot'),
+  timeslotIds: z.array(z.number()).min(1, 'Select at least one time slot'),
 })
 
 type TodoFormData = z.infer<typeof todoSchema>
@@ -43,16 +43,16 @@ export function TodoForm({ todo, onSubmit, onCancel }: TodoFormProps) {
       title: '',
       description: '',
       symbol: '',
-      image_url: '',
+      imageUrl: '',
       position: 0,
       points: 5,
-      timeslot_ids: [],
+      timeslotIds: [],
     } as TodoFormData,
     validators: {
       onChange: todoSchema,
     },
     onSubmit: async ({ value }) => {
-      let imageUrl = value.image_url
+      let imageUrl = value.imageUrl
 
       try {
         const uploadedUrl = await uploadImageFile()
@@ -62,7 +62,7 @@ export function TodoForm({ todo, onSubmit, onCancel }: TodoFormProps) {
         return
       }
 
-      await onSubmit({ ...value, image_url: imageUrl })
+      await onSubmit({ ...value, imageUrl: imageUrl })
       form.reset()
       resetImage()
     },
@@ -73,11 +73,11 @@ export function TodoForm({ todo, onSubmit, onCancel }: TodoFormProps) {
       form.setFieldValue('title', todo.title)
       form.setFieldValue('description', todo.description || '')
       form.setFieldValue('symbol', todo.symbol || '')
-      form.setFieldValue('image_url', todo.image_url || '')
+      form.setFieldValue('imageUrl', todo.imageUrl || '')
       form.setFieldValue('position', todo.position)
       form.setFieldValue('points', todo.points ?? 5)
-      form.setFieldValue('timeslot_ids', todo.timeslot_ids || [])
-      setPreview(todo.image_url || '')
+      form.setFieldValue('timeslotIds', todo.timeslotIds || [])
+      setPreview(todo.imageUrl || '')
     } else {
       form.reset()
       resetImage()
@@ -198,7 +198,7 @@ export function TodoForm({ todo, onSubmit, onCancel }: TodoFormProps) {
       />
 
       <form.Field
-        name="timeslot_ids"
+        name="timeslotIds"
         children={(field) => (
           <div>
             <label className="block text-sm font-bold text-gray-700 mb-3">Add to Time Slots *</label>
@@ -232,9 +232,9 @@ export function TodoForm({ todo, onSubmit, onCancel }: TodoFormProps) {
                   }`}
                 >
                   <div className="font-bold text-base">{timeslot.name}</div>
-                  {timeslot.start_time && (
+                  {timeslot.startTime && (
                     <div className="text-xs opacity-90 mt-1">
-                      {timeslot.start_time} - {timeslot.end_time}
+                      {timeslot.startTime} - {timeslot.endTime}
                     </div>
                   )}
                   </button>

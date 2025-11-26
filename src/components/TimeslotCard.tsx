@@ -52,9 +52,9 @@ export function TimeslotCard({
     >
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-3">
         <h3 className="text-lg sm:text-xl font-bold text-gray-800">{timeslot.name}</h3>
-        {timeslot.start_time && timeslot.end_time && (
+        {timeslot.startTime && timeslot.endTime && (
           <span className="text-xs sm:text-sm font-semibold text-gray-600 bg-white px-3 py-2 rounded-full self-start sm:self-auto">
-            {timeslot.start_time} - {timeslot.end_time}
+            {timeslot.startTime} - {timeslot.endTime}
           </span>
         )}
       </div>

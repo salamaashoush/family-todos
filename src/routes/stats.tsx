@@ -10,7 +10,7 @@ import { Toast, showToast } from '../components/Toast'
 import { LEVEL_PROGRESS, WEEK_DAYS } from '../constants'
 import { getMembers } from '../server/members'
 import { getActiveRewards, getMemberPoints, requestRedemption, getMemberRedemptions } from '../server/rewards'
-import type { MemberStats, Achievement, Reward, RewardRedemption } from '../types'
+import type { MemberStats, Achievement, Reward } from '../types'
 
 export const Route = createFileRoute('/stats')({
   loader: async ({ context: { queryClient } }) => {
@@ -24,9 +24,17 @@ export const Route = createFileRoute('/stats')({
 
 type Tab = 'stats' | 'rewards'
 
-type RedemptionWithReward = RewardRedemption & {
-  reward_name: string
-  reward_icon: string | null
+type RedemptionWithReward = {
+  id: number
+  memberId: number
+  rewardId: number
+  pointsSpent: number
+  status: "pending" | "approved" | "rejected" | "fulfilled"
+  requestedAt: Date
+  processedAt: Date | null
+  notes: string | null
+  rewardName: string
+  rewardIcon: string | null
 }
 
 const GiftIcon = () => (
@@ -69,13 +77,13 @@ const TargetIcon = () => (
 
 interface MemberStatsViewProps {
   stats: MemberStats
-  achievements: (Achievement & { earned_at: string | null })[]
+  achievements: (Achievement & { earnedAt: Date | null })[]
 }
 
 function MemberStatsView({ stats, achievements }: MemberStatsViewProps) {
-  const earnedAchievements = achievements.filter((a) => a.earned_at)
-  const nextAchievements = achievements.filter((a) => !a.earned_at).slice(0, 3)
-  const levelProgress = ((stats.total_stars % LEVEL_PROGRESS.STARS_PER_LEVEL) / LEVEL_PROGRESS.STARS_PER_LEVEL) * 100
+  const earnedAchievements = achievements.filter((a) => a.earnedAt)
+  const nextAchievements = achievements.filter((a) => !a.earnedAt).slice(0, 3)
+  const levelProgress = ((stats.totalStars % LEVEL_PROGRESS.STARS_PER_LEVEL) / LEVEL_PROGRESS.STARS_PER_LEVEL) * 100
 
   useLevelUpCelebration({
     level: stats.level,
@@ -90,7 +98,7 @@ function MemberStatsView({ stats, achievements }: MemberStatsViewProps) {
     return monday.toISOString().split('T')[0]
   }, [])
 
-  const { data: weeklyProgress, isLoading: weeklyLoading } = useWeeklyProgress(stats.member_id, weekStart)
+  const { data: weeklyProgress, isLoading: weeklyLoading } = useWeeklyProgress(stats.memberId, weekStart)
 
   return (
     <div className="space-y-6">
@@ -100,7 +108,7 @@ function MemberStatsView({ stats, achievements }: MemberStatsViewProps) {
             <StarIconLarge />
             <span className="text-sm font-bold text-gray-600">Level {stats.level}</span>
           </div>
-          <div className="text-4xl font-bold text-theme-primary">{stats.total_stars}</div>
+          <div className="text-4xl font-bold text-theme-primary">{stats.totalStars}</div>
           <div className="text-sm text-gray-500">Total Stars</div>
           <div className="w-full bg-gray-200 rounded-full h-3 mt-3">
             <div
@@ -109,7 +117,7 @@ function MemberStatsView({ stats, achievements }: MemberStatsViewProps) {
             />
           </div>
           <div className="text-xs text-gray-500 mt-2 text-center">
-            {LEVEL_PROGRESS.STARS_PER_LEVEL - (stats.total_stars % LEVEL_PROGRESS.STARS_PER_LEVEL)} stars to Level {stats.level + 1}
+            {LEVEL_PROGRESS.STARS_PER_LEVEL - (stats.totalStars % LEVEL_PROGRESS.STARS_PER_LEVEL)} stars to Level {stats.level + 1}
           </div>
         </div>
 
@@ -118,10 +126,10 @@ function MemberStatsView({ stats, achievements }: MemberStatsViewProps) {
             <FireIcon />
             <span className="text-sm font-bold text-gray-600">Streak</span>
           </div>
-          <div className="text-4xl font-bold text-orange-600">{stats.current_streak}</div>
-          <div className="text-sm text-gray-500">{stats.current_streak === 1 ? 'Day' : 'Days'}</div>
+          <div className="text-4xl font-bold text-orange-600">{stats.currentStreak}</div>
+          <div className="text-sm text-gray-500">{stats.currentStreak === 1 ? 'Day' : 'Days'}</div>
           <div className="text-sm text-gray-600 mt-3">
-            Best streak: <span className="font-bold">{stats.longest_streak} days</span>
+            Best streak: <span className="font-bold">{stats.longestStreak} days</span>
           </div>
         </div>
 
@@ -130,7 +138,7 @@ function MemberStatsView({ stats, achievements }: MemberStatsViewProps) {
             <CheckIcon />
             <span className="text-sm font-bold text-gray-600">Tasks</span>
           </div>
-          <div className="text-4xl font-bold text-green-600">{stats.total_tasks_completed}</div>
+          <div className="text-4xl font-bold text-green-600">{stats.totalTasksCompleted}</div>
           <div className="text-sm text-gray-500">Completed</div>
         </div>
 
@@ -139,7 +147,7 @@ function MemberStatsView({ stats, achievements }: MemberStatsViewProps) {
             <TargetIcon />
             <span className="text-sm font-bold text-gray-600">Timeslots</span>
           </div>
-          <div className="text-4xl font-bold text-theme-primary">{stats.total_timeslots_completed}</div>
+          <div className="text-4xl font-bold text-theme-primary">{stats.totalTimeslotsCompleted}</div>
           <div className="text-sm text-gray-500">Completed</div>
         </div>
       </div>
@@ -161,7 +169,7 @@ function MemberStatsView({ stats, achievements }: MemberStatsViewProps) {
             {weeklyProgress.map((day, index) => {
               const today = new Date().toISOString().split('T')[0]
               const isToday = day.date === today
-              const hasActivity = day.task_count > 0
+              const hasActivity = day.taskCount > 0
 
               return (
                 <div
@@ -177,10 +185,10 @@ function MemberStatsView({ stats, achievements }: MemberStatsViewProps) {
                       hasActivity ? 'bg-green-500 text-white' : 'bg-gray-100 text-gray-400'
                     }`}
                   >
-                    {day.task_count}
+                    {day.taskCount}
                   </div>
-                  {day.timeslot_count > 0 && (
-                    <div className="mt-1 text-xs text-green-600 font-bold">{day.timeslot_count} slots</div>
+                  {day.timeslotCount > 0 && (
+                    <div className="mt-1 text-xs text-green-600 font-bold">{day.timeslotCount} slots</div>
                   )}
                 </div>
               )
@@ -197,11 +205,11 @@ function MemberStatsView({ stats, achievements }: MemberStatsViewProps) {
               <div
                 key={achievement.id}
                 className="bg-gradient-to-br from-theme-primary to-theme-secondary text-white rounded-xl p-3 text-center shadow-lg"
-                title={achievement.description}
+                title={achievement.description ?? undefined}
               >
                 <div className="text-4xl mb-2">{achievement.icon}</div>
                 <div className="text-sm font-bold leading-tight">{achievement.name}</div>
-                <div className="text-xs opacity-80 mt-1">+{achievement.star_reward} stars</div>
+                <div className="text-xs opacity-80 mt-1">+{achievement.starReward} stars</div>
               </div>
             ))}
           </div>
@@ -222,7 +230,7 @@ function MemberStatsView({ stats, achievements }: MemberStatsViewProps) {
                   <div className="text-base font-bold text-gray-700">{achievement.name}</div>
                   <div className="text-sm text-gray-500">{achievement.description}</div>
                 </div>
-                <span className="text-lg font-bold text-theme-primary flex-shrink-0 flex items-center gap-1">+{achievement.star_reward} <StarIcon /></span>
+                <span className="text-lg font-bold text-theme-primary flex-shrink-0 flex items-center gap-1">+{achievement.starReward} <StarIcon /></span>
               </div>
             ))}
           </div>
@@ -249,13 +257,13 @@ function RewardsView({ memberId, memberName }: RewardsViewProps) {
 
   const { data: memberPoints } = useQuery({
     queryKey: ['memberPoints', memberId],
-    queryFn: () => getMemberPoints({ data: { member_id: memberId } }),
+    queryFn: () => getMemberPoints({ data: { memberId } }),
     enabled: !!memberId,
   })
 
   const { data: memberRedemptions } = useQuery({
     queryKey: ['memberRedemptions', memberId],
-    queryFn: () => getMemberRedemptions({ data: { member_id: memberId } }),
+    queryFn: () => getMemberRedemptions({ data: { memberId } }),
     enabled: !!memberId,
   })
 
@@ -275,8 +283,8 @@ function RewardsView({ memberId, memberName }: RewardsViewProps) {
   })
 
   const handleSelectReward = (reward: Reward) => {
-    if ((memberPoints || 0) < reward.point_cost) {
-      showToast(`You need ${reward.point_cost - (memberPoints || 0)} more points!`, 'error')
+    if ((memberPoints || 0) < reward.pointCost) {
+      showToast(`You need ${reward.pointCost - (memberPoints || 0)} more points!`, 'error')
       return
     }
     setSelectedReward(reward)
@@ -287,8 +295,8 @@ function RewardsView({ memberId, memberName }: RewardsViewProps) {
     if (!selectedReward) return
     redeemMutation.mutate({
       data: {
-        member_id: memberId,
-        reward_id: selectedReward.id,
+        memberId,
+        rewardId: selectedReward.id,
       },
     })
   }
@@ -342,7 +350,7 @@ function RewardsView({ memberId, memberName }: RewardsViewProps) {
         ) : rewards && rewards.length > 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {rewards.map((reward: Reward) => {
-              const canAfford = (memberPoints || 0) >= reward.point_cost
+              const canAfford = (memberPoints || 0) >= reward.pointCost
               return (
                 <button
                   key={reward.id}
@@ -366,11 +374,11 @@ function RewardsView({ memberId, memberName }: RewardsViewProps) {
                       <div className="flex items-center gap-1 mt-2">
                         <StarIcon />
                         <span className={`font-bold ${canAfford ? 'text-yellow-600' : 'text-red-500'}`}>
-                          {reward.point_cost} points
+                          {reward.pointCost} points
                         </span>
                         {!canAfford && (
                           <span className="text-xs text-gray-400 ml-2">
-                            (need {reward.point_cost - (memberPoints || 0)} more)
+                            (need {reward.pointCost - (memberPoints || 0)} more)
                           </span>
                         )}
                       </div>
@@ -403,12 +411,12 @@ function RewardsView({ memberId, memberName }: RewardsViewProps) {
               >
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-full bg-gradient-to-br from-yellow-400 to-orange-500 flex items-center justify-center text-xl">
-                    {redemption.reward_icon || <GiftIcon />}
+                    {redemption.rewardIcon || <GiftIcon />}
                   </div>
                   <div>
-                    <h4 className="font-semibold text-gray-800">{redemption.reward_name}</h4>
+                    <h4 className="font-semibold text-gray-800">{redemption.rewardName}</h4>
                     <p className="text-xs text-gray-400">
-                      {new Date(redemption.requested_at).toLocaleDateString()}
+                      {new Date(redemption.requestedAt).toLocaleDateString()}
                     </p>
                   </div>
                 </div>
@@ -437,7 +445,7 @@ function RewardsView({ memberId, memberName }: RewardsViewProps) {
             <p className="text-gray-500 mb-4">{selectedReward.description}</p>
             <div className="flex items-center justify-center gap-2 text-lg mb-6">
               <StarIcon />
-              <span className="font-bold text-yellow-600">{selectedReward.point_cost} points</span>
+              <span className="font-bold text-yellow-600">{selectedReward.pointCost} points</span>
             </div>
             <p className="text-sm text-gray-600 mb-6">
               {memberName}, are you sure you want to redeem this reward?

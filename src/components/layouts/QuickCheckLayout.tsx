@@ -45,8 +45,8 @@ function AccordionTimeslot({
     >
       <TimeslotHeader
         name={timeslot.name}
-        startTime={timeslot.start_time}
-        endTime={timeslot.end_time}
+        startTime={timeslot.startTime}
+        endTime={timeslot.endTime}
         isCurrentTimeslot={isCurrentTimeslot}
         isComplete={allCompleted}
         completedCount={completedCount}

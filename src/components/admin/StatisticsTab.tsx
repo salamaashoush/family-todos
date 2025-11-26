@@ -85,13 +85,13 @@ function AggregateStatsSection({ members }: AggregateStatsProps) {
       const achievements = query.achievements.data as { earned_at: string | null }[] | undefined
 
       if (stats) {
-        totalStars += stats.total_stars
-        totalTasks += stats.total_tasks_completed
-        totalTimeslots += stats.total_timeslots_completed
-        if (stats.longest_streak > highestStreak) highestStreak = stats.longest_streak
+        totalStars += stats.totalStars
+        totalTasks += stats.totalTasksCompleted
+        totalTimeslots += stats.totalTimeslotsCompleted
+        if (stats.longestStreak > highestStreak) highestStreak = stats.longestStreak
         if (stats.level > highestLevel) highestLevel = stats.level
-        if (!topPerformer || stats.total_stars > topPerformer.stars) {
-          topPerformer = { name: members[index].name, stars: stats.total_stars }
+        if (!topPerformer || stats.totalStars > topPerformer.stars) {
+          topPerformer = { name: members[index].name, stars: stats.totalStars }
         }
       }
 
@@ -190,7 +190,7 @@ function groupAchievementsByType(achievements: Achievement[]) {
   const groups: Record<string, Achievement[]> = {}
 
   achievements.forEach((achievement) => {
-    const type = achievement.requirement_type
+    const type = achievement.requirementType
     if (!groups[type]) {
       groups[type] = []
     }
@@ -199,7 +199,7 @@ function groupAchievementsByType(achievements: Achievement[]) {
 
   // Sort each group by requirement value
   Object.keys(groups).forEach((type) => {
-    groups[type].sort((a, b) => a.requirement_value - b.requirement_value)
+    groups[type].sort((a, b) => a.requirementValue - b.requirementValue)
   })
 
   return groups
@@ -413,10 +413,10 @@ function CollapsibleAchievementGroup({ type, achievements }: CollapsibleAchievem
                   <p className="text-xs text-gray-500 mt-0.5 line-clamp-2">{achievement.description}</p>
                   <div className="flex items-center justify-between mt-2 gap-2">
                     <span className="text-xs font-medium text-theme-primary">
-                      {achievement.requirement_value} {type.replace(/_/g, ' ')}
+                      {achievement.requirementValue} {type.replace(/_/g, ' ')}
                     </span>
                     <span className="inline-flex items-center gap-1 bg-yellow-100 border border-yellow-300 rounded-full px-2 py-0.5 text-xs font-bold text-yellow-700">
-                      +{achievement.star_reward} <StarIcon />
+                      +{achievement.starReward} <StarIcon />
                     </span>
                   </div>
                 </div>

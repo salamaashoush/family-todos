@@ -235,7 +235,7 @@ export function MembersTab() {
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
                     <h3 className="font-bold text-gray-800 truncate">{member.name}</h3>
-                    {member.is_parent === 1 && (
+                    {member.isParent && (
                       <span className="flex-shrink-0 text-xs font-medium bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">
                         Parent
                       </span>

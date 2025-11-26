@@ -1,6 +1,15 @@
-import type { Member, Timeslot, Todo, TodoCompletion, MemberStats, Achievement, LayoutSettingRow, Reward, PointTransaction, RewardRedemption } from '../db/types'
+import type { Member as BaseMember, Timeslot as BaseTimeslot, Todo as BaseTodo, TodoCompletion, MemberStats, Achievement, LayoutSetting, Reward, PointTransaction, RewardRedemption } from '../db/schema'
 
-export type { Member, Timeslot, Todo, TodoCompletion, MemberStats, Achievement, LayoutSettingRow, Reward, PointTransaction, RewardRedemption }
+// Extended types with computed properties from server functions
+// These are the types returned by API calls which include joined data
+export type Timeslot = BaseTimeslot & { memberIds?: number[] }
+export type Todo = BaseTodo & { timeslotIds?: number[] }
+export type Member = BaseMember
+
+// Re-export base types for explicit access
+export type { BaseMember, BaseTimeslot, BaseTodo }
+export type { TodoCompletion, MemberStats, Achievement, Reward, PointTransaction, RewardRedemption }
+export type LayoutSettingRow = LayoutSetting
 
 export type { LayoutId, LayoutConfig, LayoutSettings, DeviceType } from '../config/layouts'
 
@@ -26,7 +35,7 @@ export interface TimeslotCardProps {
 
 export interface StatsDisplayProps {
   stats: MemberStats
-  achievements: (Achievement & { earned_at: string | null })[]
+  achievements: (Achievement & { earnedAt: Date | null })[]
 }
 
 export interface MemberStatsCardProps {
@@ -35,9 +44,13 @@ export interface MemberStatsCardProps {
 
 export interface WeeklyProgressDay {
   date: string
-  task_count: number
-  timeslot_count: number
+  taskCount: number
+  timeslotCount: number
 }
+
+// Alias types for backwards compatibility
+export type TimeslotWithMembers = Timeslot
+export type TodoWithTimeslots = Todo
 
 export interface LayoutProps {
   members: Member[]
