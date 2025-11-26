@@ -3,6 +3,7 @@ import { z } from "zod";
 import { eq, and, sql, count } from "drizzle-orm";
 import { db, schema } from "../db";
 import { updateStats } from "./statistics";
+import { revokeUnqualifiedAchievements } from "./statistics-helpers";
 import { broadcastToFamily } from "./realtime";
 import { getTenantContext } from "../utils/tenant";
 
@@ -422,6 +423,11 @@ export const uncompleteTodo = createServerFn({ method: "POST" })
           updatedAt: new Date(),
         })
         .where(eq(schema.memberStats.memberId, data.memberId));
+    }
+
+    // Revoke achievements that the member no longer qualifies for
+    if (wasDeleted) {
+      await revokeUnqualifiedAchievements(data.memberId);
     }
 
     // Broadcast realtime event

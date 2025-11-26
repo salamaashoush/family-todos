@@ -51,11 +51,37 @@ export type AchievementUnlockedEvent = {
   };
 };
 
+export type AchievementRevokedEvent = {
+  type: "achievement_revoked";
+  sourceClientId?: string;
+  memberId: number;
+  memberName?: string;
+  timestamp: number;
+  data: {
+    achievementId: number;
+    achievementName: string;
+  };
+};
+
+export type LevelUpEvent = {
+  type: "level_up";
+  sourceClientId?: string;
+  memberId: number;
+  memberName?: string;
+  timestamp: number;
+  data: {
+    previousLevel: number;
+    newLevel: number;
+  };
+};
+
 export type RealtimeEvent =
   | TaskCompletedEvent
   | TaskUncompletedEvent
   | TimeslotCompletedEvent
-  | AchievementUnlockedEvent;
+  | AchievementUnlockedEvent
+  | AchievementRevokedEvent
+  | LevelUpEvent;
 
 export type SSEEvent = SSEConnectionEvent | RealtimeEvent;
 

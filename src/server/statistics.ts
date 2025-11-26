@@ -4,6 +4,7 @@ import { eq, asc, sql, or, and } from "drizzle-orm";
 import { db, schema } from "../db";
 import { broadcastToFamily } from "./realtime";
 import { getTenantContext } from "../utils/tenant";
+import { checkAchievements, revokeUnqualifiedAchievements } from "./statistics-helpers";
 
 const GetStatsSchema = z.object({
   memberId: z.number(),
@@ -185,6 +186,7 @@ export const updateStats = createServerFn({ method: "POST" })
 
     // Calculate level (every 50 stars = 1 level)
     const newLevel = Math.floor(newTotalStars / 50) + 1;
+    const previousLevel = stats.level;
 
     await db
       .update(schema.memberStats)
@@ -199,116 +201,96 @@ export const updateStats = createServerFn({ method: "POST" })
       })
       .where(eq(schema.memberStats.memberId, memberId));
 
+    // Broadcast level-up event if level increased
+    if (newLevel > previousLevel) {
+      const [member] = await db
+        .select({ name: schema.members.name, familyId: schema.members.familyId })
+        .from(schema.members)
+        .where(eq(schema.members.id, memberId))
+        .limit(1);
+
+      if (member) {
+        broadcastToFamily(member.familyId, {
+          type: "level_up",
+          memberId,
+          memberName: member.name,
+          timestamp: Date.now(),
+          data: {
+            previousLevel,
+            newLevel,
+          },
+        });
+      }
+    }
+
     // Check for new achievements
     await checkAchievements(memberId);
 
     return { success: true };
   });
 
-async function checkAchievements(memberId: number) {
-  const [stats] = await db
-    .select()
-    .from(schema.memberStats)
-    .where(eq(schema.memberStats.memberId, memberId))
-    .limit(1);
+/**
+ * Check and reset streak if member hasn't completed tasks recently
+ * Should be called on app load or periodically
+ */
+export const checkAndResetStreak = createServerFn({ method: "POST" })
+  .inputValidator(z.object({ memberId: z.number() }))
+  .handler(async ({ data }) => {
+    const { familyId } = await getTenantContext();
 
-  if (!stats) return;
-
-  // Get member's family ID
-  const [member] = await db
-    .select({ familyId: schema.members.familyId })
-    .from(schema.members)
-    .where(eq(schema.members.id, memberId))
-    .limit(1);
-
-  if (!member) return;
-
-  // Get all achievements (global + family-specific)
-  const achievements = await db
-    .select()
-    .from(schema.achievements)
-    .where(
-      or(
-        eq(schema.achievements.isGlobal, true),
-        eq(schema.achievements.familyId, member.familyId)
-      )
-    );
-
-  for (const achievement of achievements) {
-    // Check if already earned
-    const [existing] = await db
-      .select()
-      .from(schema.memberAchievements)
+    // Verify member belongs to family
+    const [member] = await db
+      .select({ id: schema.members.id })
+      .from(schema.members)
       .where(
-        sql`${schema.memberAchievements.memberId} = ${memberId} AND ${schema.memberAchievements.achievementId} = ${achievement.id}`
+        and(
+          eq(schema.members.id, data.memberId),
+          eq(schema.members.familyId, familyId)
+        )
       )
       .limit(1);
 
-    if (existing) continue;
-
-    let earned = false;
-
-    switch (achievement.requirementType) {
-      case "tasks_completed":
-        earned = stats.totalTasksCompleted >= achievement.requirementValue;
-        break;
-      case "streak":
-        earned = stats.currentStreak >= achievement.requirementValue;
-        break;
-      case "stars":
-        earned = stats.totalStars >= achievement.requirementValue;
-        break;
-      case "timeslots_completed":
-        earned = stats.totalTimeslotsCompleted >= achievement.requirementValue;
-        break;
-      case "level":
-        earned = stats.level >= achievement.requirementValue;
-        break;
+    if (!member) {
+      throw new Error("Member not found or access denied");
     }
 
-    if (earned) {
-      try {
-        // Award achievement
-        await db.insert(schema.memberAchievements).values({
-          memberId,
-          achievementId: achievement.id,
-        });
+    const [stats] = await db
+      .select()
+      .from(schema.memberStats)
+      .where(eq(schema.memberStats.memberId, data.memberId))
+      .limit(1);
 
-        // Award bonus stars
-        if (achievement.starReward > 0) {
-          await db
-            .update(schema.memberStats)
-            .set({
-              totalStars: sql`${schema.memberStats.totalStars} + ${achievement.starReward}`,
-            })
-            .where(eq(schema.memberStats.memberId, memberId));
-        }
-
-        // Broadcast achievement unlocked event
-        const [memberForBroadcast] = await db
-          .select({ name: schema.members.name, familyId: schema.members.familyId })
-          .from(schema.members)
-          .where(eq(schema.members.id, memberId))
-          .limit(1);
-
-        if (memberForBroadcast) {
-          broadcastToFamily(memberForBroadcast.familyId, {
-            type: "achievement_unlocked",
-            memberId,
-            memberName: memberForBroadcast.name,
-            timestamp: Date.now(),
-            data: {
-              achievementId: achievement.id,
-              achievementName: achievement.name,
-            },
-          });
-        }
-      } catch {
-        // Achievement already exists
-      }
+    if (!stats || !stats.lastCompletionDate) {
+      return { streakReset: false, currentStreak: 0 };
     }
-  }
-}
+
+    const lastDate = new Date(stats.lastCompletionDate);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    lastDate.setHours(0, 0, 0, 0);
+
+    const diffDays = Math.floor(
+      (today.getTime() - lastDate.getTime()) / (1000 * 60 * 60 * 24)
+    );
+
+    // If more than 1 day has passed since last completion, reset streak
+    if (diffDays > 1 && stats.currentStreak > 0) {
+      await db
+        .update(schema.memberStats)
+        .set({
+          currentStreak: 0,
+          updatedAt: new Date(),
+        })
+        .where(eq(schema.memberStats.memberId, data.memberId));
+
+      // Revoke any streak-based achievements
+      await revokeUnqualifiedAchievements(data.memberId);
+
+      return { streakReset: true, currentStreak: 0, previousStreak: stats.currentStreak };
+    }
+
+    return { streakReset: false, currentStreak: stats.currentStreak };
+  });
 
 // Re-export types for backwards compatibility
 export type { MemberStats, Achievement, MemberAchievement } from "../db/schema";
