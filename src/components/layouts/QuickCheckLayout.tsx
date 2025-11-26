@@ -13,6 +13,8 @@ interface AccordionTimeslotProps {
   isExpanded: boolean
   onToggle: () => void
   isCurrentTimeslot: boolean
+  isDateEditable?: boolean
+  dateDisabledReason?: string
 }
 
 function AccordionTimeslot({
@@ -24,6 +26,8 @@ function AccordionTimeslot({
   isExpanded,
   onToggle,
   isCurrentTimeslot,
+  isDateEditable = true,
+  dateDisabledReason,
 }: AccordionTimeslotProps) {
   const timeslotTodos = useTimeslotTodos(todos, timeslot.id)
 
@@ -68,6 +72,8 @@ function AccordionTimeslot({
                 isCompleted={isTodoCompleted(todo.id, timeslot.id, memberId)}
                 onToggle={() => handleToggle(todo.id)}
                 size="md"
+                disabled={!isDateEditable}
+                disabledReason={dateDisabledReason}
               />
             ))
           )}
@@ -90,6 +96,8 @@ export function QuickCheckLayout({
   isTodoCompleted,
   onToggleTodo,
   currentTimeslotId,
+  isDateEditable,
+  dateDisabledReason,
 }: LayoutProps) {
   const [selectedMemberIndex, setSelectedMemberIndex] = useState(0)
   const [expandedTimeslotId, setExpandedTimeslotId] = useState<number | null>(currentTimeslotId)
@@ -219,6 +227,8 @@ export function QuickCheckLayout({
               isExpanded={expandedTimeslotId === timeslot.id}
               onToggle={() => toggleTimeslot(timeslot.id)}
               isCurrentTimeslot={timeslot.id === currentTimeslotId}
+              isDateEditable={isDateEditable}
+              dateDisabledReason={dateDisabledReason}
             />
           ))
         )}

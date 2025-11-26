@@ -12,9 +12,11 @@ interface MemberCardProps {
   points?: number | null
   isTodoCompleted: (todoId: number, timeslotId: number, memberId: number) => boolean
   onToggleTodo: (todoId: number, timeslotId: number, memberId: number, isCompleted: boolean) => void
+  isDateEditable?: boolean
+  dateDisabledReason?: string
 }
 
-function MemberCard({ member, todos, timeslotId, stats, points, isTodoCompleted, onToggleTodo }: MemberCardProps) {
+function MemberCard({ member, todos, timeslotId, stats, points, isTodoCompleted, onToggleTodo, isDateEditable = true, dateDisabledReason }: MemberCardProps) {
   const { completedCount, totalCount, allCompleted } = useTimeslotProgress(todos, timeslotId, member.id, isTodoCompleted)
 
   const handleToggle = useCallback(
@@ -46,6 +48,8 @@ function MemberCard({ member, todos, timeslotId, stats, points, isTodoCompleted,
             isCompleted={isTodoCompleted(todo.id, timeslotId, member.id)}
             onToggle={() => handleToggle(todo.id)}
             size="md"
+            disabled={!isDateEditable}
+            disabledReason={dateDisabledReason}
           />
         ))}
 
@@ -68,6 +72,8 @@ interface TimeslotRowProps {
   isCurrentTimeslot: boolean
   isExpanded: boolean
   onToggleExpand: () => void
+  isDateEditable?: boolean
+  dateDisabledReason?: string
 }
 
 function TimeslotRow({
@@ -81,6 +87,8 @@ function TimeslotRow({
   isCurrentTimeslot,
   isExpanded,
   onToggleExpand,
+  isDateEditable,
+  dateDisabledReason,
 }: TimeslotRowProps) {
   const timeslotTodos = useTimeslotTodos(todos, timeslot.id)
   const timeslotMembers = useTimeslotMembers(members, timeslot)
@@ -125,6 +133,8 @@ function TimeslotRow({
                     points={points}
                     isTodoCompleted={isTodoCompleted}
                     onToggleTodo={onToggleTodo}
+                    isDateEditable={isDateEditable}
+                    dateDisabledReason={dateDisabledReason}
                   />
                 </div>
               )
@@ -145,6 +155,8 @@ export function TimeslotFocusLayout({
   isTodoCompleted,
   onToggleTodo,
   currentTimeslotId,
+  isDateEditable,
+  dateDisabledReason,
 }: LayoutProps) {
   const [expandedTimeslots, setExpandedTimeslots] = useState<Set<number>>(() => {
     if (currentTimeslotId) {
@@ -182,6 +194,8 @@ export function TimeslotFocusLayout({
           isCurrentTimeslot={timeslot.id === currentTimeslotId}
           isExpanded={expandedTimeslots.has(timeslot.id)}
           onToggleExpand={() => toggleExpand(timeslot.id)}
+          isDateEditable={isDateEditable}
+          dateDisabledReason={dateDisabledReason}
         />
       ))}
     </div>

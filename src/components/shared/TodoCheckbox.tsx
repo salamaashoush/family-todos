@@ -7,6 +7,8 @@ interface TodoCheckboxProps {
   onToggle: () => void
   size?: 'sm' | 'md' | 'lg'
   showDescription?: boolean
+  disabled?: boolean
+  disabledReason?: string
 }
 
 const checkboxSizes = {
@@ -33,7 +35,7 @@ const textSizes = {
   lg: 'text-base',
 }
 
-export function TodoCheckbox({ todo, isCompleted, onToggle, size = 'md', showDescription = false }: TodoCheckboxProps) {
+export function TodoCheckbox({ todo, isCompleted, onToggle, size = 'md', showDescription = false, disabled = false, disabledReason }: TodoCheckboxProps) {
   const checkboxSize = checkboxSizes[size]
   const imageSize = imageSizes[size]
   const symbolSize = symbolSizes[size]
@@ -42,15 +44,19 @@ export function TodoCheckbox({ todo, isCompleted, onToggle, size = 'md', showDes
 
   return (
     <button
-      onClick={onToggle}
+      onClick={disabled ? undefined : onToggle}
+      disabled={disabled}
       aria-pressed={isCompleted}
-      aria-label={`${todo.title}${isCompleted ? ' (completed)' : ''}`}
+      aria-label={`${todo.title}${isCompleted ? ' (completed)' : ''}${disabled && disabledReason ? ` - ${disabledReason}` : ''}`}
       role="checkbox"
       aria-checked={isCompleted}
-      className={`w-full text-left transition-all active:scale-[0.98] touch-manipulation focus:outline-none focus-visible:ring-2 focus-visible:ring-theme-primary focus-visible:ring-inset px-3 py-2 rounded-lg ${
-        isCompleted
-          ? 'bg-green-50 border-2 border-green-400'
-          : 'bg-white border-2 border-gray-200 hover:border-theme-primary'
+      title={disabled && disabledReason ? disabledReason : undefined}
+      className={`w-full text-left transition-all touch-manipulation focus:outline-none focus-visible:ring-2 focus-visible:ring-theme-primary focus-visible:ring-inset px-3 py-2 rounded-lg ${
+        disabled
+          ? 'bg-gray-100 border-2 border-gray-200 cursor-not-allowed opacity-60'
+          : isCompleted
+            ? 'bg-green-50 border-2 border-green-400 active:scale-[0.98]'
+            : 'bg-white border-2 border-gray-200 hover:border-theme-primary active:scale-[0.98]'
       }`}
     >
       <div className="flex items-center gap-2">

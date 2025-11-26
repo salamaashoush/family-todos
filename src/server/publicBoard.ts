@@ -236,12 +236,47 @@ const TogglePublicTodoSchema = z.object({
   clientId: z.string().nullish(),
 });
 
+/**
+ * Check if a date is within the allowed completion window
+ * Allowed: today and yesterday only
+ * Not allowed: future dates or dates more than 1 day in the past
+ */
+function isDateInCompletionWindow(dateString: string): { allowed: boolean; reason?: string } {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const [year, month, day] = dateString.split("-").map(Number);
+  const targetDate = new Date(year, month - 1, day);
+  targetDate.setHours(0, 0, 0, 0);
+
+  const diffMs = today.getTime() - targetDate.getTime();
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+  // Future date
+  if (diffDays < 0) {
+    return { allowed: false, reason: "Cannot complete tasks for future dates" };
+  }
+
+  // More than 1 day in the past
+  if (diffDays > 1) {
+    return { allowed: false, reason: "Cannot modify tasks more than 1 day in the past" };
+  }
+
+  return { allowed: true };
+}
+
 export const togglePublicTodo = createServerFn({ method: "POST" })
   .inputValidator(TogglePublicTodoSchema)
   .handler(async ({ data }) => {
     // Validate token format
     if (!isValidShareToken(data.token)) {
       throw new Error("Invalid share token");
+    }
+
+    // Validate date is within allowed completion window
+    const dateCheck = isDateInCompletionWindow(data.date);
+    if (!dateCheck.allowed) {
+      throw new Error(dateCheck.reason!);
     }
 
     // Check rate limit for this token

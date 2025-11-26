@@ -12,6 +12,8 @@ interface CurrentTimeslotCardProps {
   points?: number | null
   isTodoCompleted: (todoId: number, timeslotId: number, memberId: number) => boolean
   onToggleTodo: (todoId: number, timeslotId: number, memberId: number, isCompleted: boolean) => void
+  isDateEditable?: boolean
+  dateDisabledReason?: string
 }
 
 function CurrentTimeslotCard({
@@ -22,6 +24,8 @@ function CurrentTimeslotCard({
   points,
   isTodoCompleted,
   onToggleTodo,
+  isDateEditable = true,
+  dateDisabledReason,
 }: CurrentTimeslotCardProps) {
   const timeslotTodos = useTimeslotTodos(todos, timeslot.id)
 
@@ -62,6 +66,8 @@ function CurrentTimeslotCard({
               isCompleted={isTodoCompleted(todo.id, timeslot.id, member.id)}
               onToggle={() => handleToggle(todo.id)}
               size="md"
+              disabled={!isDateEditable}
+              disabledReason={dateDisabledReason}
             />
           ))}
         </div>
@@ -153,6 +159,8 @@ export function FamilyDashboardLayout({
   isTodoCompleted,
   onToggleTodo,
   currentTimeslotId,
+  isDateEditable,
+  dateDisabledReason,
 }: LayoutProps) {
   const sortedTimeslots = useSortedTimeslots(timeslots)
 
@@ -238,6 +246,8 @@ export function FamilyDashboardLayout({
                         points={points}
                         isTodoCompleted={isTodoCompleted}
                         onToggleTodo={onToggleTodo}
+                        isDateEditable={isDateEditable}
+                        dateDisabledReason={dateDisabledReason}
                       />
                     </div>
                   )

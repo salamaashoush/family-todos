@@ -345,6 +345,27 @@ function PublicFamilyBoard() {
     return members.filter((m) => !m.isParent);
   }, [members, settings.showParentsInLayout]);
 
+  // Check if selected date is editable (today or yesterday only)
+  const dateEditableInfo = useMemo(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const [year, month, day] = selectedDate.split("-").map(Number);
+    const targetDate = new Date(year, month - 1, day);
+    targetDate.setHours(0, 0, 0, 0);
+
+    const diffMs = today.getTime() - targetDate.getTime();
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+    if (diffDays < 0) {
+      return { isEditable: false, reason: "Cannot complete tasks for future dates" };
+    }
+    if (diffDays > 1) {
+      return { isEditable: false, reason: "Cannot modify tasks more than 1 day in the past" };
+    }
+    return { isEditable: true, reason: undefined };
+  }, [selectedDate]);
+
   // Invalid token
   if (familyError || (!familyLoading && !family)) {
     return (
@@ -417,6 +438,8 @@ function PublicFamilyBoard() {
     isTodoCompleted,
     onToggleTodo: handleToggleTodo,
     currentTimeslotId,
+    isDateEditable: dateEditableInfo.isEditable,
+    dateDisabledReason: dateEditableInfo.reason,
   };
 
   const renderLayout = () => {

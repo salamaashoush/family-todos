@@ -12,6 +12,8 @@ export function MemberColumn({
   points,
   isTodoCompleted,
   onToggleTodo,
+  isDateEditable,
+  dateDisabledReason,
 }: MemberColumnProps) {
   const dayProgress = useMemberDayProgress(member, timeslots, todos, isTodoCompleted)
 
@@ -47,6 +49,8 @@ export function MemberColumn({
               completionPercentage={dayProgress.percentage}
               totalTimeslots={totalTimeslots}
               completedTimeslotsCount={completedTimeslots}
+              isDateEditable={isDateEditable}
+              dateDisabledReason={dateDisabledReason}
             />
           )
         })}

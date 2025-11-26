@@ -13,6 +13,8 @@ export function TimeslotCard({
   completionPercentage,
   totalTimeslots,
   completedTimeslotsCount,
+  isDateEditable = true,
+  dateDisabledReason,
 }: TimeslotCardProps) {
   const { completedCount, totalCount, allCompleted } = useTimeslotProgress(
     todos,
@@ -75,6 +77,8 @@ export function TimeslotCard({
             onToggle={() => handleToggle(todo.id, isTodoCompleted(todo.id, timeslot.id, memberId))}
             size="md"
             showDescription
+            disabled={!isDateEditable}
+            disabledReason={dateDisabledReason}
           />
         ))}
       </div>

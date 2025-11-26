@@ -22,6 +22,8 @@ export interface MemberColumnProps {
   points?: number | null
   isTodoCompleted: (todoId: number, timeslotId: number, memberId: number) => boolean
   onToggleTodo: (todoId: number, timeslotId: number, memberId: number, isCompleted: boolean) => void
+  isDateEditable?: boolean
+  dateDisabledReason?: string
 }
 
 export interface TimeslotCardProps {
@@ -33,6 +35,8 @@ export interface TimeslotCardProps {
   completionPercentage: number
   totalTimeslots: number
   completedTimeslotsCount: number
+  isDateEditable?: boolean
+  dateDisabledReason?: string
 }
 
 export interface StatsDisplayProps {
@@ -69,4 +73,6 @@ export interface LayoutProps {
   isTodoCompleted: (todoId: number, timeslotId: number, memberId: number) => boolean
   onToggleTodo: (todoId: number, timeslotId: number, memberId: number, isCompleted: boolean) => void
   currentTimeslotId: number | null
+  isDateEditable?: boolean
+  dateDisabledReason?: string
 }
