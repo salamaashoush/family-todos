@@ -17,6 +17,7 @@ import {
   getAllAchievements,
 } from "../server/statistics";
 import { getWeeklyProgress } from "../server/progress";
+import { getMemberPoints } from "../server/rewards";
 import type { TodoCompletion } from "../types";
 
 // Get client ID from window if available (client-side only)
@@ -83,6 +84,13 @@ export function useWeeklyProgress(memberId: number, startDate: string) {
       getWeeklyProgress({
         data: { member_id: memberId, start_date: startDate },
       }),
+  });
+}
+
+export function useMemberPoints(memberId: number) {
+  return useQuery({
+    queryKey: ["memberPoints", memberId],
+    queryFn: () => getMemberPoints({ data: { member_id: memberId } }),
   });
 }
 
@@ -207,6 +215,10 @@ export function useToggleTodoMutation() {
       queryClient.invalidateQueries({
         queryKey: ["weeklyProgress", variables.memberId],
         exact: false,
+      });
+      // Invalidate member points for rewards
+      queryClient.invalidateQueries({
+        queryKey: ["memberPoints", variables.memberId],
       });
     },
   });

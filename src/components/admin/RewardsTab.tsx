@@ -1,0 +1,484 @@
+import { useState, useMemo } from 'react'
+import { useQuery } from '@tanstack/react-query'
+import { useRewardMutations, useRedemptionMutations } from '../../hooks/useAdminMutations'
+import { getRewards, getPendingRedemptions } from '../../server/rewards'
+import { Modal } from '../shared/Modal'
+import { ConfirmDialog } from '../shared/ConfirmDialog'
+import { Button } from '../shared/Button'
+import { Input } from '../shared/Input'
+import { Select } from '../shared/Select'
+import { AdminCard } from './AdminCard'
+import { RewardForm } from './RewardForm'
+import type { Reward, RewardRedemption } from '../../types'
+
+const PlusIcon = () => (
+  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+  </svg>
+)
+
+const TrashIcon = () => (
+  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+  </svg>
+)
+
+const GiftIcon = ({ className = "w-6 h-6" }: { className?: string }) => (
+  <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5.5A2.5 2.5 0 109.5 8H12zm-7 4h14M5 12a2 2 0 110-4h14a2 2 0 110 4M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7" />
+  </svg>
+)
+
+const StarIcon = () => (
+  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+  </svg>
+)
+
+interface RewardFormData {
+  name: string
+  description: string
+  icon: string
+  point_cost: number
+  is_active: boolean
+}
+
+type PendingRedemptionWithDetails = RewardRedemption & {
+  member_name: string
+  reward_name: string
+}
+
+export function RewardsTab() {
+  const { data: rewards, isLoading: rewardsLoading } = useQuery({
+    queryKey: ['rewards'],
+    queryFn: () => getRewards(),
+  })
+  const { data: pendingRedemptions } = useQuery({
+    queryKey: ['pendingRedemptions'],
+    queryFn: () => getPendingRedemptions(),
+  })
+
+  const { create, update, remove } = useRewardMutations()
+  const { process: processRedemption } = useRedemptionMutations()
+
+  const [isModalOpen, setIsModalOpen] = useState(false)
+  const [editingReward, setEditingReward] = useState<Reward | null>(null)
+  const [deletingReward, setDeletingReward] = useState<Reward | null>(null)
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set())
+  const [searchQuery, setSearchQuery] = useState('')
+  const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'inactive'>('all')
+  const [showBulkDelete, setShowBulkDelete] = useState(false)
+  const [activeSection, setActiveSection] = useState<'rewards' | 'redemptions'>('rewards')
+
+  const filteredRewards = useMemo(() => {
+    if (!rewards) return []
+    return rewards.filter((reward: Reward) => {
+      const matchesSearch =
+        searchQuery === '' ||
+        reward.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        reward.description?.toLowerCase().includes(searchQuery.toLowerCase())
+      const matchesStatus =
+        filterStatus === 'all' ||
+        (filterStatus === 'active' && reward.is_active === 1) ||
+        (filterStatus === 'inactive' && reward.is_active === 0)
+      return matchesSearch && matchesStatus
+    })
+  }, [rewards, searchQuery, filterStatus])
+
+  const handleAdd = async (data: RewardFormData) => {
+    create.mutate({
+      data: {
+        name: data.name,
+        description: data.description || undefined,
+        icon: data.icon || undefined,
+        point_cost: data.point_cost,
+      },
+    })
+    setIsModalOpen(false)
+  }
+
+  const handleUpdate = async (data: RewardFormData) => {
+    if (!editingReward) return
+    update.mutate({
+      data: {
+        id: editingReward.id,
+        name: data.name,
+        description: data.description || undefined,
+        icon: data.icon || undefined,
+        point_cost: data.point_cost,
+        is_active: data.is_active,
+      },
+    })
+    setIsModalOpen(false)
+    setEditingReward(null)
+  }
+
+  const handleDelete = () => {
+    if (!deletingReward) return
+    remove.mutate({ data: { id: deletingReward.id } })
+    setDeletingReward(null)
+  }
+
+  const handleBulkDelete = () => {
+    selectedIds.forEach((id) => {
+      remove.mutate({ data: { id } })
+    })
+    setSelectedIds(new Set())
+    setShowBulkDelete(false)
+  }
+
+  const handleApproveRedemption = (redemption: PendingRedemptionWithDetails) => {
+    processRedemption.mutate({
+      data: {
+        id: redemption.id,
+        status: 'approved',
+        admin_user_id: 1, // TODO: Get actual admin user ID
+      },
+    })
+  }
+
+  const handleRejectRedemption = (redemption: PendingRedemptionWithDetails) => {
+    processRedemption.mutate({
+      data: {
+        id: redemption.id,
+        status: 'rejected',
+        admin_user_id: 1, // TODO: Get actual admin user ID
+      },
+    })
+  }
+
+  const handleFulfillRedemption = (redemption: PendingRedemptionWithDetails) => {
+    processRedemption.mutate({
+      data: {
+        id: redemption.id,
+        status: 'fulfilled',
+        admin_user_id: 1, // TODO: Get actual admin user ID
+      },
+    })
+  }
+
+  const toggleSelect = (id: number) => {
+    setSelectedIds((prev) => {
+      const newSet = new Set(prev)
+      if (newSet.has(id)) {
+        newSet.delete(id)
+      } else {
+        newSet.add(id)
+      }
+      return newSet
+    })
+  }
+
+  const toggleSelectAll = () => {
+    if (selectedIds.size === filteredRewards.length) {
+      setSelectedIds(new Set())
+    } else {
+      setSelectedIds(new Set(filteredRewards.map((r: Reward) => r.id)))
+    }
+  }
+
+  const openAddModal = () => {
+    setEditingReward(null)
+    setIsModalOpen(true)
+  }
+
+  const openEditModal = (reward: Reward) => {
+    setEditingReward(reward)
+    setIsModalOpen(true)
+  }
+
+  const closeModal = () => {
+    setIsModalOpen(false)
+    setEditingReward(null)
+  }
+
+  const isSelecting = selectedIds.size > 0
+  const pendingCount = pendingRedemptions?.length || 0
+
+  return (
+    <div className="space-y-4">
+      {/* Header */}
+      <div className="flex flex-col gap-4">
+        <div className="flex items-center justify-between">
+          <h2 className="text-xl sm:text-2xl font-bold text-gray-800">Rewards System</h2>
+          {activeSection === 'rewards' && (
+            <Button onClick={openAddModal} leftIcon={<PlusIcon />}>
+              <span className="hidden sm:inline">Add Reward</span>
+              <span className="sm:hidden">Add</span>
+            </Button>
+          )}
+        </div>
+
+        {/* Section Toggle */}
+        <div className="flex gap-2 bg-gray-100 p-1 rounded-xl">
+          <button
+            onClick={() => setActiveSection('rewards')}
+            className={`flex-1 px-4 py-2 rounded-lg font-medium transition-all ${
+              activeSection === 'rewards'
+                ? 'bg-white shadow-sm text-theme-primary'
+                : 'text-gray-600 hover:text-gray-800'
+            }`}
+          >
+            Rewards
+          </button>
+          <button
+            onClick={() => setActiveSection('redemptions')}
+            className={`flex-1 px-4 py-2 rounded-lg font-medium transition-all relative ${
+              activeSection === 'redemptions'
+                ? 'bg-white shadow-sm text-theme-primary'
+                : 'text-gray-600 hover:text-gray-800'
+            }`}
+          >
+            Redemptions
+            {pendingCount > 0 && (
+              <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                {pendingCount}
+              </span>
+            )}
+          </button>
+        </div>
+      </div>
+
+      {activeSection === 'rewards' ? (
+        <>
+          {/* Search and filter */}
+          <div className="flex flex-col sm:flex-row gap-3">
+            <div className="flex-1">
+              <Input
+                type="text"
+                placeholder="Search rewards..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                leftIcon={
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
+                }
+              />
+            </div>
+            <Select
+              value={filterStatus}
+              onChange={(e) => setFilterStatus(e.target.value as 'all' | 'active' | 'inactive')}
+            >
+              <option value="all">All Rewards</option>
+              <option value="active">Active Only</option>
+              <option value="inactive">Inactive Only</option>
+            </Select>
+          </div>
+
+          {/* Bulk actions bar */}
+          {isSelecting && (
+            <div className="flex items-center justify-between bg-theme-primary/10 rounded-xl p-3">
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={toggleSelectAll}
+                  className="p-2 hover:bg-theme-primary/20 rounded-lg transition-colors"
+                >
+                  <svg className="w-5 h-5 text-theme-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    {selectedIds.size === filteredRewards.length ? (
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    ) : (
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h8M12 8v8m9-4a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    )}
+                  </svg>
+                </button>
+                <span className="font-semibold text-theme-primary">
+                  {selectedIds.size} selected
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setSelectedIds(new Set())}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  variant="danger"
+                  size="sm"
+                  onClick={() => setShowBulkDelete(true)}
+                  leftIcon={<TrashIcon />}
+                >
+                  Delete
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* Rewards list */}
+          {rewardsLoading ? (
+            <div className="space-y-3">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="bg-white border-2 border-gray-200 rounded-xl p-4 animate-pulse">
+                  <div className="space-y-2">
+                    <div className="h-5 bg-gray-200 rounded w-1/3" />
+                    <div className="h-4 bg-gray-200 rounded w-1/4" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : filteredRewards.length === 0 ? (
+            <div className="text-center py-12 text-gray-500">
+              {searchQuery || filterStatus !== 'all' ? (
+                <>
+                  <p className="text-lg">No rewards match your filters</p>
+                  <button
+                    onClick={() => {
+                      setSearchQuery('')
+                      setFilterStatus('all')
+                    }}
+                    className="mt-3 text-theme-primary hover:underline font-medium"
+                  >
+                    Clear filters
+                  </button>
+                </>
+              ) : (
+                <div className="flex flex-col items-center">
+                  <GiftIcon className="w-12 h-12 text-gray-300 mb-4" />
+                  <p className="text-lg">No rewards yet</p>
+                  <p className="text-sm text-gray-400 mt-1">Click "Add Reward" above to create one</p>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {filteredRewards.map((reward: Reward) => (
+                <AdminCard
+                  key={reward.id}
+                  onDelete={() => setDeletingReward(reward)}
+                  onEdit={() => openEditModal(reward)}
+                  isSelected={selectedIds.has(reward.id)}
+                  onSelect={() => toggleSelect(reward.id)}
+                  showCheckbox={true}
+                >
+                  <div className="flex items-start gap-3">
+                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-yellow-400 to-orange-500 flex items-center justify-center flex-shrink-0 text-2xl">
+                      {reward.icon || <GiftIcon />}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <h3 className="font-bold text-gray-800">{reward.name}</h3>
+                        {reward.is_active === 0 && (
+                          <span className="text-xs bg-gray-200 text-gray-600 px-2 py-0.5 rounded-full">
+                            Inactive
+                          </span>
+                        )}
+                      </div>
+                      {reward.description && (
+                        <p className="text-sm text-gray-500 mt-0.5 line-clamp-1">{reward.description}</p>
+                      )}
+                      <div className="flex items-center gap-1 mt-1 text-yellow-600">
+                        <StarIcon />
+                        <span className="font-bold">{reward.point_cost} points</span>
+                      </div>
+                    </div>
+                  </div>
+                </AdminCard>
+              ))}
+            </div>
+          )}
+        </>
+      ) : (
+        /* Redemptions Section */
+        <div className="space-y-4">
+          {pendingRedemptions && pendingRedemptions.length > 0 ? (
+            <>
+              <p className="text-sm text-gray-600">
+                {pendingCount} pending redemption{pendingCount !== 1 ? 's' : ''} to review
+              </p>
+              <div className="space-y-3">
+                {pendingRedemptions.map((redemption: PendingRedemptionWithDetails) => (
+                  <div
+                    key={redemption.id}
+                    className="bg-white border-2 border-yellow-200 rounded-xl p-4"
+                  >
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex items-start gap-3">
+                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-yellow-400 to-orange-500 flex items-center justify-center flex-shrink-0 text-xl">
+                          <GiftIcon />
+                        </div>
+                        <div>
+                          <h4 className="font-bold text-gray-800">{redemption.reward_name}</h4>
+                          <p className="text-sm text-gray-600">
+                            Requested by <span className="font-medium">{redemption.member_name}</span>
+                          </p>
+                          <div className="flex items-center gap-1 mt-1 text-yellow-600 text-sm">
+                            <StarIcon />
+                            <span className="font-medium">{redemption.points_spent} points</span>
+                          </div>
+                          <p className="text-xs text-gray-400 mt-1">
+                            {new Date(redemption.requested_at).toLocaleDateString()} at{' '}
+                            {new Date(redemption.requested_at).toLocaleTimeString()}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex flex-col sm:flex-row gap-2">
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          onClick={() => handleRejectRedemption(redemption)}
+                        >
+                          Reject
+                        </Button>
+                        <Button
+                          size="sm"
+                          onClick={() => handleApproveRedemption(redemption)}
+                        >
+                          Approve
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => handleFulfillRedemption(redemption)}
+                        >
+                          Fulfill
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </>
+          ) : (
+            <div className="text-center py-12 text-gray-500">
+              <svg className="w-12 h-12 mx-auto mb-4 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <p className="text-lg">No pending redemptions</p>
+              <p className="text-sm text-gray-400 mt-1">When family members redeem rewards, they'll appear here</p>
+            </div>
+          )}
+        </div>
+      )}
+
+      <Modal
+        isOpen={isModalOpen}
+        onClose={closeModal}
+        title={editingReward ? 'Edit Reward' : 'Create Reward'}
+      >
+        <RewardForm
+          reward={editingReward}
+          onSubmit={editingReward ? handleUpdate : handleAdd}
+          onCancel={closeModal}
+        />
+      </Modal>
+
+      <ConfirmDialog
+        isOpen={!!deletingReward}
+        onClose={() => setDeletingReward(null)}
+        onConfirm={handleDelete}
+        title="Delete Reward"
+        message={`Are you sure you want to delete "${deletingReward?.name}"? This action cannot be undone.`}
+      />
+
+      <ConfirmDialog
+        isOpen={showBulkDelete}
+        onClose={() => setShowBulkDelete(false)}
+        onConfirm={handleBulkDelete}
+        title="Delete Selected Rewards"
+        message={`Are you sure you want to delete ${selectedIds.size} reward${selectedIds.size > 1 ? 's' : ''}? This action cannot be undone.`}
+      />
+    </div>
+  )
+}

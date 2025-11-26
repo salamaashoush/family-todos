@@ -71,10 +71,18 @@ export function initializeDatabase() {
       image_url TEXT,
       symbol TEXT,
       position INTEGER DEFAULT 0,
+      points INTEGER DEFAULT 5,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )
   `);
+
+  // Migration: Add points column if it doesn't exist
+  try {
+    db.run(`ALTER TABLE todos ADD COLUMN points INTEGER DEFAULT 5`);
+  } catch {
+    // Column already exists
+  }
 
   db.run(`
     CREATE TABLE IF NOT EXISTS todo_timeslots (
@@ -198,6 +206,68 @@ export function initializeDatabase() {
   db.run(`
     CREATE INDEX IF NOT EXISTS idx_member_achievements_member
     ON member_achievements(member_id)
+  `);
+
+  // Rewards system tables
+  db.run(`
+    CREATE TABLE IF NOT EXISTS rewards (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      description TEXT,
+      icon TEXT,
+      point_cost INTEGER NOT NULL,
+      is_active INTEGER DEFAULT 1,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  db.run(`
+    CREATE TABLE IF NOT EXISTS point_transactions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      member_id INTEGER NOT NULL,
+      amount INTEGER NOT NULL,
+      type TEXT NOT NULL CHECK(type IN ('earned', 'redeemed', 'bonus', 'adjustment')),
+      description TEXT,
+      todo_id INTEGER,
+      reward_id INTEGER,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (member_id) REFERENCES members(id) ON DELETE CASCADE,
+      FOREIGN KEY (todo_id) REFERENCES todos(id) ON DELETE SET NULL,
+      FOREIGN KEY (reward_id) REFERENCES rewards(id) ON DELETE SET NULL
+    )
+  `);
+
+  db.run(`
+    CREATE TABLE IF NOT EXISTS reward_redemptions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      member_id INTEGER NOT NULL,
+      reward_id INTEGER NOT NULL,
+      points_spent INTEGER NOT NULL,
+      status TEXT NOT NULL CHECK(status IN ('pending', 'approved', 'rejected', 'fulfilled')) DEFAULT 'pending',
+      requested_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      processed_at DATETIME,
+      processed_by INTEGER,
+      notes TEXT,
+      FOREIGN KEY (member_id) REFERENCES members(id) ON DELETE CASCADE,
+      FOREIGN KEY (reward_id) REFERENCES rewards(id) ON DELETE CASCADE,
+      FOREIGN KEY (processed_by) REFERENCES admin_users(id) ON DELETE SET NULL
+    )
+  `);
+
+  db.run(`
+    CREATE INDEX IF NOT EXISTS idx_point_transactions_member
+    ON point_transactions(member_id)
+  `);
+
+  db.run(`
+    CREATE INDEX IF NOT EXISTS idx_reward_redemptions_member
+    ON reward_redemptions(member_id)
+  `);
+
+  db.run(`
+    CREATE INDEX IF NOT EXISTS idx_reward_redemptions_status
+    ON reward_redemptions(status)
   `);
 
   db.run(`
@@ -475,6 +545,9 @@ export type {
   MemberAchievement,
   LayoutSettingRow,
   AdminUser,
+  Reward,
+  PointTransaction,
+  RewardRedemption,
 } from "./types";
 
 initializeDatabase();

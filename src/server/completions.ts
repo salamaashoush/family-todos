@@ -1,5 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
-import { db, type TodoCompletion, type TimeslotCompletion } from "../db/schema";
+import { db, type TodoCompletion, type TimeslotCompletion, type Todo } from "../db/schema";
 import { z } from "zod";
 import { updateStats } from "./statistics";
 import { broadcast } from "./realtime";
@@ -87,6 +87,18 @@ export const completeTodo = createServerFn({ method: "POST" })
         >("SELECT * FROM todo_completions WHERE id = ?")
         .get(result.lastInsertRowid as number);
 
+      // Award points for completing this task
+      const todo = db
+        .query<Todo, [number]>("SELECT * FROM todos WHERE id = ?")
+        .get(data.todo_id);
+
+      if (todo && todo.points > 0) {
+        db.run(
+          `INSERT INTO point_transactions (member_id, amount, type, description, todo_id) VALUES (?, ?, 'earned', ?, ?)`,
+          [data.member_id, todo.points, `Completed: ${todo.title}`, data.todo_id]
+        );
+      }
+
       // Check and complete the timeslot this todo belongs to
       checkAndCompleteTimeslot(
         data.timeslot_id,
@@ -148,6 +160,18 @@ export const uncompleteTodo = createServerFn({ method: "POST" })
          WHERE member_id = ?`,
         [data.member_id]
       );
+
+      // Remove points for uncompleting this task
+      const todo = db
+        .query<Todo, [number]>("SELECT * FROM todos WHERE id = ?")
+        .get(data.todo_id);
+
+      if (todo && todo.points > 0) {
+        db.run(
+          `INSERT INTO point_transactions (member_id, amount, type, description, todo_id) VALUES (?, ?, 'adjustment', ?, ?)`,
+          [data.member_id, -todo.points, `Uncompleted: ${todo.title}`, data.todo_id]
+        );
+      }
     }
 
     // Remove timeslot completion if this was the last task

@@ -37,6 +37,7 @@ const CreateTodoSchema = z.object({
   image_url: z.string().optional(),
   symbol: z.string().optional(),
   position: z.number().optional(),
+  points: z.number().min(0).optional(),
   timeslot_ids: z.array(z.number()).min(1),
 });
 
@@ -45,14 +46,15 @@ export const createTodo = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const result = db.run(
       `INSERT INTO todos
-      (title, description, image_url, symbol, position)
-      VALUES (?, ?, ?, ?, ?)`,
+      (title, description, image_url, symbol, position, points)
+      VALUES (?, ?, ?, ?, ?, ?)`,
       [
         data.title,
         data.description || null,
         data.image_url || null,
         data.symbol || null,
         data.position || 0,
+        data.points ?? 5,
       ]
     );
 
@@ -79,6 +81,7 @@ const UpdateTodoSchema = z.object({
   image_url: z.string().optional(),
   symbol: z.string().optional(),
   position: z.number().optional(),
+  points: z.number().min(0).optional(),
   timeslot_ids: z.array(z.number()).optional(),
 });
 
@@ -107,6 +110,10 @@ export const updateTodo = createServerFn({ method: "POST" })
     if (data.position !== undefined) {
       updates.push("position = ?");
       values.push(data.position);
+    }
+    if (data.points !== undefined) {
+      updates.push("points = ?");
+      values.push(data.points);
     }
 
     updates.push("updated_at = CURRENT_TIMESTAMP");

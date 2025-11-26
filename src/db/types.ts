@@ -35,6 +35,7 @@ export type Todo = {
   image_url: string | null;
   symbol: string | null;
   position: number;
+  points: number;
   created_at: string;
   updated_at: string;
   timeslot_ids?: number[];
@@ -110,4 +111,38 @@ export type AdminUser = {
   created_at: string;
   updated_at: string;
   last_login_at: string | null;
+};
+
+export type Reward = {
+  id: number;
+  name: string;
+  description: string | null;
+  icon: string | null;
+  point_cost: number;
+  is_active: number;
+  created_at: string;
+  updated_at: string;
+};
+
+export type PointTransaction = {
+  id: number;
+  member_id: number;
+  amount: number;
+  type: 'earned' | 'redeemed' | 'bonus' | 'adjustment';
+  description: string | null;
+  todo_id: number | null;
+  reward_id: number | null;
+  created_at: string;
+};
+
+export type RewardRedemption = {
+  id: number;
+  member_id: number;
+  reward_id: number;
+  points_spent: number;
+  status: 'pending' | 'approved' | 'rejected' | 'fulfilled';
+  requested_at: string;
+  processed_at: string | null;
+  processed_by: number | null;
+  notes: string | null;
 };

@@ -1,6 +1,6 @@
-import type { Member, Timeslot, Todo, TodoCompletion, MemberStats, Achievement, LayoutSettingRow } from '../db/types'
+import type { Member, Timeslot, Todo, TodoCompletion, MemberStats, Achievement, LayoutSettingRow, Reward, PointTransaction, RewardRedemption } from '../db/types'
 
-export type { Member, Timeslot, Todo, TodoCompletion, MemberStats, Achievement, LayoutSettingRow }
+export type { Member, Timeslot, Todo, TodoCompletion, MemberStats, Achievement, LayoutSettingRow, Reward, PointTransaction, RewardRedemption }
 
 export type { LayoutId, LayoutConfig, LayoutSettings, DeviceType } from '../config/layouts'
 

@@ -1,4 +1,4 @@
-import { useMemberStats, useMemberAchievements } from '../../hooks/useQueries'
+import { useMemberStats, useMemberAchievements, useMemberPoints } from '../../hooks/useQueries'
 import { LEVEL_PROGRESS } from '../../constants'
 import type { MemberStatsCardProps } from '../../types'
 
@@ -33,6 +33,12 @@ const TrophyIcon = () => (
   </svg>
 )
 
+const CoinIcon = () => (
+  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm.31-8.86c-1.77-.45-2.34-.94-2.34-1.67 0-.84.79-1.43 2.1-1.43 1.38 0 1.9.66 1.94 1.64h1.71c-.05-1.34-.87-2.57-2.49-2.97V5H10.9v1.69c-1.51.32-2.72 1.3-2.72 2.81 0 1.79 1.49 2.69 3.66 3.21 1.95.46 2.34 1.15 2.34 1.87 0 .53-.39 1.39-2.1 1.39-1.6 0-2.23-.72-2.32-1.64H8.04c.1 1.7 1.36 2.66 2.86 2.97V19h2.34v-1.67c1.52-.29 2.72-1.16 2.73-2.77-.01-2.2-1.9-2.96-3.66-3.42z" />
+  </svg>
+)
+
 const TargetIcon = () => (
   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
@@ -62,9 +68,10 @@ function StatRow({ icon, label, value, color, bgColor }: StatRowProps) {
 export function MemberStatsCard({ member }: MemberStatsCardProps) {
   const { data: stats, isLoading: statsLoading } = useMemberStats(member.id)
   const { data: achievements, isLoading: achievementsLoading } = useMemberAchievements(member.id)
+  const { data: points, isLoading: pointsLoading } = useMemberPoints(member.id)
 
   const earnedCount = achievements?.filter((a: { earned_at: string | null }) => a.earned_at).length || 0
-  const isLoading = statsLoading || achievementsLoading
+  const isLoading = statsLoading || achievementsLoading || pointsLoading
 
   const level = stats?.level || 1
   const totalStars = stats?.total_stars || 0
@@ -156,6 +163,13 @@ export function MemberStatsCard({ member }: MemberStatsCardProps) {
               value={stats?.total_timeslots_completed || 0}
               color="text-blue-600"
               bgColor="bg-blue-50"
+            />
+            <StatRow
+              icon={<CoinIcon />}
+              label="Points"
+              value={points || 0}
+              color="text-purple-600"
+              bgColor="bg-purple-50"
             />
 
             {/* Achievements section */}
