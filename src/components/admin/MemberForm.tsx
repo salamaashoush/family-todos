@@ -4,7 +4,7 @@ import { z } from 'zod'
 import { useImageUpload } from '../../hooks/useImageUpload'
 import { UPLOAD_CONFIG } from '../../constants'
 import { showToast } from '../Toast'
-import { Button } from '../shared/Button'
+import { Button, Input, Checkbox } from '../shared'
 import type { Member } from '../../types'
 
 const memberSchema = z.object({
@@ -81,20 +81,17 @@ export function MemberForm({ member, onSubmit, onCancel }: MemberFormProps) {
       <form.Field
         name="name"
         children={(field) => (
-          <div>
-            <label className="block text-sm font-bold text-gray-700 mb-2">Name *</label>
-            <input
-              type="text"
-              placeholder="Enter name (e.g., Omar)"
-              value={field.state.value}
-              onChange={(e) => field.handleChange(e.target.value)}
-              onBlur={field.handleBlur}
-              className="w-full px-4 py-3 border-2 border-theme-primary/20 rounded-xl focus:outline-none focus:ring-2 focus:ring-theme-primary focus:border-transparent text-base"
-            />
-            {field.state.meta.isTouched && field.state.meta.errors.length > 0 && (
-              <p className="text-sm text-red-600 mt-1">{field.state.meta.errors.join(', ')}</p>
-            )}
-          </div>
+          <Input
+            label="Name *"
+            type="text"
+            placeholder="Enter name (e.g., Omar)"
+            value={field.state.value}
+            onChange={(e) => field.handleChange(e.target.value)}
+            onBlur={field.handleBlur}
+            error={field.state.meta.isTouched && field.state.meta.errors.length > 0
+              ? field.state.meta.errors.join(', ')
+              : undefined}
+          />
         )}
       />
 
@@ -127,19 +124,12 @@ export function MemberForm({ member, onSubmit, onCancel }: MemberFormProps) {
       <form.Field
         name="is_admin"
         children={(field) => (
-          <div>
-            <label className="flex items-center gap-3 cursor-pointer group">
-              <input
-                type="checkbox"
-                checked={field.state.value === 1}
-                onChange={(e) => field.handleChange(e.target.checked ? 1 : 0)}
-                className="w-6 h-6 text-theme-primary border-2 border-gray-300 rounded focus:ring-2 focus:ring-theme-primary"
-              />
-              <span className="font-semibold text-gray-700 group-hover:text-theme-primary transition-colors">
-                Admin Privileges
-              </span>
-            </label>
-          </div>
+          <Checkbox
+            label="Admin Privileges"
+            description="Allow access to admin dashboard and settings"
+            checked={field.state.value === 1}
+            onChange={(e) => field.handleChange(e.target.checked ? 1 : 0)}
+          />
         )}
       />
 

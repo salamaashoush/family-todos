@@ -5,7 +5,7 @@ import { useTimeslots } from '../../hooks/useQueries'
 import { useImageUpload } from '../../hooks/useImageUpload'
 import { UPLOAD_CONFIG } from '../../constants'
 import { showToast } from '../Toast'
-import { Button } from '../shared/Button'
+import { Button, Input, Textarea } from '../shared'
 import type { Todo, Timeslot } from '../../types'
 
 const todoSchema = z.object({
@@ -93,40 +93,35 @@ export function TodoForm({ todo, onSubmit, onCancel }: TodoFormProps) {
         <form.Field
           name="title"
           children={(field) => (
-            <div>
-              <label className="block text-sm font-bold text-gray-700 mb-2">Task Name *</label>
-              <input
-                type="text"
-                placeholder="e.g., Brush Teeth"
-                value={field.state.value}
-                onChange={(e) => field.handleChange(e.target.value)}
-                onBlur={field.handleBlur}
-                className="w-full px-4 py-3 border-2 border-theme-primary/20 rounded-xl focus:outline-none focus:ring-2 focus:ring-theme-primary focus:border-transparent"
-              />
-              {field.state.meta.isTouched && field.state.meta.errors.length > 0 && (
-                <p className="text-sm text-red-600 mt-1">{field.state.meta.errors.join(', ')}</p>
-              )}
-            </div>
+            <Input
+              label="Task Name *"
+              type="text"
+              placeholder="e.g., Brush Teeth"
+              value={field.state.value}
+              onChange={(e) => field.handleChange(e.target.value)}
+              onBlur={field.handleBlur}
+              error={field.state.meta.isTouched && field.state.meta.errors.length > 0
+                ? field.state.meta.errors.join(', ')
+                : undefined}
+            />
           )}
         />
 
         <form.Field
           name="symbol"
           children={(field) => (
-            <div>
-              <label className="block text-sm font-bold text-gray-700 mb-2">Symbol / Emoji</label>
-              <input
-                type="text"
-                placeholder="e.g., toothbrush icon"
-                value={field.state.value}
-                onChange={(e) => field.handleChange(e.target.value)}
-                onBlur={field.handleBlur}
-                className="w-full px-4 py-3 border-2 border-theme-primary/20 rounded-xl focus:outline-none focus:ring-2 focus:ring-theme-primary focus:border-transparent text-2xl"
-              />
-              {field.state.meta.isTouched && field.state.meta.errors.length > 0 && (
-                <p className="text-sm text-red-600 mt-1">{field.state.meta.errors.join(', ')}</p>
-              )}
-            </div>
+            <Input
+              label="Symbol / Emoji"
+              type="text"
+              placeholder="e.g., emoji"
+              value={field.state.value}
+              onChange={(e) => field.handleChange(e.target.value)}
+              onBlur={field.handleBlur}
+              className="text-2xl"
+              error={field.state.meta.isTouched && field.state.meta.errors.length > 0
+                ? field.state.meta.errors.join(', ')
+                : undefined}
+            />
           )}
         />
       </div>
@@ -134,20 +129,17 @@ export function TodoForm({ todo, onSubmit, onCancel }: TodoFormProps) {
       <form.Field
         name="description"
         children={(field) => (
-          <div>
-            <label className="block text-sm font-bold text-gray-700 mb-2">Description (Optional)</label>
-            <textarea
-              placeholder="Add instructions or notes..."
-              value={field.state.value}
-              onChange={(e) => field.handleChange(e.target.value)}
-              onBlur={field.handleBlur}
-              className="w-full px-4 py-3 border-2 border-theme-primary/20 rounded-xl focus:outline-none focus:ring-2 focus:ring-theme-primary focus:border-transparent"
-              rows={2}
-            />
-            {field.state.meta.isTouched && field.state.meta.errors.length > 0 && (
-              <p className="text-sm text-red-600 mt-1">{field.state.meta.errors.join(', ')}</p>
-            )}
-          </div>
+          <Textarea
+            label="Description (Optional)"
+            placeholder="Add instructions or notes..."
+            value={field.state.value}
+            onChange={(e) => field.handleChange(e.target.value)}
+            onBlur={field.handleBlur}
+            rows={2}
+            error={field.state.meta.isTouched && field.state.meta.errors.length > 0
+              ? field.state.meta.errors.join(', ')
+              : undefined}
+          />
         )}
       />
 

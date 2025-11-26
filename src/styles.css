@@ -1,12 +1,27 @@
 @import "tailwindcss";
 
 @theme {
+  /* Primary theme colors */
   --color-theme-primary: oklch(0.55 0.25 290);
   --color-theme-secondary: oklch(0.65 0.25 340);
   --color-theme-accent: oklch(0.70 0.15 80);
+
+  /* Background gradients */
   --color-theme-bg-from: oklch(0.90 0.05 240);
   --color-theme-bg-via: oklch(0.88 0.08 290);
   --color-theme-bg-to: oklch(0.86 0.08 340);
+
+  /* Input/Form colors */
+  --color-input-border: oklch(0.85 0 0);
+  --color-input-border-focus: var(--color-theme-primary);
+  --color-input-ring: oklch(0.55 0.25 290 / 0.2);
+  --color-input-bg: oklch(1 0 0);
+  --color-input-placeholder: oklch(0.6 0 0);
+
+  /* Semantic colors */
+  --color-success: oklch(0.55 0.15 145);
+  --color-danger: oklch(0.55 0.2 25);
+  --color-warning: oklch(0.7 0.15 85);
 }
 
 :root[data-theme="default"] {

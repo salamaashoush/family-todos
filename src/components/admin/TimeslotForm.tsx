@@ -2,8 +2,7 @@ import { useEffect } from 'react'
 import { useForm } from '@tanstack/react-form'
 import { z } from 'zod'
 import { useMembers } from '../../hooks/useQueries'
-import { Button } from '../shared/Button'
-import { Select } from '../shared/Select'
+import { Button, Input, Textarea, Select } from '../shared'
 import type { Timeslot, Member } from '../../types'
 
 const timeslotSchema = z.object({
@@ -82,38 +81,33 @@ export function TimeslotForm({ timeslot, onSubmit, onCancel }: TimeslotFormProps
         <form.Field
           name="name"
           children={(field) => (
-            <div>
-              <label className="block text-sm font-bold text-gray-700 mb-2">Time Slot Name *</label>
-              <input
-                type="text"
-                placeholder="e.g., Morning Routine"
-                value={field.state.value}
-                onChange={(e) => field.handleChange(e.target.value)}
-                onBlur={field.handleBlur}
-                className="w-full px-4 py-3 border-2 border-theme-primary/20 rounded-xl focus:outline-none focus:ring-2 focus:ring-theme-primary focus:border-transparent"
-              />
-              {field.state.meta.isTouched && field.state.meta.errors.length > 0 && (
-                <p className="text-sm text-red-600 mt-1">{field.state.meta.errors.join(', ')}</p>
-              )}
-            </div>
+            <Input
+              label="Time Slot Name *"
+              type="text"
+              placeholder="e.g., Morning Routine"
+              value={field.state.value}
+              onChange={(e) => field.handleChange(e.target.value)}
+              onBlur={field.handleBlur}
+              error={field.state.meta.isTouched && field.state.meta.errors.length > 0
+                ? field.state.meta.errors.join(', ')
+                : undefined}
+            />
           )}
         />
 
         <form.Field
           name="recurrence_type"
           children={(field) => (
-            <div>
-              <label className="block text-sm font-bold text-gray-700 mb-2">Repeat Schedule</label>
-              <Select
-                value={field.state.value}
-                onChange={(e) => field.handleChange(e.target.value as TimeslotFormData['recurrence_type'])}
-                fullWidth
-              >
-                <option value="daily">Every Day</option>
-                <option value="weekly">Every Week</option>
-                <option value="none">One Time Only</option>
-              </Select>
-            </div>
+            <Select
+              label="Repeat Schedule"
+              value={field.state.value}
+              onChange={(e) => field.handleChange(e.target.value as TimeslotFormData['recurrence_type'])}
+              fullWidth
+            >
+              <option value="daily">Every Day</option>
+              <option value="weekly">Every Week</option>
+              <option value="none">One Time Only</option>
+            </Select>
           )}
         />
       </div>
@@ -122,30 +116,24 @@ export function TimeslotForm({ timeslot, onSubmit, onCancel }: TimeslotFormProps
         <form.Field
           name="start_time"
           children={(field) => (
-            <div>
-              <label className="block text-sm font-bold text-gray-700 mb-2">Start Time</label>
-              <input
-                type="time"
-                value={field.state.value}
-                onChange={(e) => field.handleChange(e.target.value)}
-                className="w-full px-4 py-3 border-2 border-theme-primary/20 rounded-xl focus:outline-none focus:ring-2 focus:ring-theme-primary focus:border-transparent"
-              />
-            </div>
+            <Input
+              label="Start Time"
+              type="time"
+              value={field.state.value}
+              onChange={(e) => field.handleChange(e.target.value)}
+            />
           )}
         />
 
         <form.Field
           name="end_time"
           children={(field) => (
-            <div>
-              <label className="block text-sm font-bold text-gray-700 mb-2">End Time</label>
-              <input
-                type="time"
-                value={field.state.value}
-                onChange={(e) => field.handleChange(e.target.value)}
-                className="w-full px-4 py-3 border-2 border-theme-primary/20 rounded-xl focus:outline-none focus:ring-2 focus:ring-theme-primary focus:border-transparent"
-              />
-            </div>
+            <Input
+              label="End Time"
+              type="time"
+              value={field.state.value}
+              onChange={(e) => field.handleChange(e.target.value)}
+            />
           )}
         />
       </div>
@@ -153,20 +141,17 @@ export function TimeslotForm({ timeslot, onSubmit, onCancel }: TimeslotFormProps
       <form.Field
         name="description"
         children={(field) => (
-          <div>
-            <label className="block text-sm font-bold text-gray-700 mb-2">Description (Optional)</label>
-            <textarea
-              placeholder="Add notes about this time slot..."
-              value={field.state.value}
-              onChange={(e) => field.handleChange(e.target.value)}
-              onBlur={field.handleBlur}
-              className="w-full px-4 py-3 border-2 border-theme-primary/20 rounded-xl focus:outline-none focus:ring-2 focus:ring-theme-primary focus:border-transparent"
-              rows={2}
-            />
-            {field.state.meta.isTouched && field.state.meta.errors.length > 0 && (
-              <p className="text-sm text-red-600 mt-1">{field.state.meta.errors.join(', ')}</p>
-            )}
-          </div>
+          <Textarea
+            label="Description (Optional)"
+            placeholder="Add notes about this time slot..."
+            value={field.state.value}
+            onChange={(e) => field.handleChange(e.target.value)}
+            onBlur={field.handleBlur}
+            rows={2}
+            error={field.state.meta.isTouched && field.state.meta.errors.length > 0
+              ? field.state.meta.errors.join(', ')
+              : undefined}
+          />
         )}
       />
 
