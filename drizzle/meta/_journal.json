@@ -50,13 +50,6 @@
       "when": 1764178675116,
       "tag": "0007_gorgeous_silhouette",
       "breakpoints": true
-    },
-    {
-      "idx": 7,
-      "version": "7",
-      "when": 1764178675200,
-      "tag": "0008_seed_data",
-      "breakpoints": true
     }
   ]
 }

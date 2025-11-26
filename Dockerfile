@@ -60,7 +60,8 @@ EXPOSE 3000/tcp
 HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
   CMD bun -e "fetch('http://localhost:3000/api/health').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"
 
-# Run migrations, seed admin, then start server
+# Run migrations, seed data, then start server
 # - migrate.ts: Runs SQL migrations from drizzle folder
 # - seed-admin.ts: Creates/updates super admin from env vars (DEFAULT_ADMIN_USERNAME, DEFAULT_ADMIN_PASSWORD)
-CMD ["sh", "-c", "bun run src/db/migrate.ts && bun run src/db/seed-admin.ts && bun run .output/server/index.mjs"]
+# - seed-achievements.ts: Seeds global achievements (idempotent - skips existing)
+CMD ["sh", "-c", "bun run src/db/migrate.ts && bun run src/db/seed-admin.ts && bun run src/db/seed-achievements.ts && bun run .output/server/index.mjs"]
