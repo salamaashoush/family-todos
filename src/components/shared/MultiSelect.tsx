@@ -35,9 +35,9 @@ export function MultiSelect({
 }: MultiSelectProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
-  const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0, width: 0 })
+  const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0, width: 0, openUpward: false })
   const containerRef = useRef<HTMLDivElement>(null)
-  const triggerRef = useRef<HTMLButtonElement>(null)
+  const triggerRef = useRef<HTMLDivElement>(null)
   const dropdownRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
@@ -48,15 +48,33 @@ export function MultiSelect({
       opt.subtitle?.toLowerCase().includes(searchQuery.toLowerCase())
   )
 
-  // Update dropdown position when open
-  useEffect(() => {
-    if (isOpen && triggerRef.current) {
+  // Calculate dropdown position with smart placement
+  const updatePosition = () => {
+    if (triggerRef.current) {
       const rect = triggerRef.current.getBoundingClientRect()
+      const viewportHeight = window.innerHeight
+      const dropdownHeight = 350 // Approximate max height of dropdown
+      const spaceBelow = viewportHeight - rect.bottom
+      const spaceAbove = rect.top
+
+      // Open upward if not enough space below and more space above
+      const openUpward = spaceBelow < dropdownHeight && spaceAbove > spaceBelow
+
       setDropdownPosition({
-        top: rect.bottom + window.scrollY + 4,
+        top: openUpward
+          ? rect.top + window.scrollY - dropdownHeight + 4
+          : rect.bottom + window.scrollY + 4,
         left: rect.left + window.scrollX,
         width: rect.width,
+        openUpward,
       })
+    }
+  }
+
+  // Update dropdown position when open
+  useEffect(() => {
+    if (isOpen) {
+      updatePosition()
     }
   }, [isOpen])
 
@@ -83,17 +101,6 @@ export function MultiSelect({
   useEffect(() => {
     if (!isOpen) return
 
-    const updatePosition = () => {
-      if (triggerRef.current) {
-        const rect = triggerRef.current.getBoundingClientRect()
-        setDropdownPosition({
-          top: rect.bottom + window.scrollY + 4,
-          left: rect.left + window.scrollX,
-          width: rect.width,
-        })
-      }
-    }
-
     window.addEventListener('scroll', updatePosition, true)
     window.addEventListener('resize', updatePosition)
     return () => {
@@ -112,6 +119,7 @@ export function MultiSelect({
 
   const removeOption = (optValue: number | string, e: React.MouseEvent) => {
     e.stopPropagation()
+    e.preventDefault()
     onChange(value.filter((v) => v !== optValue))
   }
 
@@ -125,14 +133,16 @@ export function MultiSelect({
       ref={dropdownRef}
       style={{
         position: 'absolute',
-        top: dropdownPosition.top,
+        top: dropdownPosition.openUpward ? 'auto' : dropdownPosition.top,
+        bottom: dropdownPosition.openUpward ? `calc(100vh - ${dropdownPosition.top + 350}px)` : 'auto',
         left: dropdownPosition.left,
         width: dropdownPosition.width,
+        maxHeight: 350,
       }}
-      className="z-[9999] bg-white border-2 border-gray-200 rounded-xl shadow-xl overflow-hidden"
+      className="z-[9999] bg-white border-2 border-gray-200 rounded-xl shadow-xl overflow-hidden flex flex-col"
     >
       {/* Search input */}
-      <div className="p-2 border-b border-gray-100">
+      <div className="p-2 border-b border-gray-100 flex-shrink-0">
         <div className="relative">
           <svg
             className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400"
@@ -154,7 +164,7 @@ export function MultiSelect({
       </div>
 
       {/* Options list */}
-      <div className="max-h-60 overflow-y-auto">
+      <div className="flex-1 overflow-y-auto">
         {isLoading ? (
           <div className="p-4 text-center text-gray-500">
             <div className="animate-spin w-5 h-5 border-2 border-theme-primary border-t-transparent rounded-full mx-auto mb-2" />
@@ -189,7 +199,7 @@ export function MultiSelect({
                     </svg>
                   )}
                 </div>
-                {opt.icon && <span className="w-8 h-8 flex-shrink-0">{opt.icon}</span>}
+                {opt.icon && <span className="flex-shrink-0">{opt.icon}</span>}
                 <div className="min-w-0 flex-1">
                   <div className="font-medium text-gray-900 truncate">{opt.label}</div>
                   {opt.subtitle && (
@@ -204,7 +214,7 @@ export function MultiSelect({
 
       {/* Create new button */}
       {onCreateNew && (
-        <div className="border-t border-gray-100 p-2">
+        <div className="border-t border-gray-100 p-2 flex-shrink-0">
           <button
             type="button"
             onClick={() => {
@@ -230,45 +240,57 @@ export function MultiSelect({
         <label className="block text-sm font-bold text-gray-700 mb-2">{label}</label>
       )}
 
+      {/* Selected items display - separate from trigger */}
+      {selectedOptions.length > 0 && (
+        <div className="flex items-center gap-2 flex-wrap mb-2">
+          {selectedOptions.map((opt) => (
+            <span
+              key={opt.value}
+              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-theme-primary/10 text-theme-primary rounded-lg text-sm font-medium"
+            >
+              {opt.label}
+              <button
+                type="button"
+                onClick={(e) => removeOption(opt.value, e)}
+                className="hover:bg-theme-primary/20 rounded p-0.5 -mr-1"
+              >
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </span>
+          ))}
+        </div>
+      )}
+
       <div className="relative">
-        {/* Selected items display / trigger */}
-        <button
+        {/* Trigger - now a div, not button */}
+        <div
           ref={triggerRef}
-          type="button"
+          role="button"
+          tabIndex={0}
           onClick={handleOpen}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault()
+              handleOpen()
+            }
+          }}
           className={`
             w-full min-h-[48px] px-3 py-2
             bg-white border-2 rounded-xl
-            text-left transition-all duration-200
+            text-left transition-all duration-200 cursor-pointer
             focus:outline-none focus:border-theme-primary focus:ring-2 focus:ring-theme-primary/20
             ${error ? 'border-red-500' : isOpen ? 'border-theme-primary ring-2 ring-theme-primary/20' : 'border-gray-200'}
           `}
         >
-          <div className="flex items-center gap-2 flex-wrap pr-8">
-            {selectedOptions.length > 0 ? (
-              selectedOptions.map((opt) => (
-                <span
-                  key={opt.value}
-                  className="inline-flex items-center gap-1 px-2.5 py-1 bg-theme-primary/10 text-theme-primary rounded-lg text-sm font-medium"
-                >
-                  {opt.icon && <span className="w-4 h-4">{opt.icon}</span>}
-                  {opt.label}
-                  <button
-                    type="button"
-                    onClick={(e) => removeOption(opt.value, e)}
-                    className="ml-0.5 hover:bg-theme-primary/20 rounded p-0.5"
-                  >
-                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                  </button>
-                </span>
-              ))
-            ) : (
-              <span className="text-gray-400">{placeholder}</span>
-            )}
-          </div>
-          <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+          <div className="flex items-center justify-between">
+            <span className="text-gray-400">
+              {selectedOptions.length > 0
+                ? `${selectedOptions.length} selected`
+                : placeholder
+              }
+            </span>
             <svg
               className={`w-5 h-5 text-gray-400 transition-transform ${isOpen ? 'rotate-180' : ''}`}
               fill="none"
@@ -278,7 +300,7 @@ export function MultiSelect({
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
             </svg>
           </div>
-        </button>
+        </div>
 
         {/* Portal the dropdown to body */}
         {typeof document !== 'undefined' && createPortal(dropdown, document.body)}
