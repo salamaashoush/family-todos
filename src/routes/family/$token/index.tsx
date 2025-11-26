@@ -8,11 +8,13 @@ import { MemberFocusLayout } from "../../../components/layouts/MemberFocusLayout
 import { TimeslotFocusLayout } from "../../../components/layouts/TimeslotFocusLayout";
 import { QuickCheckLayout } from "../../../components/layouts/QuickCheckLayout";
 import { FamilyDashboardLayout } from "../../../components/layouts/FamilyDashboardLayout";
+import { AchievementUnlockModal } from "../../../components/AchievementUnlockModal";
 import { filterTimeslotsByDateString } from "../../../utils/timeslots";
 import { DatePicker } from "../../../components/DatePicker";
 import { ThemeSwitcher } from "../../../components/ThemeSwitcher";
 import { useLayout, useCurrentTimeslot } from "../../../contexts/LayoutContext";
 import { useCompletionCelebration } from "../../../hooks/useCompletionCelebration";
+import { useAchievementCelebration } from "../../../hooks/useAchievementCelebration";
 import { useRealtime, getClientId } from "../../../hooks/useRealtime";
 import type { RealtimeEvent } from "../../../server/realtime";
 import {
@@ -118,8 +120,21 @@ function PublicFamilyBoard() {
   // Layout context for multiple layouts and settings
   const { layout, settings, currentTimeslotId, isHydrated } = useLayout();
 
+  // Achievement celebration hook
+  const {
+    currentAchievement,
+    handleAchievementEvent,
+    dismissCurrent: dismissAchievement,
+  } = useAchievementCelebration();
+
   // Handle real-time events with toast notifications
   const handleRealtimeEvent = useCallback((event: RealtimeEvent) => {
+    // Handle achievement celebration modal
+    if (event.type === "achievement_unlocked") {
+      handleAchievementEvent(event);
+      return; // Don't show toast, the modal handles it
+    }
+
     switch (event.type) {
       case "task_completed":
         if (event.memberName) {
@@ -134,11 +149,6 @@ function PublicFamilyBoard() {
           showToast(`${event.memberName} completed all tasks in a time slot!`, "success");
         }
         break;
-      case "achievement_unlocked":
-        if (event.memberName && event.data.achievementName) {
-          showToast(`${event.memberName} unlocked "${event.data.achievementName}"!`, "success");
-        }
-        break;
       case "achievement_revoked":
         // No toast needed
         break;
@@ -151,7 +161,7 @@ function PublicFamilyBoard() {
         // No toast needed - data will be auto-refreshed by useRealtime hook
         break;
     }
-  }, []);
+  }, [handleAchievementEvent]);
 
   // Connect to real-time updates
   useRealtime(selectedDate, handleRealtimeEvent);
@@ -427,6 +437,10 @@ function PublicFamilyBoard() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-theme-bg-from via-theme-bg-via to-theme-bg-to">
       <Toast />
+      <AchievementUnlockModal
+        achievement={currentAchievement}
+        onClose={dismissAchievement}
+      />
 
       {/* Header for public view */}
       <header className="bg-white/95 backdrop-blur-md shadow-lg sticky top-0 z-40 border-b-2 border-theme-primary/20">

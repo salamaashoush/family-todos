@@ -48,6 +48,8 @@ export type AchievementUnlockedEvent = {
   data: {
     achievementId: number;
     achievementName: string;
+    achievementIcon: string | null;
+    starReward: number;
   };
 };
 

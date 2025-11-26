@@ -102,9 +102,9 @@ const FamilyTokenIndexRoute = FamilyTokenIndexRouteImport.update({
   getParentRoute: () => rootRouteImport,
 } as any)
 const FamilyTokenStatsRoute = FamilyTokenStatsRouteImport.update({
-  id: '/stats',
-  path: '/stats',
-  getParentRoute: () => FamilyTokenRoute,
+  id: '/family/$token/stats',
+  path: '/family/$token/stats',
+  getParentRoute: () => rootRouteImport,
 } as any)
 
 export interface FileRoutesByFullPath {
@@ -234,6 +234,7 @@ export interface RootRouteChildren {
   ApiSseRoute: typeof ApiSseRoute
   UploadsSplatRoute: typeof UploadsSplatRoute
   OnboardingIndexRoute: typeof OnboardingIndexRoute
+  FamilyTokenStatsRoute: typeof FamilyTokenStatsRoute
   FamilyTokenIndexRoute: typeof FamilyTokenIndexRoute
 }
 
@@ -346,10 +347,10 @@ declare module '@tanstack/react-router' {
     }
     '/family/$token/stats': {
       id: '/family/$token/stats'
-      path: '/stats'
+      path: '/family/$token/stats'
       fullPath: '/family/$token/stats'
       preLoaderRoute: typeof FamilyTokenStatsRouteImport
-      parentRoute: typeof FamilyTokenRoute
+      parentRoute: typeof rootRouteImport
     }
   }
 }
@@ -369,6 +370,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiSseRoute: ApiSseRoute,
   UploadsSplatRoute: UploadsSplatRoute,
   OnboardingIndexRoute: OnboardingIndexRoute,
+  FamilyTokenStatsRoute: FamilyTokenStatsRoute,
   FamilyTokenIndexRoute: FamilyTokenIndexRoute,
 }
 export const routeTree = rootRouteImport

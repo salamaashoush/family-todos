@@ -107,6 +107,8 @@ export async function checkAchievements(memberId: number) {
             data: {
               achievementId: achievement.id,
               achievementName: achievement.name,
+              achievementIcon: achievement.icon,
+              starReward: achievement.starReward,
             },
           });
         }
