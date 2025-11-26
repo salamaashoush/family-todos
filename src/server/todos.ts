@@ -3,6 +3,7 @@ import { z } from "zod";
 import { eq, and, asc, inArray } from "drizzle-orm";
 import { db, schema } from "../db";
 import { getTenantContext, requireRole } from "../utils/tenant";
+import { logCreate, logUpdate, logDelete, sanitizeForAudit } from "../utils/audit";
 
 const GetTodosSchema = z.object({
   timeslotId: z.number().optional(),
@@ -68,7 +69,7 @@ const CreateTodoSchema = z.object({
 export const createTodo = createServerFn({ method: "POST" })
   .inputValidator(CreateTodoSchema)
   .handler(async ({ data }) => {
-    const { familyId } = await requireRole(["owner", "admin"]);
+    const { familyId, userId } = await requireRole(["owner", "admin"]);
 
     // Insert the todo
     const [todo] = await db
@@ -94,6 +95,15 @@ export const createTodo = createServerFn({ method: "POST" })
       );
     }
 
+    // Audit log
+    logCreate({
+      familyId,
+      userId,
+      entityType: "todo",
+      entityId: todo.id,
+      newValue: { ...sanitizeForAudit(todo), timeslotIds: data.timeslotIds },
+    });
+
     return {
       ...todo,
       timeslotIds: data.timeslotIds,
@@ -114,7 +124,19 @@ const UpdateTodoSchema = z.object({
 export const updateTodo = createServerFn({ method: "POST" })
   .inputValidator(UpdateTodoSchema)
   .handler(async ({ data }) => {
-    const { familyId } = await requireRole(["owner", "admin"]);
+    const { familyId, userId } = await requireRole(["owner", "admin"]);
+
+    // Get old value for audit
+    const [oldTodo] = await db
+      .select()
+      .from(schema.todos)
+      .where(
+        and(
+          eq(schema.todos.id, data.id),
+          eq(schema.todos.familyId, familyId)
+        )
+      )
+      .limit(1);
 
     const updateData: Partial<{
       title: string;
@@ -165,6 +187,18 @@ export const updateTodo = createServerFn({ method: "POST" })
       }
     }
 
+    // Audit log
+    if (todo && oldTodo) {
+      logUpdate({
+        familyId,
+        userId,
+        entityType: "todo",
+        entityId: todo.id,
+        oldValue: sanitizeForAudit(oldTodo),
+        newValue: sanitizeForAudit(todo),
+      });
+    }
+
     return todo;
   });
 
@@ -175,7 +209,19 @@ const DeleteTodoSchema = z.object({
 export const deleteTodo = createServerFn({ method: "POST" })
   .inputValidator(DeleteTodoSchema)
   .handler(async ({ data }) => {
-    const { familyId } = await requireRole(["owner", "admin"]);
+    const { familyId, userId } = await requireRole(["owner", "admin"]);
+
+    // Get old value for audit before deleting
+    const [oldTodo] = await db
+      .select()
+      .from(schema.todos)
+      .where(
+        and(
+          eq(schema.todos.id, data.id),
+          eq(schema.todos.familyId, familyId)
+        )
+      )
+      .limit(1);
 
     await db
       .delete(schema.todos)
@@ -185,6 +231,17 @@ export const deleteTodo = createServerFn({ method: "POST" })
           eq(schema.todos.familyId, familyId)
         )
       );
+
+    // Audit log
+    if (oldTodo) {
+      logDelete({
+        familyId,
+        userId,
+        entityType: "todo",
+        entityId: data.id,
+        oldValue: sanitizeForAudit(oldTodo),
+      });
+    }
 
     return { success: true };
   });

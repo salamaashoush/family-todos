@@ -8,6 +8,7 @@ export * from "./statistics";
 export * from "./rewards";
 export * from "./auth";
 export * from "./settings";
+export * from "./audit";
 
 // Re-export relations
 export * from "./relations";

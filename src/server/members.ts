@@ -3,6 +3,7 @@ import { z } from "zod";
 import { eq, asc, and } from "drizzle-orm";
 import { db, schema } from "../db";
 import { getTenantContext, requireRole } from "../utils/tenant";
+import { logCreate, logUpdate, logDelete, sanitizeForAudit } from "../utils/audit";
 
 export const getMembers = createServerFn({ method: "GET" }).handler(
   async () => {
@@ -27,7 +28,7 @@ const CreateMemberSchema = z.object({
 export const createMember = createServerFn({ method: "POST" })
   .inputValidator(CreateMemberSchema)
   .handler(async ({ data }) => {
-    const { familyId } = await requireRole(["owner", "admin"]);
+    const { familyId, userId } = await requireRole(["owner", "admin"]);
 
     const [member] = await db
       .insert(schema.members)
@@ -44,6 +45,15 @@ export const createMember = createServerFn({ method: "POST" })
       memberId: member.id,
     });
 
+    // Audit log
+    logCreate({
+      familyId,
+      userId,
+      entityType: "member",
+      entityId: member.id,
+      newValue: sanitizeForAudit(member),
+    });
+
     return member;
   });
 
@@ -57,7 +67,19 @@ const UpdateMemberSchema = z.object({
 export const updateMember = createServerFn({ method: "POST" })
   .inputValidator(UpdateMemberSchema)
   .handler(async ({ data }) => {
-    const { familyId } = await requireRole(["owner", "admin"]);
+    const { familyId, userId } = await requireRole(["owner", "admin"]);
+
+    // Get old value for audit
+    const [oldMember] = await db
+      .select()
+      .from(schema.members)
+      .where(
+        and(
+          eq(schema.members.id, data.id),
+          eq(schema.members.familyId, familyId)
+        )
+      )
+      .limit(1);
 
     const updateData: Partial<{
       name: string;
@@ -89,6 +111,18 @@ export const updateMember = createServerFn({ method: "POST" })
       )
       .returning();
 
+    // Audit log
+    if (member && oldMember) {
+      logUpdate({
+        familyId,
+        userId,
+        entityType: "member",
+        entityId: member.id,
+        oldValue: sanitizeForAudit(oldMember),
+        newValue: sanitizeForAudit(member),
+      });
+    }
+
     return member;
   });
 
@@ -99,7 +133,19 @@ const DeleteMemberSchema = z.object({
 export const deleteMember = createServerFn({ method: "POST" })
   .inputValidator(DeleteMemberSchema)
   .handler(async ({ data }) => {
-    const { familyId } = await requireRole(["owner", "admin"]);
+    const { familyId, userId } = await requireRole(["owner", "admin"]);
+
+    // Get old value for audit before deleting
+    const [oldMember] = await db
+      .select()
+      .from(schema.members)
+      .where(
+        and(
+          eq(schema.members.id, data.id),
+          eq(schema.members.familyId, familyId)
+        )
+      )
+      .limit(1);
 
     await db
       .delete(schema.members)
@@ -109,6 +155,17 @@ export const deleteMember = createServerFn({ method: "POST" })
           eq(schema.members.familyId, familyId)
         )
       );
+
+    // Audit log
+    if (oldMember) {
+      logDelete({
+        familyId,
+        userId,
+        entityType: "member",
+        entityId: data.id,
+        oldValue: sanitizeForAudit(oldMember),
+      });
+    }
 
     return { success: true };
   });

@@ -4,6 +4,7 @@ import { eq, and, asc, inArray } from "drizzle-orm";
 import { db, schema } from "../db";
 import type { RecurrenceType } from "../db/schema";
 import { getTenantContext, requireRole } from "../utils/tenant";
+import { logCreate, logUpdate, logDelete, sanitizeForAudit } from "../utils/audit";
 
 /**
  * Check if a timeslot should be shown on a given day of week
@@ -116,7 +117,7 @@ const CreateTimeslotSchema = z.object({
 export const createTimeslot = createServerFn({ method: "POST" })
   .inputValidator(CreateTimeslotSchema)
   .handler(async ({ data }) => {
-    const { familyId } = await requireRole(["owner", "admin"]);
+    const { familyId, userId } = await requireRole(["owner", "admin"]);
 
     // Insert the timeslot
     const [timeslot] = await db
@@ -142,6 +143,15 @@ export const createTimeslot = createServerFn({ method: "POST" })
       );
     }
 
+    // Audit log
+    logCreate({
+      familyId,
+      userId,
+      entityType: "timeslot",
+      entityId: timeslot.id,
+      newValue: { ...sanitizeForAudit(timeslot), memberIds: data.memberIds },
+    });
+
     return {
       ...timeslot,
       memberIds: data.memberIds,
@@ -163,7 +173,19 @@ const UpdateTimeslotSchema = z.object({
 export const updateTimeslot = createServerFn({ method: "POST" })
   .inputValidator(UpdateTimeslotSchema)
   .handler(async ({ data }) => {
-    const { familyId } = await requireRole(["owner", "admin"]);
+    const { familyId, userId } = await requireRole(["owner", "admin"]);
+
+    // Get old value for audit
+    const [oldTimeslot] = await db
+      .select()
+      .from(schema.timeslots)
+      .where(
+        and(
+          eq(schema.timeslots.id, data.id),
+          eq(schema.timeslots.familyId, familyId)
+        )
+      )
+      .limit(1);
 
     const updateData: Partial<{
       name: string;
@@ -224,6 +246,18 @@ export const updateTimeslot = createServerFn({ method: "POST" })
       .from(schema.timeslotMembers)
       .where(eq(schema.timeslotMembers.timeslotId, data.id));
 
+    // Audit log
+    if (timeslot && oldTimeslot) {
+      logUpdate({
+        familyId,
+        userId,
+        entityType: "timeslot",
+        entityId: timeslot.id,
+        oldValue: sanitizeForAudit(oldTimeslot),
+        newValue: sanitizeForAudit(timeslot),
+      });
+    }
+
     return {
       ...timeslot,
       memberIds: memberAssignments.map((m) => m.memberId),
@@ -237,7 +271,19 @@ const DeleteTimeslotSchema = z.object({
 export const deleteTimeslot = createServerFn({ method: "POST" })
   .inputValidator(DeleteTimeslotSchema)
   .handler(async ({ data }) => {
-    const { familyId } = await requireRole(["owner", "admin"]);
+    const { familyId, userId } = await requireRole(["owner", "admin"]);
+
+    // Get old value for audit before deleting
+    const [oldTimeslot] = await db
+      .select()
+      .from(schema.timeslots)
+      .where(
+        and(
+          eq(schema.timeslots.id, data.id),
+          eq(schema.timeslots.familyId, familyId)
+        )
+      )
+      .limit(1);
 
     await db
       .delete(schema.timeslots)
@@ -247,6 +293,17 @@ export const deleteTimeslot = createServerFn({ method: "POST" })
           eq(schema.timeslots.familyId, familyId)
         )
       );
+
+    // Audit log
+    if (oldTimeslot) {
+      logDelete({
+        familyId,
+        userId,
+        entityType: "timeslot",
+        entityId: data.id,
+        oldValue: sanitizeForAudit(oldTimeslot),
+      });
+    }
 
     return { success: true };
   });

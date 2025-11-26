@@ -4,6 +4,7 @@ import { eq, and, asc, desc, sql } from "drizzle-orm";
 import { db, schema } from "../db";
 import type { RedemptionStatus, TransactionType } from "../db/schema";
 import { getTenantContext, requireRole } from "../utils/tenant";
+import { logCreate, logUpdate, logDelete, sanitizeForAudit } from "../utils/audit";
 
 // Get all rewards
 export const getRewards = createServerFn({ method: "GET" }).handler(async () => {
@@ -45,7 +46,7 @@ const CreateRewardSchema = z.object({
 export const createReward = createServerFn({ method: "POST" })
   .inputValidator(CreateRewardSchema)
   .handler(async ({ data }) => {
-    const { familyId } = await requireRole(["owner", "admin"]);
+    const { familyId, userId } = await requireRole(["owner", "admin"]);
 
     const [reward] = await db
       .insert(schema.rewards)
@@ -57,6 +58,15 @@ export const createReward = createServerFn({ method: "POST" })
         pointCost: data.pointCost,
       })
       .returning();
+
+    // Audit log
+    logCreate({
+      familyId,
+      userId,
+      entityType: "reward",
+      entityId: reward.id,
+      newValue: sanitizeForAudit(reward),
+    });
 
     return reward;
   });
@@ -74,7 +84,19 @@ const UpdateRewardSchema = z.object({
 export const updateReward = createServerFn({ method: "POST" })
   .inputValidator(UpdateRewardSchema)
   .handler(async ({ data }) => {
-    const { familyId } = await requireRole(["owner", "admin"]);
+    const { familyId, userId } = await requireRole(["owner", "admin"]);
+
+    // Get old value for audit
+    const [oldReward] = await db
+      .select()
+      .from(schema.rewards)
+      .where(
+        and(
+          eq(schema.rewards.id, data.id),
+          eq(schema.rewards.familyId, familyId)
+        )
+      )
+      .limit(1);
 
     const updateData: Partial<{
       name: string;
@@ -104,6 +126,18 @@ export const updateReward = createServerFn({ method: "POST" })
       )
       .returning();
 
+    // Audit log
+    if (reward && oldReward) {
+      logUpdate({
+        familyId,
+        userId,
+        entityType: "reward",
+        entityId: reward.id,
+        oldValue: sanitizeForAudit(oldReward),
+        newValue: sanitizeForAudit(reward),
+      });
+    }
+
     return reward;
   });
 
@@ -115,7 +149,19 @@ const DeleteRewardSchema = z.object({
 export const deleteReward = createServerFn({ method: "POST" })
   .inputValidator(DeleteRewardSchema)
   .handler(async ({ data }) => {
-    const { familyId } = await requireRole(["owner", "admin"]);
+    const { familyId, userId } = await requireRole(["owner", "admin"]);
+
+    // Get old value for audit before deleting
+    const [oldReward] = await db
+      .select()
+      .from(schema.rewards)
+      .where(
+        and(
+          eq(schema.rewards.id, data.id),
+          eq(schema.rewards.familyId, familyId)
+        )
+      )
+      .limit(1);
 
     await db
       .delete(schema.rewards)
@@ -125,6 +171,17 @@ export const deleteReward = createServerFn({ method: "POST" })
           eq(schema.rewards.familyId, familyId)
         )
       );
+
+    // Audit log
+    if (oldReward) {
+      logDelete({
+        familyId,
+        userId,
+        entityType: "reward",
+        entityId: data.id,
+        oldValue: sanitizeForAudit(oldReward),
+      });
+    }
 
     return { success: true };
   });
