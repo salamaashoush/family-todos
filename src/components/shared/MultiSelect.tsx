@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, ReactNode } from 'react'
+import { createPortal } from 'react-dom'
 
 interface MultiSelectOption {
   value: number | string
@@ -34,7 +35,10 @@ export function MultiSelect({
 }: MultiSelectProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
+  const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0, width: 0 })
   const containerRef = useRef<HTMLDivElement>(null)
+  const triggerRef = useRef<HTMLButtonElement>(null)
+  const dropdownRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
   const selectedOptions = options.filter((opt) => value.includes(opt.value))
@@ -44,9 +48,28 @@ export function MultiSelect({
       opt.subtitle?.toLowerCase().includes(searchQuery.toLowerCase())
   )
 
+  // Update dropdown position when open
+  useEffect(() => {
+    if (isOpen && triggerRef.current) {
+      const rect = triggerRef.current.getBoundingClientRect()
+      setDropdownPosition({
+        top: rect.bottom + window.scrollY + 4,
+        left: rect.left + window.scrollX,
+        width: rect.width,
+      })
+    }
+  }, [isOpen])
+
+  // Handle click outside
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
-      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+      const target = event.target as Node
+      if (
+        containerRef.current &&
+        !containerRef.current.contains(target) &&
+        dropdownRef.current &&
+        !dropdownRef.current.contains(target)
+      ) {
         setIsOpen(false)
         setSearchQuery('')
       }
@@ -55,6 +78,29 @@ export function MultiSelect({
     document.addEventListener('mousedown', handleClickOutside)
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
+
+  // Handle scroll/resize to reposition dropdown
+  useEffect(() => {
+    if (!isOpen) return
+
+    const updatePosition = () => {
+      if (triggerRef.current) {
+        const rect = triggerRef.current.getBoundingClientRect()
+        setDropdownPosition({
+          top: rect.bottom + window.scrollY + 4,
+          left: rect.left + window.scrollX,
+          width: rect.width,
+        })
+      }
+    }
+
+    window.addEventListener('scroll', updatePosition, true)
+    window.addEventListener('resize', updatePosition)
+    return () => {
+      window.removeEventListener('scroll', updatePosition, true)
+      window.removeEventListener('resize', updatePosition)
+    }
+  }, [isOpen])
 
   const toggleOption = (optValue: number | string) => {
     if (value.includes(optValue)) {
@@ -74,6 +120,110 @@ export function MultiSelect({
     setTimeout(() => inputRef.current?.focus(), 0)
   }
 
+  const dropdown = isOpen ? (
+    <div
+      ref={dropdownRef}
+      style={{
+        position: 'absolute',
+        top: dropdownPosition.top,
+        left: dropdownPosition.left,
+        width: dropdownPosition.width,
+      }}
+      className="z-[9999] bg-white border-2 border-gray-200 rounded-xl shadow-xl overflow-hidden"
+    >
+      {/* Search input */}
+      <div className="p-2 border-b border-gray-100">
+        <div className="relative">
+          <svg
+            className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          </svg>
+          <input
+            ref={inputRef}
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search..."
+            className="w-full pl-9 pr-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-theme-primary"
+          />
+        </div>
+      </div>
+
+      {/* Options list */}
+      <div className="max-h-60 overflow-y-auto">
+        {isLoading ? (
+          <div className="p-4 text-center text-gray-500">
+            <div className="animate-spin w-5 h-5 border-2 border-theme-primary border-t-transparent rounded-full mx-auto mb-2" />
+            Loading...
+          </div>
+        ) : filteredOptions.length === 0 ? (
+          <div className="p-4 text-center text-gray-500">
+            {searchQuery ? `No results for "${searchQuery}"` : emptyMessage}
+          </div>
+        ) : (
+          filteredOptions.map((opt) => {
+            const isSelected = value.includes(opt.value)
+            return (
+              <button
+                key={opt.value}
+                type="button"
+                onClick={() => toggleOption(opt.value)}
+                className={`
+                  w-full px-3 py-2.5 flex items-center gap-3 text-left transition-colors
+                  ${isSelected ? 'bg-theme-primary/10' : 'hover:bg-gray-50'}
+                `}
+              >
+                <div
+                  className={`
+                    w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0
+                    ${isSelected ? 'bg-theme-primary border-theme-primary' : 'border-gray-300'}
+                  `}
+                >
+                  {isSelected && (
+                    <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                    </svg>
+                  )}
+                </div>
+                {opt.icon && <span className="w-8 h-8 flex-shrink-0">{opt.icon}</span>}
+                <div className="min-w-0 flex-1">
+                  <div className="font-medium text-gray-900 truncate">{opt.label}</div>
+                  {opt.subtitle && (
+                    <div className="text-xs text-gray-500 truncate">{opt.subtitle}</div>
+                  )}
+                </div>
+              </button>
+            )
+          })
+        )}
+      </div>
+
+      {/* Create new button */}
+      {onCreateNew && (
+        <div className="border-t border-gray-100 p-2">
+          <button
+            type="button"
+            onClick={() => {
+              setIsOpen(false)
+              setSearchQuery('')
+              onCreateNew()
+            }}
+            className="w-full px-3 py-2.5 flex items-center gap-2 text-theme-primary font-medium rounded-lg hover:bg-theme-primary/10 transition-colors"
+          >
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+            {createNewLabel}
+          </button>
+        </div>
+      )}
+    </div>
+  ) : null
+
   return (
     <div className="w-full" ref={containerRef}>
       {label && (
@@ -83,6 +233,7 @@ export function MultiSelect({
       <div className="relative">
         {/* Selected items display / trigger */}
         <button
+          ref={triggerRef}
           type="button"
           onClick={handleOpen}
           className={`
@@ -93,7 +244,7 @@ export function MultiSelect({
             ${error ? 'border-red-500' : isOpen ? 'border-theme-primary ring-2 ring-theme-primary/20' : 'border-gray-200'}
           `}
         >
-          <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex items-center gap-2 flex-wrap pr-8">
             {selectedOptions.length > 0 ? (
               selectedOptions.map((opt) => (
                 <span
@@ -129,101 +280,8 @@ export function MultiSelect({
           </div>
         </button>
 
-        {/* Dropdown */}
-        {isOpen && (
-          <div className="absolute z-[100] w-full mt-1 bg-white border-2 border-gray-200 rounded-xl shadow-lg overflow-hidden">
-            {/* Search input */}
-            <div className="p-2 border-b border-gray-100">
-              <div className="relative">
-                <svg
-                  className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                </svg>
-                <input
-                  ref={inputRef}
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search..."
-                  className="w-full pl-9 pr-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-theme-primary"
-                />
-              </div>
-            </div>
-
-            {/* Options list */}
-            <div className="max-h-60 overflow-y-auto">
-              {isLoading ? (
-                <div className="p-4 text-center text-gray-500">
-                  <div className="animate-spin w-5 h-5 border-2 border-theme-primary border-t-transparent rounded-full mx-auto mb-2" />
-                  Loading...
-                </div>
-              ) : filteredOptions.length === 0 ? (
-                <div className="p-4 text-center text-gray-500">
-                  {searchQuery ? `No results for "${searchQuery}"` : emptyMessage}
-                </div>
-              ) : (
-                filteredOptions.map((opt) => {
-                  const isSelected = value.includes(opt.value)
-                  return (
-                    <button
-                      key={opt.value}
-                      type="button"
-                      onClick={() => toggleOption(opt.value)}
-                      className={`
-                        w-full px-3 py-2.5 flex items-center gap-3 text-left transition-colors
-                        ${isSelected ? 'bg-theme-primary/10' : 'hover:bg-gray-50'}
-                      `}
-                    >
-                      <div
-                        className={`
-                          w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0
-                          ${isSelected ? 'bg-theme-primary border-theme-primary' : 'border-gray-300'}
-                        `}
-                      >
-                        {isSelected && (
-                          <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                          </svg>
-                        )}
-                      </div>
-                      {opt.icon && <span className="w-8 h-8 flex-shrink-0">{opt.icon}</span>}
-                      <div className="min-w-0 flex-1">
-                        <div className="font-medium text-gray-900 truncate">{opt.label}</div>
-                        {opt.subtitle && (
-                          <div className="text-xs text-gray-500 truncate">{opt.subtitle}</div>
-                        )}
-                      </div>
-                    </button>
-                  )
-                })
-              )}
-            </div>
-
-            {/* Create new button */}
-            {onCreateNew && (
-              <div className="border-t border-gray-100 p-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsOpen(false)
-                    setSearchQuery('')
-                    onCreateNew()
-                  }}
-                  className="w-full px-3 py-2.5 flex items-center gap-2 text-theme-primary font-medium rounded-lg hover:bg-theme-primary/10 transition-colors"
-                >
-                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                  </svg>
-                  {createNewLabel}
-                </button>
-              </div>
-            )}
-          </div>
-        )}
+        {/* Portal the dropdown to body */}
+        {typeof document !== 'undefined' && createPortal(dropdown, document.body)}
       </div>
 
       {error && <p className="mt-1.5 text-sm text-red-600">{error}</p>}
