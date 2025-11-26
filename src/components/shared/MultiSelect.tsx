@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, ReactNode } from 'react'
+import { useState, useRef, useEffect, useCallback, ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 
 interface MultiSelectOption {
@@ -35,7 +35,7 @@ export function MultiSelect({
 }: MultiSelectProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
-  const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0, width: 0, openUpward: false })
+  const [dropdownStyle, setDropdownStyle] = useState<React.CSSProperties>({})
   const containerRef = useRef<HTMLDivElement>(null)
   const triggerRef = useRef<HTMLDivElement>(null)
   const dropdownRef = useRef<HTMLDivElement>(null)
@@ -49,37 +49,49 @@ export function MultiSelect({
   )
 
   // Calculate dropdown position with smart placement
-  const updatePosition = () => {
-    if (triggerRef.current) {
-      const rect = triggerRef.current.getBoundingClientRect()
-      const viewportHeight = window.innerHeight
-      const dropdownHeight = 350 // Approximate max height of dropdown
-      const spaceBelow = viewportHeight - rect.bottom
-      const spaceAbove = rect.top
+  const updatePosition = useCallback(() => {
+    if (!triggerRef.current) return
 
-      // Open upward if not enough space below and more space above
-      const openUpward = spaceBelow < dropdownHeight && spaceAbove > spaceBelow
+    const rect = triggerRef.current.getBoundingClientRect()
+    const viewportHeight = window.innerHeight
+    const dropdownMaxHeight = 350
+    const spaceBelow = viewportHeight - rect.bottom - 8
+    const spaceAbove = rect.top - 8
 
-      setDropdownPosition({
-        top: openUpward
-          ? rect.top + window.scrollY - dropdownHeight + 4
-          : rect.bottom + window.scrollY + 4,
-        left: rect.left + window.scrollX,
-        width: rect.width,
-        openUpward,
-      })
+    // Determine if we should open upward
+    const openUpward = spaceBelow < dropdownMaxHeight && spaceAbove > spaceBelow
+
+    // Calculate actual height to use
+    const availableHeight = openUpward ? spaceAbove : spaceBelow
+    const actualHeight = Math.min(dropdownMaxHeight, availableHeight)
+
+    const style: React.CSSProperties = {
+      position: 'fixed',
+      left: rect.left,
+      width: rect.width,
+      maxHeight: actualHeight,
     }
-  }
+
+    if (openUpward) {
+      style.bottom = viewportHeight - rect.top + 4
+    } else {
+      style.top = rect.bottom + 4
+    }
+
+    setDropdownStyle(style)
+  }, [])
 
   // Update dropdown position when open
   useEffect(() => {
     if (isOpen) {
       updatePosition()
     }
-  }, [isOpen])
+  }, [isOpen, updatePosition])
 
   // Handle click outside
   useEffect(() => {
+    if (!isOpen) return
+
     function handleClickOutside(event: MouseEvent) {
       const target = event.target as Node
       if (
@@ -95,7 +107,7 @@ export function MultiSelect({
 
     document.addEventListener('mousedown', handleClickOutside)
     return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [])
+  }, [isOpen])
 
   // Handle scroll/resize to reposition dropdown
   useEffect(() => {
@@ -107,7 +119,7 @@ export function MultiSelect({
       window.removeEventListener('scroll', updatePosition, true)
       window.removeEventListener('resize', updatePosition)
     }
-  }, [isOpen])
+  }, [isOpen, updatePosition])
 
   const toggleOption = (optValue: number | string) => {
     if (value.includes(optValue)) {
@@ -131,14 +143,7 @@ export function MultiSelect({
   const dropdown = isOpen ? (
     <div
       ref={dropdownRef}
-      style={{
-        position: 'absolute',
-        top: dropdownPosition.openUpward ? 'auto' : dropdownPosition.top,
-        bottom: dropdownPosition.openUpward ? `calc(100vh - ${dropdownPosition.top + 350}px)` : 'auto',
-        left: dropdownPosition.left,
-        width: dropdownPosition.width,
-        maxHeight: 350,
-      }}
+      style={dropdownStyle}
       className="z-[9999] bg-white border-2 border-gray-200 rounded-xl shadow-xl overflow-hidden flex flex-col"
     >
       {/* Search input */}
