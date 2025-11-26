@@ -47,16 +47,15 @@ export const sendVerificationEmail = createServerFn({ method: "POST" })
       expiresAt,
     });
 
-    // In production, send email here
-    // For now, log the verification URL (remove in production!)
-    const verifyUrl = `/verify-email?token=${token}`;
-    console.log(`[DEV] Email verification URL for ${user.email}: ${verifyUrl}`);
+    // TODO: Integrate with email service (SendGrid, Resend, etc.) to send verification link
+    // SECURITY: Never log tokens to console - they may end up in log aggregation systems
 
     return {
       success: true,
       message: "Verification email sent.",
-      // Only include token in development for testing
-      ...(process.env.NODE_ENV === "development" && { devToken: token }),
+      // Only include token in development for testing - NEVER in production
+      ...(process.env.NODE_ENV === "development" &&
+        process.env.ENABLE_DEV_TOKENS === "true" && { devToken: token }),
     };
   });
 
@@ -178,13 +177,14 @@ export const resendVerificationEmail = createServerFn({ method: "POST" })
       expiresAt,
     });
 
-    // In production, send email here
-    const verifyUrl = `/verify-email?token=${token}`;
-    console.log(`[DEV] Email verification URL for ${data.email}: ${verifyUrl}`);
+    // TODO: Integrate with email service (SendGrid, Resend, etc.) to send verification link
+    // SECURITY: Never log tokens to console - they may end up in log aggregation systems
 
     return {
       success: true,
       message: "If your email is registered and unverified, you will receive a verification link.",
-      ...(process.env.NODE_ENV === "development" && { devToken: token }),
+      // Only include token in development for testing - NEVER in production
+      ...(process.env.NODE_ENV === "development" &&
+        process.env.ENABLE_DEV_TOKENS === "true" && { devToken: token }),
     };
   });

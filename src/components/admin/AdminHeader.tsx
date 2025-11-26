@@ -1,14 +1,26 @@
 import { Link, useRouter } from '@tanstack/react-router'
-import { useQueryClient } from '@tanstack/react-query'
+import { useQueryClient, useQuery } from '@tanstack/react-query'
 import { logout } from '../../server/auth'
+import { checkSuperAdmin } from '../../server/superAdmin'
+import { Shield } from 'lucide-react'
 
 interface AdminHeaderProps {
   username: string
+  shareToken?: string | null
 }
 
-export function AdminHeader({ username }: AdminHeaderProps) {
+export function AdminHeader({ username, shareToken }: AdminHeaderProps) {
   const router = useRouter()
   const queryClient = useQueryClient()
+
+  // Check if user is super admin
+  const { data: superAdminCheck } = useQuery({
+    queryKey: ['is-super-admin'],
+    queryFn: () => checkSuperAdmin(),
+    staleTime: 5 * 60 * 1000, // Cache for 5 minutes
+  })
+
+  const isSuperAdmin = superAdminCheck?.isSuperAdmin ?? false
 
   const handleLogout = async () => {
     await logout()
@@ -51,16 +63,30 @@ export function AdminHeader({ username }: AdminHeaderProps) {
               </div>
               <span className="text-sm font-medium text-gray-700">{username}</span>
             </div>
-            <Link
-              to="/"
-              className="flex items-center justify-center gap-2 p-2 sm:px-3 sm:py-2 rounded-xl bg-gray-100 hover:bg-gray-200 active:bg-gray-300 transition-colors min-h-[44px] min-w-[44px]"
-              aria-label="Back to Board"
-            >
-              <svg className="w-5 h-5 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
-              </svg>
-              <span className="hidden sm:inline text-sm font-medium text-gray-700">Board</span>
-            </Link>
+            {isSuperAdmin && (
+              <Link
+                to="/super-admin"
+                className="flex items-center justify-center gap-2 p-2 sm:px-3 sm:py-2 rounded-xl bg-purple-100 hover:bg-purple-200 active:bg-purple-300 transition-colors min-h-[44px] min-w-[44px]"
+                aria-label="Super Admin Dashboard"
+                title="Super Admin Dashboard"
+              >
+                <Shield className="w-5 h-5 text-purple-600" />
+                <span className="hidden lg:inline text-sm font-medium text-purple-600">Super Admin</span>
+              </Link>
+            )}
+            {shareToken && (
+              <Link
+                to="/family/$token"
+                params={{ token: shareToken }}
+                className="flex items-center justify-center gap-2 p-2 sm:px-3 sm:py-2 rounded-xl bg-gray-100 hover:bg-gray-200 active:bg-gray-300 transition-colors min-h-[44px] min-w-[44px]"
+                aria-label="Back to Board"
+              >
+                <svg className="w-5 h-5 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+                </svg>
+                <span className="hidden sm:inline text-sm font-medium text-gray-700">Board</span>
+              </Link>
+            )}
             <button
               onClick={handleLogout}
               className="flex items-center justify-center gap-2 p-2 sm:px-3 sm:py-2 rounded-xl bg-red-100 hover:bg-red-200 active:bg-red-300 transition-colors min-h-[44px] min-w-[44px]"

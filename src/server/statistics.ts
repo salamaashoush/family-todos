@@ -1,6 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { eq, asc, sql, or } from "drizzle-orm";
+import { eq, asc, sql, or, and } from "drizzle-orm";
 import { db, schema } from "../db";
 import { broadcastToFamily } from "./realtime";
 import { getTenantContext } from "../utils/tenant";
@@ -9,9 +9,31 @@ const GetStatsSchema = z.object({
   memberId: z.number(),
 });
 
+/**
+ * Get stats for a member - REQUIRES tenant context and member ownership verification
+ */
 export const getMemberStats = createServerFn({ method: "GET" })
   .inputValidator(GetStatsSchema)
   .handler(async ({ data }) => {
+    // SECURITY: Verify user is authenticated and member belongs to their family
+    const { familyId } = await getTenantContext();
+
+    // Verify member belongs to the current family
+    const [member] = await db
+      .select({ id: schema.members.id })
+      .from(schema.members)
+      .where(
+        and(
+          eq(schema.members.id, data.memberId),
+          eq(schema.members.familyId, familyId)
+        )
+      )
+      .limit(1);
+
+    if (!member) {
+      throw new Error("Member not found or access denied");
+    }
+
     let [stats] = await db
       .select()
       .from(schema.memberStats)
@@ -53,10 +75,29 @@ const GetMemberAchievementsSchema = z.object({
   memberId: z.number(),
 });
 
+/**
+ * Get achievements for a member - REQUIRES tenant context and member ownership verification
+ */
 export const getMemberAchievements = createServerFn({ method: "GET" })
   .inputValidator(GetMemberAchievementsSchema)
   .handler(async ({ data }) => {
     const { familyId } = await getTenantContext();
+
+    // SECURITY: Verify member belongs to the current family
+    const [member] = await db
+      .select({ id: schema.members.id })
+      .from(schema.members)
+      .where(
+        and(
+          eq(schema.members.id, data.memberId),
+          eq(schema.members.familyId, familyId)
+        )
+      )
+      .limit(1);
+
+    if (!member) {
+      throw new Error("Member not found or access denied");
+    }
 
     // LEFT JOIN to get achievements with earned status
     const achievements = await db

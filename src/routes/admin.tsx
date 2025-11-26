@@ -1,7 +1,8 @@
 import { createFileRoute, redirect, useRouteContext, useSearch, useNavigate } from '@tanstack/react-router'
 import { useState, useRef, useEffect, useCallback, type ReactNode } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { z } from 'zod'
-import { checkAuth } from '../server/auth'
+import { getAccountStatus } from '../server/auth'
 import { getOnboardingStatus } from '../server/onboarding'
 import { getMembers } from '../server/members'
 import { getTimeslots } from '../server/timeslots'
@@ -28,10 +29,21 @@ const searchSchema = z.object({
 export const Route = createFileRoute('/admin')({
   validateSearch: searchSchema,
   beforeLoad: async () => {
-    // Check authentication
-    const auth = await checkAuth()
+    // Check authentication and account status
+    const auth = await getAccountStatus()
     if (!auth.authenticated) {
       throw redirect({ to: '/login' })
+    }
+
+    // SECURITY: Force password change for default admin accounts
+    // This must be checked BEFORE any other access is granted
+    if (auth.requiresPasswordChange) {
+      throw redirect({ to: '/force-password-change' })
+    }
+
+    // Check if account is active (super admins bypass this check)
+    if (!auth.isSuperAdmin && auth.accountStatus !== 'active') {
+      throw redirect({ to: '/account-status' })
     }
 
     // Check onboarding status
@@ -155,6 +167,12 @@ function AdminPanel() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
 
+  // Get share token for the Board link
+  const { data: shareTokenData } = useQuery({
+    queryKey: ['share-token'],
+    queryFn: () => getShareToken(),
+  })
+
   const setActiveTab = useCallback((tabId: TabId) => {
     navigate({ to: '/admin', search: { tab: tabId }, replace: true })
   }, [navigate])
@@ -174,7 +192,7 @@ function AdminPanel() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-100 via-purple-100 to-pink-100">
-      <AdminHeader username={username} />
+      <AdminHeader username={username} shareToken={shareTokenData?.shareToken} />
 
       <div className="max-w-[1400px] mx-auto p-3 sm:p-6 lg:p-8">
         <div className="bg-white rounded-2xl shadow-2xl overflow-hidden">

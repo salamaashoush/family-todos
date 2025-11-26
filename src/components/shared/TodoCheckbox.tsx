@@ -1,4 +1,5 @@
 import type { Todo } from '../../types'
+import { getDisplaySymbol } from '../../utils/symbols'
 
 interface TodoCheckboxProps {
   todo: Todo
@@ -72,7 +73,7 @@ export function TodoCheckbox({ todo, isCompleted, onToggle, size = 'md', showDet
           )}
 
           <div className="flex items-center gap-2 flex-wrap">
-            {todo.symbol && <span className={`${symbolSize} flex-shrink-0`}>{todo.symbol}</span>}
+            {getDisplaySymbol(todo.symbol) && <span className={`${symbolSize} flex-shrink-0`}>{getDisplaySymbol(todo.symbol)}</span>}
             <span
               className={`${textSize} font-semibold ${showDetails ? 'break-words' : 'truncate'} ${
                 isCompleted ? 'line-through text-gray-600' : 'text-gray-800'

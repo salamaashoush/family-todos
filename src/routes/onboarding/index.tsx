@@ -1,4 +1,4 @@
-import { createFileRoute, useRouter } from "@tanstack/react-router";
+import { createFileRoute, useRouter, redirect } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import {
@@ -10,6 +10,7 @@ import {
   createTodoOnboarding,
   completeOnboarding,
 } from "../../server/onboarding";
+import { getAccountStatus } from "../../server/auth";
 import { getMembers } from "../../server/members";
 import { getTimeslots } from "../../server/timeslots";
 import { getTodos } from "../../server/todos";
@@ -27,6 +28,20 @@ import {
 
 export const Route = createFileRoute("/onboarding/")({
   component: OnboardingPage,
+  beforeLoad: async () => {
+    // Check authentication and account status
+    const auth = await getAccountStatus();
+    if (!auth.authenticated) {
+      throw redirect({ to: "/login" });
+    }
+
+    // Check if account is active (super admins bypass this check)
+    if (!auth.isSuperAdmin && auth.accountStatus !== "active") {
+      throw redirect({ to: "/account-status" });
+    }
+
+    return auth;
+  },
   loader: async () => {
     const status = await getOnboardingStatus();
     return status;
@@ -135,6 +150,29 @@ function OnboardingPage() {
   );
 }
 
+// Helper to get user-friendly error message
+function getFriendlyErrorMessage(error: unknown): string {
+  if (!(error instanceof Error)) {
+    return "Something went wrong. Please try again.";
+  }
+
+  const message = error.message.toLowerCase();
+
+  // Handle common database/validation errors
+  if (message.includes("not authenticated")) {
+    return "Your session has expired. Please log in again.";
+  }
+  if (message.includes("family name is required") || message.includes("min")) {
+    return "Please enter a name for your family.";
+  }
+  if (message.includes("max") || message.includes("too long")) {
+    return "Family name is too long. Please use a shorter name.";
+  }
+
+  // Generic fallback with the original message
+  return error.message || "Something went wrong. Please try again.";
+}
+
 // Step 1: Create Family
 function FamilyStep({ onComplete }: { onComplete: () => void }) {
   const queryClient = useQueryClient();
@@ -150,10 +188,14 @@ function FamilyStep({ onComplete }: { onComplete: () => void }) {
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
+    const name = (formData.get("name") as string).trim();
+
+    if (!name) {
+      return;
+    }
+
     createFamilyMutation.mutate({
-      data: {
-        name: formData.get("name") as string,
-      },
+      data: { name },
     });
   };
 
@@ -172,13 +214,12 @@ function FamilyStep({ onComplete }: { onComplete: () => void }) {
           label="Family Name"
           placeholder="e.g., The Smith Family"
           required
+          maxLength={100}
         />
 
         {createFamilyMutation.error && (
           <div className="bg-red-50 border-2 border-red-200 text-red-700 px-4 py-3 rounded-xl">
-            {createFamilyMutation.error instanceof Error
-              ? createFamilyMutation.error.message
-              : "An error occurred"}
+            {getFriendlyErrorMessage(createFamilyMutation.error)}
           </div>
         )}
 
@@ -320,8 +361,9 @@ function TimeslotsStep({
   onBack: () => void;
 }) {
   const queryClient = useQueryClient();
-  const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null);
+  const [selectedTemplates, setSelectedTemplates] = useState<string[]>([]);
   const [selectedMemberIds, setSelectedMemberIds] = useState<number[]>([]);
+  const [isApplying, setIsApplying] = useState(false);
 
   const membersQuery = useQuery({
     queryKey: ["members"],
@@ -343,8 +385,6 @@ function TimeslotsStep({
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["timeslots"] });
       queryClient.invalidateQueries({ queryKey: ["todos"] });
-      setSelectedTemplate(null);
-      setSelectedMemberIds([]);
     },
   });
 
@@ -352,14 +392,39 @@ function TimeslotsStep({
   const templates = templatesQuery.data || [];
   const timeslots = timeslotsQuery.data || [];
 
-  const handleApplyTemplate = () => {
-    if (!selectedTemplate || selectedMemberIds.length === 0) return;
-    applyTemplateMutation.mutate({
-      data: {
-        templateId: selectedTemplate,
-        memberIds: selectedMemberIds,
-      },
-    });
+  // Filter out "blank" template and already added routines
+  const addedTemplateNames = timeslots.map((t) => t.name);
+  const availableTemplates = templates.filter(
+    (t) => t.id !== "blank" && !addedTemplateNames.includes(t.name)
+  );
+
+  const handleApplyTemplates = async () => {
+    if (selectedTemplates.length === 0 || selectedMemberIds.length === 0) return;
+
+    setIsApplying(true);
+    try {
+      // Apply each template sequentially
+      for (const templateId of selectedTemplates) {
+        await applyTemplateMutation.mutateAsync({
+          data: {
+            templateId,
+            memberIds: selectedMemberIds,
+          },
+        });
+      }
+      setSelectedTemplates([]);
+      setSelectedMemberIds([]);
+    } finally {
+      setIsApplying(false);
+    }
+  };
+
+  const toggleTemplate = (templateId: string) => {
+    setSelectedTemplates((prev) =>
+      prev.includes(templateId)
+        ? prev.filter((id) => id !== templateId)
+        : [...prev, templateId]
+    );
   };
 
   const toggleMember = (memberId: number) => {
@@ -368,12 +433,20 @@ function TimeslotsStep({
     );
   };
 
+  const selectAllMembers = () => {
+    setSelectedMemberIds(members.map((m) => m.id));
+  };
+
+  const totalTasks = selectedTemplates.reduce((sum, templateId) => {
+    const template = templates.find((t) => t.id === templateId);
+    return sum + (template?.todoCount || 0);
+  }, 0);
+
   return (
     <div>
       <h2 className="text-2xl font-bold text-gray-800 mb-2">Set up your routines</h2>
       <p className="text-gray-600 mb-6">
-        Choose from our pre-made templates or create your own schedule. Templates include both
-        the timeslot and suggested tasks.
+        Select the routines you want to add. Each routine comes with suggested tasks that you can customize later.
       </p>
 
       {/* Existing Timeslots */}
@@ -396,34 +469,61 @@ function TimeslotsStep({
         </div>
       )}
 
-      {/* Template Selection */}
-      <div className="mb-6">
-        <h3 className="text-lg font-semibold text-gray-700 mb-3">Add a Routine</h3>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          {templates.map((template) => (
-            <button
-              key={template.id}
-              onClick={() => setSelectedTemplate(template.id)}
-              className={`p-4 rounded-xl border-2 text-left transition-all ${
-                selectedTemplate === template.id
-                  ? "border-blue-500 bg-blue-50"
-                  : "border-gray-200 hover:border-blue-300"
-              }`}
-            >
-              <div className="font-semibold text-gray-800">{template.name}</div>
-              <div className="text-sm text-gray-500">{template.description}</div>
-              {template.todoCount > 0 && (
-                <div className="text-xs text-blue-600 mt-1">{template.todoCount} tasks included</div>
-              )}
-            </button>
-          ))}
+      {/* Template Selection - Multi-select */}
+      {availableTemplates.length > 0 && (
+        <div className="mb-6">
+          <h3 className="text-lg font-semibold text-gray-700 mb-3">
+            Select Routines to Add
+            {selectedTemplates.length > 0 && (
+              <span className="ml-2 text-sm font-normal text-blue-600">
+                ({selectedTemplates.length} selected)
+              </span>
+            )}
+          </h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {availableTemplates.map((template) => {
+              const isSelected = selectedTemplates.includes(template.id);
+              return (
+                <button
+                  key={template.id}
+                  onClick={() => toggleTemplate(template.id)}
+                  className={`p-4 rounded-xl border-2 text-left transition-all relative ${
+                    isSelected
+                      ? "border-blue-500 bg-blue-50"
+                      : "border-gray-200 hover:border-blue-300"
+                  }`}
+                >
+                  {isSelected && (
+                    <div className="absolute top-2 right-2 w-6 h-6 bg-blue-600 rounded-full flex items-center justify-center">
+                      <CheckSquare className="w-4 h-4 text-white" />
+                    </div>
+                  )}
+                  <div className="font-semibold text-gray-800">{template.name}</div>
+                  <div className="text-sm text-gray-500">{template.description}</div>
+                  {template.todoCount > 0 && (
+                    <div className="text-xs text-blue-600 mt-1">{template.todoCount} tasks included</div>
+                  )}
+                </button>
+              );
+            })}
+          </div>
         </div>
-      </div>
+      )}
 
-      {/* Member Selection for Template */}
-      {selectedTemplate && (
+      {/* Member Selection - shown when templates are selected */}
+      {selectedTemplates.length > 0 && (
         <div className="mb-6 p-4 bg-blue-50 rounded-xl">
-          <h4 className="font-medium text-gray-800 mb-3">Who should do this routine?</h4>
+          <div className="flex items-center justify-between mb-3">
+            <h4 className="font-medium text-gray-800">Who should do these routines?</h4>
+            {members.length > 1 && (
+              <button
+                onClick={selectAllMembers}
+                className="text-sm text-blue-600 hover:text-blue-700"
+              >
+                Select All
+              </button>
+            )}
+          </div>
           <div className="flex flex-wrap gap-2 mb-4">
             {members.map((member) => (
               <button
@@ -439,24 +539,46 @@ function TimeslotsStep({
               </button>
             ))}
           </div>
+
+          {/* Summary */}
+          <div className="text-sm text-gray-600 mb-4">
+            Adding <span className="font-semibold">{selectedTemplates.length}</span> routine{selectedTemplates.length !== 1 ? "s" : ""}
+            {totalTasks > 0 && (
+              <> with <span className="font-semibold">{totalTasks}</span> task{totalTasks !== 1 ? "s" : ""}</>
+            )}
+            {selectedMemberIds.length > 0 && (
+              <> for <span className="font-semibold">{selectedMemberIds.length}</span> member{selectedMemberIds.length !== 1 ? "s" : ""}</>
+            )}
+          </div>
+
           <div className="flex gap-3">
             <Button
-              onClick={handleApplyTemplate}
-              isLoading={applyTemplateMutation.isPending}
+              onClick={handleApplyTemplates}
+              isLoading={isApplying}
               disabled={selectedMemberIds.length === 0}
             >
-              Add Routine
+              <Plus className="w-4 h-4 mr-2" />
+              Add {selectedTemplates.length} Routine{selectedTemplates.length !== 1 ? "s" : ""}
             </Button>
             <Button
               variant="secondary"
               onClick={() => {
-                setSelectedTemplate(null);
+                setSelectedTemplates([]);
                 setSelectedMemberIds([]);
               }}
             >
               Cancel
             </Button>
           </div>
+        </div>
+      )}
+
+      {/* All templates added message */}
+      {availableTemplates.length === 0 && timeslots.length > 0 && (
+        <div className="mb-6 p-4 bg-green-50 rounded-xl text-center">
+          <Sparkles className="w-8 h-8 text-green-600 mx-auto mb-2" />
+          <p className="text-green-700 font-medium">All routines have been added!</p>
+          <p className="text-sm text-green-600">You can customize them later in the admin panel.</p>
         </div>
       )}
 
@@ -643,7 +765,7 @@ function ReviewStep({ onBack }: { onBack: () => void }) {
     mutationFn: completeOnboarding,
     onSuccess: async () => {
       await queryClient.invalidateQueries();
-      router.navigate({ to: "/" });
+      router.navigate({ to: "/admin" });
     },
   });
 
@@ -722,7 +844,7 @@ function ReviewStep({ onBack }: { onBack: () => void }) {
           isLoading={completeMutation.isPending}
           disabled={!canComplete}
         >
-          Start Using Family Board <ArrowRight className="w-5 h-5 ml-2" />
+          Go to Dashboard <ArrowRight className="w-5 h-5 ml-2" />
         </Button>
       </div>
     </div>

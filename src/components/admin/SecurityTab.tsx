@@ -23,6 +23,7 @@ type AdminUser = {
   email: string | null
   createdAt: Date
   lastLoginAt: Date | null
+  role: 'owner' | 'admin' | 'member'
 }
 
 const PlusIcon = () => (
@@ -69,6 +70,10 @@ export function SecurityTab() {
     queryKey: ['adminUsers'],
     queryFn: () => getAdminUsers(),
   })
+
+  // Check if current user is an owner (can manage users)
+  const currentUserRole = adminUsers?.find((u: AdminUser) => u.id === currentAdminId)?.role
+  const isOwner = currentUserRole === 'owner'
 
   const filteredAdmins = useMemo(() => {
     if (!adminUsers) return []
@@ -168,16 +173,18 @@ export function SecurityTab() {
       {/* Header */}
       <div className="flex flex-col gap-4">
         <div className="flex items-center justify-between">
-          <h2 className="text-xl sm:text-2xl font-bold text-gray-800">Admin Users</h2>
+          <h2 className="text-xl sm:text-2xl font-bold text-gray-800">Family Members</h2>
           <div className="flex items-center gap-2">
             <Button onClick={() => setIsChangePasswordOpen(true)} variant="secondary" leftIcon={<LockIcon />}>
               <span className="hidden sm:inline">Change Password</span>
               <span className="sm:hidden">Password</span>
             </Button>
-            <Button onClick={openAddModal} leftIcon={<PlusIcon />}>
-              <span className="hidden sm:inline">Add Admin</span>
-              <span className="sm:hidden">Add</span>
-            </Button>
+            {isOwner && (
+              <Button onClick={openAddModal} leftIcon={<PlusIcon />}>
+                <span className="hidden sm:inline">Add Member</span>
+                <span className="sm:hidden">Add</span>
+              </Button>
+            )}
           </div>
         </div>
 
@@ -240,14 +247,16 @@ export function SecurityTab() {
         <div className="space-y-3">
           {filteredAdmins.map((admin: AdminUser) => {
             const isCurrent = isCurrentAdmin(admin.id)
+            const canManage = isOwner && !isCurrent
             return (
               <AdminCard
                 key={admin.id}
-                onDelete={() => setDeletingAdmin(admin)}
-                onEdit={() => openEditModal(admin)}
-                hideDelete={isCurrent}
+                onDelete={canManage ? () => setDeletingAdmin(admin) : undefined}
+                onEdit={canManage ? () => openEditModal(admin) : undefined}
+                hideDelete={!canManage}
+                hideEdit={!canManage}
                 extraActions={
-                  !isCurrent ? (
+                  canManage ? (
                     <button
                       onClick={() => setResettingPasswordFor(admin)}
                       className="p-2 text-gray-400 hover:text-theme-primary hover:bg-theme-primary/10 rounded-lg transition-colors"
@@ -263,8 +272,17 @@ export function SecurityTab() {
                     {admin.username.charAt(0).toUpperCase()}
                   </div>
                   <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <h3 className="font-bold text-gray-800 truncate">{admin.username}</h3>
+                      <span className={`inline-block text-xs px-2 py-0.5 rounded-full font-semibold ${
+                        admin.role === 'owner'
+                          ? 'bg-amber-100 text-amber-700'
+                          : admin.role === 'admin'
+                            ? 'bg-blue-100 text-blue-700'
+                            : 'bg-gray-100 text-gray-600'
+                      }`}>
+                        {admin.role}
+                      </span>
                       {isCurrent && (
                         <span className="inline-block text-xs bg-theme-primary/10 text-theme-primary px-2 py-0.5 rounded-full font-semibold">
                           You

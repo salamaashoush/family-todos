@@ -132,7 +132,7 @@ export function RewardsTab() {
       data: {
         id: redemption.id,
         status: 'approved',
-        adminUserId: 1, // TODO: Get actual admin user ID
+        // adminUserId is now obtained from session on server
       },
     })
   }
@@ -142,7 +142,7 @@ export function RewardsTab() {
       data: {
         id: redemption.id,
         status: 'rejected',
-        adminUserId: 1, // TODO: Get actual admin user ID
+        // adminUserId is now obtained from session on server
       },
     })
   }
@@ -152,7 +152,7 @@ export function RewardsTab() {
       data: {
         id: redemption.id,
         status: 'fulfilled',
-        adminUserId: 1, // TODO: Get actual admin user ID
+        // adminUserId is now obtained from session on server
       },
     })
   }

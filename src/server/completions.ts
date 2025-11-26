@@ -4,6 +4,7 @@ import { eq, and, sql, count } from "drizzle-orm";
 import { db, schema } from "../db";
 import { updateStats } from "./statistics";
 import { broadcastToFamily } from "./realtime";
+import { getTenantContext } from "../utils/tenant";
 
 /**
  * Check if a timeslot is scheduled for a given date based on recurrence rules
@@ -41,10 +42,34 @@ const GetCompletionsSchema = z.object({
   memberId: z.number().optional(),
 });
 
+/**
+ * Get todo completions - REQUIRES tenant context
+ * Only returns completions for members in the current family
+ */
 export const getTodoCompletions = createServerFn({ method: "GET" })
   .inputValidator(GetCompletionsSchema)
   .handler(async ({ data }) => {
+    // SECURITY: Require authentication and get family context
+    const { familyId } = await getTenantContext();
+
     const date = data.date || new Date().toISOString().split("T")[0];
+
+    // Get members for this family to filter completions
+    const familyMembers = await db
+      .select({ id: schema.members.id })
+      .from(schema.members)
+      .where(eq(schema.members.familyId, familyId));
+
+    const memberIds = familyMembers.map((m) => m.id);
+
+    if (memberIds.length === 0) {
+      return [];
+    }
+
+    // If specific memberId requested, verify it belongs to family
+    if (data.memberId && !memberIds.includes(data.memberId)) {
+      throw new Error("Member not found or access denied");
+    }
 
     const conditions = [eq(schema.todoCompletions.completionDate, date)];
 
@@ -57,13 +82,38 @@ export const getTodoCompletions = createServerFn({ method: "GET" })
       .from(schema.todoCompletions)
       .where(and(...conditions));
 
-    return completions;
+    // Filter to only family members
+    return completions.filter((c) => memberIds.includes(c.memberId));
   });
 
+/**
+ * Get timeslot completions - REQUIRES tenant context
+ * Only returns completions for members in the current family
+ */
 export const getTimeslotCompletions = createServerFn({ method: "GET" })
   .inputValidator(GetCompletionsSchema)
   .handler(async ({ data }) => {
+    // SECURITY: Require authentication and get family context
+    const { familyId } = await getTenantContext();
+
     const date = data.date || new Date().toISOString().split("T")[0];
+
+    // Get members for this family to filter completions
+    const familyMembers = await db
+      .select({ id: schema.members.id })
+      .from(schema.members)
+      .where(eq(schema.members.familyId, familyId));
+
+    const memberIds = familyMembers.map((m) => m.id);
+
+    if (memberIds.length === 0) {
+      return [];
+    }
+
+    // If specific memberId requested, verify it belongs to family
+    if (data.memberId && !memberIds.includes(data.memberId)) {
+      throw new Error("Member not found or access denied");
+    }
 
     const conditions = [eq(schema.timeslotCompletions.completionDate, date)];
 
@@ -76,7 +126,8 @@ export const getTimeslotCompletions = createServerFn({ method: "GET" })
       .from(schema.timeslotCompletions)
       .where(and(...conditions));
 
-    return completions;
+    // Filter to only family members
+    return completions.filter((c) => memberIds.includes(c.memberId));
   });
 
 const CompleteTodoSchema = z.object({
@@ -87,11 +138,55 @@ const CompleteTodoSchema = z.object({
   clientId: z.string().nullish(),
 });
 
+/**
+ * Complete a todo - REQUIRES tenant context and validates family ownership
+ */
 export const completeTodo = createServerFn({ method: "POST" })
   .inputValidator(CompleteTodoSchema)
   .handler(async ({ data }) => {
+    // SECURITY: Require authentication and verify family ownership
+    const { familyId } = await getTenantContext();
+
     const completionDate =
       data.completionDate || new Date().toISOString().split("T")[0];
+
+    // SECURITY: Verify member belongs to user's family
+    const [member] = await db
+      .select({ id: schema.members.id })
+      .from(schema.members)
+      .where(
+        and(
+          eq(schema.members.id, data.memberId),
+          eq(schema.members.familyId, familyId)
+        )
+      )
+      .limit(1);
+
+    if (!member) {
+      throw new Error("Member not found or access denied");
+    }
+
+    // SECURITY: Verify todo belongs to user's family
+    const [todo] = await db
+      .select({ id: schema.todos.id, familyId: schema.todos.familyId })
+      .from(schema.todos)
+      .where(eq(schema.todos.id, data.todoId))
+      .limit(1);
+
+    if (!todo || todo.familyId !== familyId) {
+      throw new Error("Todo not found or access denied");
+    }
+
+    // SECURITY: Verify timeslot belongs to user's family
+    const [timeslot] = await db
+      .select()
+      .from(schema.timeslots)
+      .where(eq(schema.timeslots.id, data.timeslotId))
+      .limit(1);
+
+    if (!timeslot || timeslot.familyId !== familyId) {
+      throw new Error("Timeslot not found or access denied");
+    }
 
     // Validate that todo belongs to the specified timeslot
     const [todoTimeslot] = await db
@@ -123,17 +218,6 @@ export const completeTodo = createServerFn({ method: "POST" })
 
     if (!timeslotMember) {
       throw new Error("Member is not assigned to the specified timeslot");
-    }
-
-    // Validate that timeslot is scheduled for this date based on recurrence rules
-    const [timeslot] = await db
-      .select()
-      .from(schema.timeslots)
-      .where(eq(schema.timeslots.id, data.timeslotId))
-      .limit(1);
-
-    if (!timeslot) {
-      throw new Error("Timeslot not found");
     }
 
     if (!isTimeslotScheduledForDate(timeslot.recurrenceType, timeslot.recurrenceDays, completionDate)) {
@@ -232,11 +316,44 @@ const UncompleteTodoSchema = z.object({
   clientId: z.string().nullish(),
 });
 
+/**
+ * Uncomplete a todo - REQUIRES tenant context and validates family ownership
+ */
 export const uncompleteTodo = createServerFn({ method: "POST" })
   .inputValidator(UncompleteTodoSchema)
   .handler(async ({ data }) => {
+    // SECURITY: Require authentication and verify family ownership
+    const { familyId } = await getTenantContext();
+
     const completionDate =
       data.completionDate || new Date().toISOString().split("T")[0];
+
+    // SECURITY: Verify member belongs to user's family
+    const [member] = await db
+      .select({ id: schema.members.id })
+      .from(schema.members)
+      .where(
+        and(
+          eq(schema.members.id, data.memberId),
+          eq(schema.members.familyId, familyId)
+        )
+      )
+      .limit(1);
+
+    if (!member) {
+      throw new Error("Member not found or access denied");
+    }
+
+    // SECURITY: Verify todo belongs to user's family
+    const [todo] = await db
+      .select({ id: schema.todos.id, familyId: schema.todos.familyId })
+      .from(schema.todos)
+      .where(eq(schema.todos.id, data.todoId))
+      .limit(1);
+
+    if (!todo || todo.familyId !== familyId) {
+      throw new Error("Todo not found or access denied");
+    }
 
     // Delete the completion and check if anything was deleted
     const deleted = await db

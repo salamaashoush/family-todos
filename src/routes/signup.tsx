@@ -3,6 +3,7 @@ import { useMutation } from "@tanstack/react-query";
 import { useState } from "react";
 import { signUp } from "../server/signup";
 import { Input, Button } from "../components/shared";
+import { ArrowLeft } from "lucide-react";
 
 export const Route = createFileRoute("/signup")({
   component: SignUpPage,
@@ -15,8 +16,9 @@ function SignUpPage() {
   const signUpMutation = useMutation({
     mutationFn: signUp,
     onSuccess: async () => {
+      // After signup, redirect to login - user will see account status after logging in
       await router.invalidate();
-      router.navigate({ to: "/onboarding" });
+      router.navigate({ to: "/admin" });
     },
     onError: (error) => {
       if (error instanceof Error) {
@@ -85,6 +87,22 @@ function SignUpPage() {
     <div className="min-h-screen bg-gradient-to-br from-theme-bg-from via-theme-bg-via to-theme-bg-to flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md">
         <div className="text-center mb-8">
+          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-theme-primary to-theme-secondary flex items-center justify-center mx-auto mb-4 shadow-lg">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="h-8 w-8 text-white"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"
+              />
+            </svg>
+          </div>
           <h1 className="text-3xl font-bold text-gray-800 mb-2">Create Account</h1>
           <p className="text-gray-600">Sign up to start managing your family tasks</p>
         </div>
@@ -149,6 +167,14 @@ function SignUpPage() {
             )}
           </div>
 
+          <div className="bg-gray-50 border border-gray-200 rounded-xl p-3">
+            <p className="text-xs text-gray-600">
+              By creating an account, you agree to our terms of service. Your account will be
+              reviewed before activation. This is a free service for families to manage household
+              tasks.
+            </p>
+          </div>
+
           {(signUpMutation.error || formErrors.general) && (
             <div className="bg-red-50 border-2 border-red-200 text-red-700 px-4 py-3 rounded-xl">
               {formErrors.general ||
@@ -173,13 +199,13 @@ function SignUpPage() {
               Sign in
             </Link>
           </p>
-          <button
-            onClick={() => router.navigate({ to: "/" })}
-            className="text-gray-500 hover:text-gray-700 text-sm transition-colors focus:outline-none"
-            type="button"
+          <Link
+            to="/"
+            className="inline-flex items-center gap-1 text-gray-500 hover:text-gray-700 text-sm transition-colors"
           >
-            Back to Family Board
-          </button>
+            <ArrowLeft className="w-3 h-3" />
+            Back to Home
+          </Link>
         </div>
       </div>
     </div>

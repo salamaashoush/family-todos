@@ -4,6 +4,9 @@ import { eq, and, asc } from "drizzle-orm";
 import { db, schema } from "../db";
 import crypto from "crypto";
 import { requireRole } from "../utils/tenant";
+import { checkRateLimit, recordAttempt } from "../utils/rateLimiter";
+import { isValidShareToken } from "../utils/security";
+import { logAudit } from "../utils/audit";
 
 /**
  * Generate a secure share token
@@ -22,6 +25,11 @@ const GetFamilyByTokenSchema = z.object({
 export const getFamilyByShareToken = createServerFn({ method: "GET" })
   .inputValidator(GetFamilyByTokenSchema)
   .handler(async ({ data }) => {
+    // Validate token format before database query
+    if (!isValidShareToken(data.token)) {
+      return null;
+    }
+
     const [family] = await db
       .select({
         id: schema.families.id,
@@ -213,6 +221,7 @@ export const getPublicCompletions = createServerFn({ method: "GET" })
 
 /**
  * Toggle todo completion (public - uses share token for family verification)
+ * Rate limited to prevent abuse
  */
 const TogglePublicTodoSchema = z.object({
   token: z.string().length(64),
@@ -226,6 +235,22 @@ const TogglePublicTodoSchema = z.object({
 export const togglePublicTodo = createServerFn({ method: "POST" })
   .inputValidator(TogglePublicTodoSchema)
   .handler(async ({ data }) => {
+    // Validate token format
+    if (!isValidShareToken(data.token)) {
+      throw new Error("Invalid share token");
+    }
+
+    // Check rate limit for this token
+    const rateLimit = checkRateLimit("publicBoard", data.token);
+    if (!rateLimit.allowed) {
+      throw new Error(
+        `Too many requests. Please try again in ${Math.ceil(rateLimit.retryAfter! / 60)} minutes.`
+      );
+    }
+
+    // Record this attempt
+    recordAttempt("publicBoard", data.token);
+
     // Verify token and get family
     const [family] = await db
       .select({ id: schema.families.id })
@@ -239,7 +264,7 @@ export const togglePublicTodo = createServerFn({ method: "POST" })
 
     // Verify the member belongs to this family
     const [member] = await db
-      .select({ id: schema.members.id })
+      .select({ id: schema.members.id, name: schema.members.name })
       .from(schema.members)
       .where(
         and(
@@ -255,7 +280,7 @@ export const togglePublicTodo = createServerFn({ method: "POST" })
 
     // Verify the todo belongs to this family
     const [todo] = await db
-      .select({ id: schema.todos.id })
+      .select({ id: schema.todos.id, title: schema.todos.title })
       .from(schema.todos)
       .where(
         and(
@@ -294,15 +319,33 @@ export const togglePublicTodo = createServerFn({ method: "POST" })
         );
     }
 
+    // Audit log for public board mutations
+    await logAudit({
+      familyId: family.id,
+      action: data.completed ? "create" : "delete",
+      entityType: "todo_completion",
+      entityId: data.todoId,
+      newValue: {
+        todoId: data.todoId,
+        todoTitle: todo.title,
+        memberId: data.memberId,
+        memberName: member.name,
+        date: data.date,
+        completed: data.completed,
+        source: "public_board",
+      },
+    });
+
     return { success: true };
   });
 
 /**
  * Regenerate share token (requires auth - admin only)
+ * This invalidates all existing share links
  */
 export const regenerateShareToken = createServerFn({ method: "POST" }).handler(
   async () => {
-    const { familyId } = await requireRole(["owner", "admin"]);
+    const { familyId, userId } = await requireRole(["owner", "admin"]);
 
     const newToken = generateShareToken();
 
@@ -313,6 +356,20 @@ export const regenerateShareToken = createServerFn({ method: "POST" }).handler(
         updatedAt: new Date(),
       })
       .where(eq(schema.families.id, familyId));
+
+    // Audit log for share token regeneration (security-sensitive operation)
+    await logAudit({
+      familyId,
+      userId,
+      action: "update",
+      entityType: "family",
+      entityId: familyId,
+      oldValue: { shareToken: "[REDACTED - old token invalidated]" },
+      newValue: {
+        shareToken: "[REDACTED - new token generated]",
+        regeneratedAt: new Date().toISOString(),
+      },
+    });
 
     return { shareToken: newToken };
   }

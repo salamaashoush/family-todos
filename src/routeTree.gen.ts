@@ -10,12 +10,15 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as VerifyEmailRouteImport } from './routes/verify-email'
+import { Route as SuperAdminRouteImport } from './routes/super-admin'
 import { Route as StatsRouteImport } from './routes/stats'
 import { Route as SignupRouteImport } from './routes/signup'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
+import { Route as ForcePasswordChangeRouteImport } from './routes/force-password-change'
 import { Route as AdminRouteImport } from './routes/admin'
+import { Route as AccountStatusRouteImport } from './routes/account-status'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as OnboardingIndexRouteImport } from './routes/onboarding/index'
 import { Route as UploadsSplatRouteImport } from './routes/uploads/$'
@@ -26,6 +29,11 @@ import { Route as ApiHealthRouteImport } from './routes/api/health'
 const VerifyEmailRoute = VerifyEmailRouteImport.update({
   id: '/verify-email',
   path: '/verify-email',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SuperAdminRoute = SuperAdminRouteImport.update({
+  id: '/super-admin',
+  path: '/super-admin',
   getParentRoute: () => rootRouteImport,
 } as any)
 const StatsRoute = StatsRouteImport.update({
@@ -53,9 +61,19 @@ const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
   path: '/forgot-password',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ForcePasswordChangeRoute = ForcePasswordChangeRouteImport.update({
+  id: '/force-password-change',
+  path: '/force-password-change',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminRoute = AdminRouteImport.update({
   id: '/admin',
   path: '/admin',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AccountStatusRoute = AccountStatusRouteImport.update({
+  id: '/account-status',
+  path: '/account-status',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IndexRoute = IndexRouteImport.update({
@@ -91,12 +109,15 @@ const ApiHealthRoute = ApiHealthRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/account-status': typeof AccountStatusRoute
   '/admin': typeof AdminRoute
+  '/force-password-change': typeof ForcePasswordChangeRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
   '/reset-password': typeof ResetPasswordRoute
   '/signup': typeof SignupRoute
   '/stats': typeof StatsRoute
+  '/super-admin': typeof SuperAdminRoute
   '/verify-email': typeof VerifyEmailRoute
   '/api/health': typeof ApiHealthRoute
   '/api/sse': typeof ApiSseRoute
@@ -106,12 +127,15 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/account-status': typeof AccountStatusRoute
   '/admin': typeof AdminRoute
+  '/force-password-change': typeof ForcePasswordChangeRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
   '/reset-password': typeof ResetPasswordRoute
   '/signup': typeof SignupRoute
   '/stats': typeof StatsRoute
+  '/super-admin': typeof SuperAdminRoute
   '/verify-email': typeof VerifyEmailRoute
   '/api/health': typeof ApiHealthRoute
   '/api/sse': typeof ApiSseRoute
@@ -122,12 +146,15 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/account-status': typeof AccountStatusRoute
   '/admin': typeof AdminRoute
+  '/force-password-change': typeof ForcePasswordChangeRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
   '/reset-password': typeof ResetPasswordRoute
   '/signup': typeof SignupRoute
   '/stats': typeof StatsRoute
+  '/super-admin': typeof SuperAdminRoute
   '/verify-email': typeof VerifyEmailRoute
   '/api/health': typeof ApiHealthRoute
   '/api/sse': typeof ApiSseRoute
@@ -139,12 +166,15 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/account-status'
     | '/admin'
+    | '/force-password-change'
     | '/forgot-password'
     | '/login'
     | '/reset-password'
     | '/signup'
     | '/stats'
+    | '/super-admin'
     | '/verify-email'
     | '/api/health'
     | '/api/sse'
@@ -154,12 +184,15 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/account-status'
     | '/admin'
+    | '/force-password-change'
     | '/forgot-password'
     | '/login'
     | '/reset-password'
     | '/signup'
     | '/stats'
+    | '/super-admin'
     | '/verify-email'
     | '/api/health'
     | '/api/sse'
@@ -169,12 +202,15 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/account-status'
     | '/admin'
+    | '/force-password-change'
     | '/forgot-password'
     | '/login'
     | '/reset-password'
     | '/signup'
     | '/stats'
+    | '/super-admin'
     | '/verify-email'
     | '/api/health'
     | '/api/sse'
@@ -185,12 +221,15 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AccountStatusRoute: typeof AccountStatusRoute
   AdminRoute: typeof AdminRoute
+  ForcePasswordChangeRoute: typeof ForcePasswordChangeRoute
   ForgotPasswordRoute: typeof ForgotPasswordRoute
   LoginRoute: typeof LoginRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   SignupRoute: typeof SignupRoute
   StatsRoute: typeof StatsRoute
+  SuperAdminRoute: typeof SuperAdminRoute
   VerifyEmailRoute: typeof VerifyEmailRoute
   ApiHealthRoute: typeof ApiHealthRoute
   ApiSseRoute: typeof ApiSseRoute
@@ -206,6 +245,13 @@ declare module '@tanstack/react-router' {
       path: '/verify-email'
       fullPath: '/verify-email'
       preLoaderRoute: typeof VerifyEmailRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/super-admin': {
+      id: '/super-admin'
+      path: '/super-admin'
+      fullPath: '/super-admin'
+      preLoaderRoute: typeof SuperAdminRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/stats': {
@@ -243,11 +289,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ForgotPasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/force-password-change': {
+      id: '/force-password-change'
+      path: '/force-password-change'
+      fullPath: '/force-password-change'
+      preLoaderRoute: typeof ForcePasswordChangeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin': {
       id: '/admin'
       path: '/admin'
       fullPath: '/admin'
       preLoaderRoute: typeof AdminRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/account-status': {
+      id: '/account-status'
+      path: '/account-status'
+      fullPath: '/account-status'
+      preLoaderRoute: typeof AccountStatusRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/': {
@@ -297,12 +357,15 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AccountStatusRoute: AccountStatusRoute,
   AdminRoute: AdminRoute,
+  ForcePasswordChangeRoute: ForcePasswordChangeRoute,
   ForgotPasswordRoute: ForgotPasswordRoute,
   LoginRoute: LoginRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   SignupRoute: SignupRoute,
   StatsRoute: StatsRoute,
+  SuperAdminRoute: SuperAdminRoute,
   VerifyEmailRoute: VerifyEmailRoute,
   ApiHealthRoute: ApiHealthRoute,
   ApiSseRoute: ApiSseRoute,

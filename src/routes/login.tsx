@@ -14,6 +14,7 @@ function LoginPage() {
     mutationFn: login,
     onSuccess: async () => {
       await router.invalidate()
+      // User will be redirected by admin route loader based on account status
       router.navigate({ to: '/admin' })
     },
   })
@@ -34,8 +35,8 @@ function LoginPage() {
     <div className="min-h-screen bg-gradient-to-br from-theme-bg-from via-theme-bg-via to-theme-bg-to flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-800 mb-2">Admin Login</h1>
-          <p className="text-gray-600">Enter your credentials to access the admin panel</p>
+          <h1 className="text-3xl font-bold text-gray-800 mb-2">Sign In</h1>
+          <p className="text-gray-600">Enter your credentials to access your account</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
@@ -68,7 +69,7 @@ function LoginPage() {
             isLoading={loginMutation.isPending}
             fullWidth
           >
-            Login
+            Sign In
           </Button>
         </form>
 
@@ -93,7 +94,7 @@ function LoginPage() {
             className="text-gray-500 hover:text-gray-700 text-sm transition-colors focus:outline-none"
             type="button"
           >
-            Back to Family Board
+            Back to Home
           </button>
         </div>
       </div>

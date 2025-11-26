@@ -23,11 +23,11 @@ export const TEMPLATES = {
     recurrenceType: "weekly",
     recurrenceDays: "1,2,3,4,5",
     todos: [
-      { title: "Wake Up", symbol: "sun", points: 5 },
-      { title: "Brush Teeth", symbol: "sparkles", points: 5 },
-      { title: "Get Dressed", symbol: "shirt", points: 5 },
-      { title: "Eat Breakfast", symbol: "utensils", points: 5 },
-      { title: "Pack Bag", symbol: "backpack", points: 5 },
+      { title: "Wake Up", symbol: "\u{1F31E}", points: 5 },
+      { title: "Brush Teeth", symbol: "\u{1FAA5}", points: 5 },
+      { title: "Get Dressed", symbol: "\u{1F455}", points: 5 },
+      { title: "Eat Breakfast", symbol: "\u{1F373}", points: 5 },
+      { title: "Pack Bag", symbol: "\u{1F392}", points: 5 },
     ],
   },
   homework: {
@@ -38,9 +38,9 @@ export const TEMPLATES = {
     recurrenceType: "weekly",
     recurrenceDays: "1,2,3,4",
     todos: [
-      { title: "Reading", symbol: "book-open", points: 10 },
-      { title: "Math Practice", symbol: "calculator", points: 10 },
-      { title: "Writing", symbol: "pencil", points: 10 },
+      { title: "Reading", symbol: "\u{1F4D6}", points: 10 },
+      { title: "Math Practice", symbol: "\u{1F4F1}", points: 10 },
+      { title: "Writing", symbol: "\u{270F}\u{FE0F}", points: 10 },
     ],
   },
   bedtime: {
@@ -51,10 +51,10 @@ export const TEMPLATES = {
     recurrenceType: "daily",
     recurrenceDays: "0,1,2,3,4,5,6",
     todos: [
-      { title: "Bath Time", symbol: "bath", points: 5 },
-      { title: "Brush Teeth", symbol: "sparkles", points: 5 },
-      { title: "Put on Pajamas", symbol: "moon", points: 5 },
-      { title: "Story Time", symbol: "book", points: 5 },
+      { title: "Bath Time", symbol: "\u{1F6C1}", points: 5 },
+      { title: "Brush Teeth", symbol: "\u{1FAA5}", points: 5 },
+      { title: "Put on Pajamas", symbol: "\u{1F319}", points: 5 },
+      { title: "Story Time", symbol: "\u{1F4DA}", points: 5 },
     ],
   },
   chores: {
@@ -65,10 +65,10 @@ export const TEMPLATES = {
     recurrenceType: "weekly",
     recurrenceDays: "6",
     todos: [
-      { title: "Make Bed", symbol: "bed-single", points: 5 },
-      { title: "Clean Room", symbol: "sparkles", points: 10 },
-      { title: "Put Away Toys", symbol: "toy-brick", points: 5 },
-      { title: "Help with Laundry", symbol: "shirt", points: 10 },
+      { title: "Make Bed", symbol: "\u{1F6CF}\u{FE0F}", points: 5 },
+      { title: "Clean Room", symbol: "\u{2728}", points: 10 },
+      { title: "Put Away Toys", symbol: "\u{1F9F8}", points: 5 },
+      { title: "Help with Laundry", symbol: "\u{1F9FA}", points: 10 },
     ],
   },
   "after-school": {
@@ -79,9 +79,9 @@ export const TEMPLATES = {
     recurrenceType: "weekly",
     recurrenceDays: "1,2,3,4,5",
     todos: [
-      { title: "Unpack Bag", symbol: "backpack", points: 5 },
-      { title: "Have a Snack", symbol: "apple", points: 5 },
-      { title: "Share About Day", symbol: "message-circle", points: 5 },
+      { title: "Unpack Bag", symbol: "\u{1F392}", points: 5 },
+      { title: "Have a Snack", symbol: "\u{1F34E}", points: 5 },
+      { title: "Share About Day", symbol: "\u{1F4AC}", points: 5 },
     ],
   },
   blank: {

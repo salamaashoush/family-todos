@@ -186,7 +186,7 @@ export const deleteReward = createServerFn({ method: "POST" })
     return { success: true };
   });
 
-// Get member point balance
+// Get member point balance - REQUIRES tenant context
 const GetMemberPointsSchema = z.object({
   memberId: z.number(),
 });
@@ -194,6 +194,24 @@ const GetMemberPointsSchema = z.object({
 export const getMemberPoints = createServerFn({ method: "GET" })
   .inputValidator(GetMemberPointsSchema)
   .handler(async ({ data }) => {
+    // SECURITY: Verify member belongs to user's family
+    const { familyId } = await getTenantContext();
+
+    const [member] = await db
+      .select({ id: schema.members.id })
+      .from(schema.members)
+      .where(
+        and(
+          eq(schema.members.id, data.memberId),
+          eq(schema.members.familyId, familyId)
+        )
+      )
+      .limit(1);
+
+    if (!member) {
+      throw new Error("Member not found or access denied");
+    }
+
     const [result] = await db
       .select({ total: sql<number>`COALESCE(SUM(${schema.pointTransactions.amount}), 0)` })
       .from(schema.pointTransactions)
@@ -202,9 +220,25 @@ export const getMemberPoints = createServerFn({ method: "GET" })
     return result?.total || 0;
   });
 
-// Get all member points (for leaderboard/overview)
+// Get all member points for current family only (for leaderboard/overview)
 export const getAllMemberPoints = createServerFn({ method: "GET" }).handler(
   async () => {
+    // SECURITY: Only return points for members in the current family
+    const { familyId } = await getTenantContext();
+
+    // Get members for this family first
+    const familyMembers = await db
+      .select({ id: schema.members.id })
+      .from(schema.members)
+      .where(eq(schema.members.familyId, familyId));
+
+    const memberIds = familyMembers.map((m) => m.id);
+
+    if (memberIds.length === 0) {
+      return [];
+    }
+
+    // Only get transactions for family members
     const results = await db
       .select({
         memberId: schema.pointTransactions.memberId,
@@ -213,14 +247,17 @@ export const getAllMemberPoints = createServerFn({ method: "GET" }).handler(
       .from(schema.pointTransactions)
       .groupBy(schema.pointTransactions.memberId);
 
-    return results.map((r) => ({
-      member_id: r.memberId,
-      total: r.total,
-    }));
+    // Filter to only family members
+    return results
+      .filter((r) => memberIds.includes(r.memberId))
+      .map((r) => ({
+        member_id: r.memberId,
+        total: r.total,
+      }));
   }
 );
 
-// Get point transactions for a member
+// Get point transactions for a member - REQUIRES tenant context
 const GetTransactionsSchema = z.object({
   memberId: z.number(),
   limit: z.number().optional(),
@@ -229,6 +266,24 @@ const GetTransactionsSchema = z.object({
 export const getMemberTransactions = createServerFn({ method: "GET" })
   .inputValidator(GetTransactionsSchema)
   .handler(async ({ data }) => {
+    // SECURITY: Verify member belongs to user's family
+    const { familyId } = await getTenantContext();
+
+    const [member] = await db
+      .select({ id: schema.members.id })
+      .from(schema.members)
+      .where(
+        and(
+          eq(schema.members.id, data.memberId),
+          eq(schema.members.familyId, familyId)
+        )
+      )
+      .limit(1);
+
+    if (!member) {
+      throw new Error("Member not found or access denied");
+    }
+
     const limit = data.limit || 50;
 
     return db
@@ -337,9 +392,12 @@ export const requestRedemption = createServerFn({ method: "POST" })
     return redemption;
   });
 
-// Get pending redemptions (for admin)
+// Get pending redemptions (for admin) - REQUIRES owner/admin role
 export const getPendingRedemptions = createServerFn({ method: "GET" }).handler(
   async () => {
+    // SECURITY: Require owner/admin role and filter by family
+    const { familyId } = await requireRole(["owner", "admin"]);
+
     const redemptions = await db
       .select({
         id: schema.rewardRedemptions.id,
@@ -357,7 +415,12 @@ export const getPendingRedemptions = createServerFn({ method: "GET" }).handler(
       .from(schema.rewardRedemptions)
       .innerJoin(schema.members, eq(schema.rewardRedemptions.memberId, schema.members.id))
       .innerJoin(schema.rewards, eq(schema.rewardRedemptions.rewardId, schema.rewards.id))
-      .where(eq(schema.rewardRedemptions.status, "pending"))
+      .where(
+        and(
+          eq(schema.rewardRedemptions.status, "pending"),
+          eq(schema.members.familyId, familyId) // SECURITY: Filter by family
+        )
+      )
       .orderBy(asc(schema.rewardRedemptions.requestedAt));
 
     return redemptions.map((r) => ({
@@ -368,7 +431,7 @@ export const getPendingRedemptions = createServerFn({ method: "GET" }).handler(
   }
 );
 
-// Get all redemptions for a member
+// Get all redemptions for a member - REQUIRES tenant context
 const GetMemberRedemptionsSchema = z.object({
   memberId: z.number(),
 });
@@ -376,6 +439,24 @@ const GetMemberRedemptionsSchema = z.object({
 export const getMemberRedemptions = createServerFn({ method: "GET" })
   .inputValidator(GetMemberRedemptionsSchema)
   .handler(async ({ data }) => {
+    // SECURITY: Verify member belongs to user's family
+    const { familyId } = await getTenantContext();
+
+    const [member] = await db
+      .select({ id: schema.members.id })
+      .from(schema.members)
+      .where(
+        and(
+          eq(schema.members.id, data.memberId),
+          eq(schema.members.familyId, familyId)
+        )
+      )
+      .limit(1);
+
+    if (!member) {
+      throw new Error("Member not found or access denied");
+    }
+
     const redemptions = await db
       .select({
         id: schema.rewardRedemptions.id,
@@ -401,25 +482,41 @@ export const getMemberRedemptions = createServerFn({ method: "GET" })
     }));
   });
 
-// Process redemption (approve/reject/fulfill)
+// Process redemption (approve/reject/fulfill) - REQUIRES owner/admin role
 const ProcessRedemptionSchema = z.object({
   id: z.number(),
   status: z.enum(["approved", "rejected", "fulfilled"]),
-  adminUserId: z.number(),
   notes: z.string().optional(),
 });
 
 export const processRedemption = createServerFn({ method: "POST" })
   .inputValidator(ProcessRedemptionSchema)
   .handler(async ({ data }) => {
+    // SECURITY: Require owner/admin role and get user ID from session
+    const { familyId, userId } = await requireRole(["owner", "admin"]);
+
+    // Get redemption with family verification via member
     const [redemption] = await db
-      .select()
+      .select({
+        id: schema.rewardRedemptions.id,
+        memberId: schema.rewardRedemptions.memberId,
+        rewardId: schema.rewardRedemptions.rewardId,
+        pointsSpent: schema.rewardRedemptions.pointsSpent,
+        status: schema.rewardRedemptions.status,
+        memberFamilyId: schema.members.familyId,
+      })
       .from(schema.rewardRedemptions)
+      .innerJoin(schema.members, eq(schema.rewardRedemptions.memberId, schema.members.id))
       .where(eq(schema.rewardRedemptions.id, data.id))
       .limit(1);
 
     if (!redemption) {
       throw new Error("Redemption not found");
+    }
+
+    // SECURITY: Verify redemption belongs to user's family
+    if (redemption.memberFamilyId !== familyId) {
+      throw new Error("Access denied");
     }
 
     if (redemption.status !== "pending" && redemption.status !== "approved") {
@@ -458,12 +555,13 @@ export const processRedemption = createServerFn({ method: "POST" })
       });
     }
 
+    // SECURITY: Use userId from session, not from client input
     const [updated] = await db
       .update(schema.rewardRedemptions)
       .set({
         status: data.status as RedemptionStatus,
         processedAt: new Date(),
-        processedBy: data.adminUserId,
+        processedBy: userId, // Use authenticated user ID, not client-provided
         notes: data.notes || null,
       })
       .where(eq(schema.rewardRedemptions.id, data.id))

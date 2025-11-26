@@ -1,6 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { eq, sql } from "drizzle-orm";
+import { eq, sql, ilike } from "drizzle-orm";
 import { db, schema } from "../db";
 import { useAppSession } from "~/utils/session";
 import { verifyPassword } from "../utils/password";
@@ -9,6 +9,7 @@ import {
   recordFailedLogin,
   clearLoginRateLimit,
 } from "../utils/rateLimiter";
+import { randomDelay } from "../utils/security";
 
 const LoginSchema = z.object({
   username: z.string().min(1),
@@ -21,30 +22,36 @@ export const login = createServerFn({ method: "POST" })
     // Check rate limit using username as identifier
     const rateLimit = checkLoginRateLimit(data.username);
     if (!rateLimit.allowed) {
+      // Add random delay even for rate-limited requests to prevent timing analysis
+      await randomDelay(100, 300);
       throw new Error(
         `Too many login attempts. Please try again in ${Math.ceil(rateLimit.retryAfter! / 60)} minutes.`
       );
     }
 
+    // Pre-generated dummy hash for timing attack prevention
+    // This hash is intentionally hardcoded - it's used when user doesn't exist
+    // to ensure consistent timing regardless of user existence
+    const DUMMY_HASH =
+      "$argon2id$v=19$m=65536,t=3,p=1$+nFsp3W8Yl66PsmlfaJkGHMBgjgk8ldAcgaqf4C2IgQ$exWsCgtJXiGv555e7ihjdY4ylfIVhpU/hxLkgHA5Irk";
+
+    // Case-insensitive username lookup
     const [adminUser] = await db
       .select()
       .from(schema.adminUsers)
-      .where(eq(schema.adminUsers.username, data.username))
+      .where(ilike(schema.adminUsers.username, data.username))
       .limit(1);
 
-    if (!adminUser) {
-      // Use constant-time comparison behavior by still verifying
-      // against a dummy hash to prevent timing attacks
-      await verifyPassword(
-        data.password,
-        "$argon2id$v=19$m=65536,t=3,p=4$dummy"
-      );
-      recordFailedLogin(data.username);
-      throw new Error("Invalid credentials");
-    }
+    // Always perform password verification to ensure constant-time response
+    // This prevents timing attacks that could reveal whether a user exists
+    const hashToVerify = adminUser?.passwordHash || DUMMY_HASH;
+    const isValid = await verifyPassword(data.password, hashToVerify);
 
-    const isValid = await verifyPassword(data.password, adminUser.passwordHash);
-    if (!isValid) {
+    // Add random delay to further obscure timing differences
+    // between valid/invalid users and correct/incorrect passwords
+    await randomDelay(50, 150);
+
+    if (!adminUser || !isValid) {
       recordFailedLogin(data.username);
       throw new Error("Invalid credentials");
     }
@@ -111,6 +118,51 @@ export const checkAuth = createServerFn({ method: "GET" }).handler(async () => {
 
   return { authenticated: false };
 });
+
+// Get account status for authenticated user (used by route loaders)
+export const getAccountStatus = createServerFn({ method: "GET" }).handler(
+  async () => {
+    const session = await useAppSession();
+
+    if (
+      !session.data.isAuthenticated ||
+      !session.data.username ||
+      !session.data.adminUserId
+    ) {
+      return { authenticated: false as const };
+    }
+
+    // Get fresh account status from database
+    const [user] = await db
+      .select({
+        accountStatus: schema.adminUsers.accountStatus,
+        isSuperAdmin: schema.adminUsers.isSuperAdmin,
+        isDefaultAdmin: schema.adminUsers.isDefaultAdmin,
+        passwordChangedAt: schema.adminUsers.passwordChangedAt,
+      })
+      .from(schema.adminUsers)
+      .where(eq(schema.adminUsers.id, session.data.adminUserId))
+      .limit(1);
+
+    if (!user) {
+      return { authenticated: false as const };
+    }
+
+    // Check if this is a default admin who hasn't changed their password
+    // This is a security requirement - default admins MUST change password before accessing the app
+    const requiresPasswordChange =
+      user.isDefaultAdmin && user.passwordChangedAt === null;
+
+    return {
+      authenticated: true as const,
+      username: session.data.username,
+      adminUserId: session.data.adminUserId,
+      accountStatus: user.accountStatus,
+      isSuperAdmin: user.isSuperAdmin,
+      requiresPasswordChange,
+    };
+  }
+);
 
 // Switch active family
 const SwitchFamilySchema = z.object({

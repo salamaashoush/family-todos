@@ -25,38 +25,76 @@ export const Route = createFileRoute("/family/$token")({
   loader: async ({ params: { token }, context: { queryClient } }) => {
     const today = new Date().toISOString().split("T")[0];
 
-    // Preload family data first (required for other queries)
-    const family = await queryClient.ensureQueryData({
-      queryKey: ["public-family", token],
-      queryFn: () => getFamilyByShareToken({ data: { token } }),
-    });
-
-    // If family exists, preload all other data in parallel
-    if (family) {
-      await Promise.all([
-        queryClient.ensureQueryData({
-          queryKey: ["public-members", token],
-          queryFn: () => getPublicMembers({ data: { token } }),
-        }),
-        queryClient.ensureQueryData({
-          queryKey: ["public-timeslots", token, today],
-          queryFn: () => getPublicTimeslots({ data: { token, date: today } }),
-        }),
-        queryClient.ensureQueryData({
-          queryKey: ["public-todos", token],
-          queryFn: () => getPublicTodos({ data: { token } }),
-        }),
-        queryClient.ensureQueryData({
-          queryKey: ["public-completions", token, today],
-          queryFn: () => getPublicCompletions({ data: { token, date: today } }),
-        }),
-      ]);
+    // Validate token format before making API calls
+    // Share tokens are 64 character hex strings
+    if (!token || token.length !== 64 || !/^[a-f0-9]+$/i.test(token)) {
+      throw new Error("Invalid board link");
     }
 
-    return { initialDate: today };
+    try {
+      // Preload family data first (required for other queries)
+      const family = await queryClient.ensureQueryData({
+        queryKey: ["public-family", token],
+        queryFn: () => getFamilyByShareToken({ data: { token } }),
+      });
+
+      // If family exists, preload all other data in parallel
+      if (family) {
+        await Promise.all([
+          queryClient.ensureQueryData({
+            queryKey: ["public-members", token],
+            queryFn: () => getPublicMembers({ data: { token } }),
+          }),
+          queryClient.ensureQueryData({
+            queryKey: ["public-timeslots", token, today],
+            queryFn: () => getPublicTimeslots({ data: { token, date: today } }),
+          }),
+          queryClient.ensureQueryData({
+            queryKey: ["public-todos", token],
+            queryFn: () => getPublicTodos({ data: { token } }),
+          }),
+          queryClient.ensureQueryData({
+            queryKey: ["public-completions", token, today],
+            queryFn: () => getPublicCompletions({ data: { token, date: today } }),
+          }),
+        ]);
+      }
+
+      return { initialDate: today };
+    } catch (error) {
+      // Re-throw with a user-friendly message
+      throw new Error("Invalid board link");
+    }
   },
   component: PublicFamilyBoard,
+  errorComponent: FamilyBoardError,
 });
+
+function FamilyBoardError() {
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-theme-bg-from via-theme-bg-via to-theme-bg-to flex items-center justify-center p-4">
+      <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md text-center">
+        <div className="w-20 h-20 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-6">
+          <svg className="w-10 h-10 text-yellow-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+          </svg>
+        </div>
+        <h1 className="text-2xl font-bold text-gray-800 mb-2">
+          Invalid Board Link
+        </h1>
+        <p className="text-gray-600 mb-6">
+          This family board link is invalid or has expired. Please ask your family admin for a new link.
+        </p>
+        <Link
+          to="/"
+          className="inline-block px-6 py-3 bg-theme-primary text-white font-semibold rounded-xl hover:opacity-90 transition-opacity"
+        >
+          Go to Home
+        </Link>
+      </div>
+    </div>
+  );
+}
 
 function PublicFamilyBoard() {
   const { token } = Route.useParams();

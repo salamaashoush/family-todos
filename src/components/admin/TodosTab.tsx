@@ -23,6 +23,7 @@ import { Select } from '../shared/Select'
 import { TodoForm } from './TodoForm'
 import { AdminCard } from './AdminCard'
 import { SortableItem } from './SortableItem'
+import { getDisplaySymbol } from '../../utils/symbols'
 import type { Todo, Timeslot } from '../../types'
 
 const PlusIcon = () => (
@@ -376,8 +377,8 @@ export function TodosTab() {
                 <SortableItem key={todo.id} id={todo.id}>
                   <div className="bg-white border-2 border-gray-200 rounded-xl p-4">
                     <div className="flex items-center gap-3">
-                      {todo.symbol && (
-                        <span className="text-2xl flex-shrink-0">{todo.symbol}</span>
+                      {getDisplaySymbol(todo.symbol) && (
+                        <span className="text-2xl flex-shrink-0">{getDisplaySymbol(todo.symbol)}</span>
                       )}
                       <div className="min-w-0 flex-1">
                         <h3 className="font-bold text-gray-800 truncate">{todo.title}</h3>
@@ -404,8 +405,8 @@ export function TodosTab() {
               showCheckbox={true}
             >
               <div className="flex items-start gap-3">
-                {todo.symbol && (
-                  <span className="text-3xl flex-shrink-0">{todo.symbol}</span>
+                {getDisplaySymbol(todo.symbol) && (
+                  <span className="text-3xl flex-shrink-0">{getDisplaySymbol(todo.symbol)}</span>
                 )}
                 <div className="min-w-0 flex-1">
                   <h3 className="font-bold text-gray-800">{todo.title}</h3>

@@ -12,9 +12,10 @@ export const families = pgTable(
   {
     id: serial("id").primaryKey(),
     name: varchar("name", { length: 255 }).notNull(),
-    slug: varchar("slug", { length: 100 }).unique(),
-    // Secure share token for public family board access (kids view)
-    shareToken: varchar("share_token", { length: 64 }).unique(),
+    // Slug is now optional and not unique - we use shareToken for public URLs
+    slug: varchar("slug", { length: 100 }),
+    // Secure share token for public family board access (kids view) - this is the unique identifier
+    shareToken: varchar("share_token", { length: 64 }).unique().notNull(),
     subscriptionTier: varchar("subscription_tier", { length: 50 }).default("free"),
     isOnboarded: boolean("is_onboarded").default(false).notNull(),
     createdAt: timestamp("created_at").defaultNow().notNull(),

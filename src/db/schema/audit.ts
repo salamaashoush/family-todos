@@ -19,6 +19,7 @@ export const auditEntityEnum = [
   "member",
   "timeslot",
   "todo",
+  "todo_completion",
   "reward",
   "achievement",
   "family",

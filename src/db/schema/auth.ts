@@ -11,6 +11,10 @@ import {
 } from "drizzle-orm/pg-core";
 import { families } from "./families";
 
+// Account status enum
+export const accountStatusEnum = ["pending", "active", "suspended", "rejected"] as const;
+export type AccountStatus = (typeof accountStatusEnum)[number];
+
 // Admin users (for authentication)
 export const adminUsers = pgTable(
   "admin_users",
@@ -20,6 +24,23 @@ export const adminUsers = pgTable(
     email: varchar("email", { length: 320 }).unique(),
     emailVerified: boolean("email_verified").default(false).notNull(),
     passwordHash: text("password_hash").notNull(),
+    // Super admin flag - only super admins can access the internal dashboard
+    isSuperAdmin: boolean("is_super_admin").default(false).notNull(),
+    // Flag to indicate if this is the default admin that needs password change
+    isDefaultAdmin: boolean("is_default_admin").default(false).notNull(),
+    // Track when password was last changed
+    passwordChangedAt: timestamp("password_changed_at"),
+    // Account status for approval workflow
+    accountStatus: varchar("account_status", { length: 20 })
+      .default("pending")
+      .notNull()
+      .$type<AccountStatus>(),
+    // Notes from super admin (e.g., rejection reason)
+    adminNotes: text("admin_notes"),
+    // When account was activated/approved
+    activatedAt: timestamp("activated_at"),
+    // Who activated the account (super admin user id)
+    activatedBy: integer("activated_by"),
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at").defaultNow().notNull(),
     lastLoginAt: timestamp("last_login_at"),
@@ -27,6 +48,8 @@ export const adminUsers = pgTable(
   (table) => [
     index("idx_admin_users_username").on(table.username),
     index("idx_admin_users_email").on(table.email),
+    index("idx_admin_users_status").on(table.accountStatus),
+    index("idx_admin_users_super_admin").on(table.isSuperAdmin),
   ]
 );
 

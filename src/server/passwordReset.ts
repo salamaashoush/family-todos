@@ -57,17 +57,17 @@ export const requestPasswordReset = createServerFn({ method: "POST" })
       expiresAt,
     });
 
-    // In production, send email here
-    // For now, log the reset URL (remove in production!)
-    const resetUrl = `/reset-password?token=${token}`;
-    console.log(`[DEV] Password reset URL for ${data.email}: ${resetUrl}`);
+    // TODO: Integrate with email service (SendGrid, Resend, etc.) to send reset link
+    // For now, in development mode only, the token can be accessed via devToken
+    // SECURITY: Never log tokens to console - they may end up in log aggregation systems
 
     return {
       success: true,
       message:
         "If an account with that email exists, you will receive a password reset link.",
-      // Only include token in development for testing
-      ...(process.env.NODE_ENV === "development" && { devToken: token }),
+      // Only include token in development for testing - NEVER in production
+      ...(process.env.NODE_ENV === "development" &&
+        process.env.ENABLE_DEV_TOKENS === "true" && { devToken: token }),
     };
   });
 

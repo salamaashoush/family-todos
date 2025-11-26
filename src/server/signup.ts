@@ -5,6 +5,8 @@ import { db, schema } from "../db";
 import { useAppSession } from "~/utils/session";
 import { hashPassword } from "../utils/password";
 import { sendVerificationEmail } from "./emailVerification";
+import { checkRateLimit, recordAttempt } from "../utils/rateLimiter";
+import { getRequest } from "@tanstack/react-start/server";
 
 const SignUpSchema = z.object({
   username: z
@@ -71,7 +73,25 @@ export const signUp = createServerFn({ method: "POST" })
     return { success: true, userId: user.id, emailSent: true };
   });
 
+// Helper to get client IP for rate limiting
+function getClientIp(): string {
+  try {
+    const request = getRequest();
+    if (request) {
+      return (
+        request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+        request.headers.get("x-real-ip") ||
+        "unknown"
+      );
+    }
+  } catch {
+    // Request context not available
+  }
+  return "unknown";
+}
+
 // Check if username is available
+// Rate limited to prevent user enumeration attacks
 const CheckUsernameSchema = z.object({
   username: z.string().min(1),
 });
@@ -79,6 +99,16 @@ const CheckUsernameSchema = z.object({
 export const checkUsernameAvailable = createServerFn({ method: "GET" })
   .inputValidator(CheckUsernameSchema)
   .handler(async ({ data }) => {
+    // Rate limit by IP to prevent enumeration
+    const clientIp = getClientIp();
+    const rateLimit = checkRateLimit("enumeration", clientIp);
+    if (!rateLimit.allowed) {
+      throw new Error(
+        `Too many requests. Please try again in ${Math.ceil(rateLimit.retryAfter! / 60)} minutes.`
+      );
+    }
+    recordAttempt("enumeration", clientIp);
+
     const existing = await db
       .select({ id: schema.adminUsers.id })
       .from(schema.adminUsers)
@@ -89,6 +119,7 @@ export const checkUsernameAvailable = createServerFn({ method: "GET" })
   });
 
 // Check if email is available
+// Rate limited to prevent user enumeration attacks
 const CheckEmailSchema = z.object({
   email: z.string().email(),
 });
@@ -96,6 +127,16 @@ const CheckEmailSchema = z.object({
 export const checkEmailAvailable = createServerFn({ method: "GET" })
   .inputValidator(CheckEmailSchema)
   .handler(async ({ data }) => {
+    // Rate limit by IP to prevent enumeration
+    const clientIp = getClientIp();
+    const rateLimit = checkRateLimit("enumeration", clientIp);
+    if (!rateLimit.allowed) {
+      throw new Error(
+        `Too many requests. Please try again in ${Math.ceil(rateLimit.retryAfter! / 60)} minutes.`
+      );
+    }
+    recordAttempt("enumeration", clientIp);
+
     const existing = await db
       .select({ id: schema.adminUsers.id })
       .from(schema.adminUsers)

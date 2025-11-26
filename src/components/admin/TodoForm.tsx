@@ -5,6 +5,7 @@ import { useTimeslots } from '../../hooks/useQueries'
 import { useImageUpload } from '../../hooks/useImageUpload'
 import { UPLOAD_CONFIG } from '../../constants'
 import { getErrorMessage } from '../../utils/form'
+import { getDisplaySymbol } from '../../utils/symbols'
 import { showToast } from '../Toast'
 import { Button, Input, Textarea, FileInput } from '../shared'
 import type { Todo, Timeslot } from '../../types'
@@ -72,7 +73,8 @@ export function TodoForm({ todo, onSubmit, onCancel }: TodoFormProps) {
     if (todo) {
       form.setFieldValue('title', todo.title)
       form.setFieldValue('description', todo.description || '')
-      form.setFieldValue('symbol', todo.symbol || '')
+      // Convert old icon names to emojis when editing
+      form.setFieldValue('symbol', getDisplaySymbol(todo.symbol) || '')
       form.setFieldValue('imageUrl', todo.imageUrl || '')
       form.setFieldValue('position', todo.position)
       form.setFieldValue('points', todo.points ?? 5)

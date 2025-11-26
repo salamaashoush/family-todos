@@ -106,15 +106,19 @@ export const getOnboardingStatus = createServerFn({ method: "GET" }).handler(
   }
 );
 
+// Generate a short random identifier (6 chars)
+function generateShortId(): string {
+  const chars = "abcdefghijklmnopqrstuvwxyz0123456789";
+  let result = "";
+  for (let i = 0; i < 6; i++) {
+    result += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return result;
+}
+
 // Create family (step 1)
 const CreateFamilySchema = z.object({
   name: z.string().min(1, "Family name is required").max(100),
-  slug: z
-    .string()
-    .min(3, "Slug must be at least 3 characters")
-    .max(50)
-    .regex(/^[a-z0-9-]+$/, "Slug can only contain lowercase letters, numbers, and hyphens")
-    .optional(),
 });
 
 export const createFamily = createServerFn({ method: "POST" })
@@ -126,24 +130,14 @@ export const createFamily = createServerFn({ method: "POST" })
       throw new Error("Not authenticated");
     }
 
-    // Generate slug if not provided
-    const slug =
-      data.slug ||
-      data.name
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, "-")
-        .replace(/^-|-$/g, "");
+    // Generate slug from name with a short random suffix to ensure uniqueness
+    const baseSlug = data.name
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-|-$/g, "")
+      .substring(0, 40); // Limit base slug length
 
-    // Check if slug is unique
-    const existingSlug = await db
-      .select({ id: schema.families.id })
-      .from(schema.families)
-      .where(eq(schema.families.slug, slug))
-      .limit(1);
-
-    if (existingSlug.length > 0) {
-      throw new Error("This family URL is already taken. Please choose a different name or slug.");
-    }
+    const slug = `${baseSlug}-${generateShortId()}`;
 
     // Create family with share token for public board access
     const [family] = await db
