@@ -43,6 +43,12 @@ const TrashIcon = () => (
   </svg>
 )
 
+const ClockIcon = () => (
+  <svg className="w-12 h-12 text-gray-300 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+  </svg>
+)
+
 interface TimeslotFormData {
   name: string
   description: string
@@ -345,12 +351,11 @@ export function TimeslotsTab() {
               </button>
             </>
           ) : (
-            <>
-              <p className="text-lg mb-4">No time slots yet</p>
-              <Button onClick={openAddModal} leftIcon={<PlusIcon />}>
-                Create Your First Time Slot
-              </Button>
-            </>
+            <div className="flex flex-col items-center">
+              <ClockIcon />
+              <p className="text-lg">No time slots yet</p>
+              <p className="text-sm text-gray-400 mt-1">Click "Add Time Slot" above to create one</p>
+            </div>
           )}
         </div>
       ) : isReordering ? (

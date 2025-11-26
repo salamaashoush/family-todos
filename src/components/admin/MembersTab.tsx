@@ -20,6 +20,12 @@ const TrashIcon = () => (
   </svg>
 )
 
+const UsersIcon = () => (
+  <svg className="w-12 h-12 text-gray-300 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+  </svg>
+)
+
 export function MembersTab() {
   const { data: members, isLoading } = useMembers()
   const { create, update, remove } = useMemberMutations()
@@ -201,12 +207,11 @@ export function MembersTab() {
               </button>
             </>
           ) : (
-            <>
-              <p className="text-lg mb-4">No family members yet</p>
-              <Button onClick={openAddModal} leftIcon={<PlusIcon />}>
-                Add Your First Member
-              </Button>
-            </>
+            <div className="flex flex-col items-center">
+              <UsersIcon />
+              <p className="text-lg">No family members yet</p>
+              <p className="text-sm text-gray-400 mt-1">Click "Add Member" above to create one</p>
+            </div>
           )}
         </div>
       ) : (
