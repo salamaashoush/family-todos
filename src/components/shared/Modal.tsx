@@ -36,23 +36,34 @@ export function Modal({ isOpen, onClose, title, children, size = 'md' }: ModalPr
   useEffect(() => {
     if (isOpen) {
       previousActiveElement.current = document.activeElement as HTMLElement
+
+      // Store current scroll position and lock body
+      const scrollY = window.scrollY
+      document.body.style.position = 'fixed'
+      document.body.style.top = `-${scrollY}px`
+      document.body.style.left = '0'
+      document.body.style.right = '0'
       document.body.style.overflow = 'hidden'
 
       // Focus the modal after animation
       setTimeout(() => {
         modalRef.current?.focus()
       }, 50)
-    } else {
-      document.body.style.overflow = ''
 
+      return () => {
+        // Restore scroll position
+        document.body.style.position = ''
+        document.body.style.top = ''
+        document.body.style.left = ''
+        document.body.style.right = ''
+        document.body.style.overflow = ''
+        window.scrollTo(0, scrollY)
+      }
+    } else {
       // Restore focus to previous element
       if (previousActiveElement.current) {
         previousActiveElement.current.focus()
       }
-    }
-
-    return () => {
-      document.body.style.overflow = ''
     }
   }, [isOpen])
 
@@ -69,6 +80,7 @@ export function Modal({ isOpen, onClose, title, children, size = 'md' }: ModalPr
       <div
         className="fixed inset-0 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200"
         aria-hidden="true"
+        onTouchMove={(e) => e.preventDefault()}
       />
 
       {/* Modal panel */}
