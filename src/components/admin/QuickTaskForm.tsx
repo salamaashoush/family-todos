@@ -118,8 +118,8 @@ export function QuickTaskForm({ timeslotId, timeslotName, onSubmit, onCancel }: 
               <input
                 type="range"
                 min={0}
-                max={20}
-                step={1}
+                max={500}
+                step={5}
                 value={field.state.value}
                 onChange={(e) => field.handleChange(Number(e.target.value))}
                 className="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-theme-primary"
