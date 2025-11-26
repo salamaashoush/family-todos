@@ -4,6 +4,7 @@ export { Input } from './Input'
 export { Textarea } from './Textarea'
 export { Checkbox } from './Checkbox'
 export { Select } from './Select'
+export { MultiSelect } from './MultiSelect'
 export { FileInput } from './FileInput'
 
 // Modal components

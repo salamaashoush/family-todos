@@ -15,13 +15,15 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable'
 import { useTimeslots, useMembers } from '../../hooks/useQueries'
-import { useTimeslotMutations } from '../../hooks/useAdminMutations'
+import { useTimeslotMutations, useTodoMutations } from '../../hooks/useAdminMutations'
 import { formatRecurrenceDays } from '../../utils/timeslots'
+import { showToast } from '../Toast'
 import { Modal } from '../shared/Modal'
 import { ConfirmDialog } from '../shared/ConfirmDialog'
 import { Button } from '../shared/Button'
 import { Select } from '../shared/Select'
 import { TimeslotForm } from './TimeslotForm'
+import { QuickTaskForm } from './QuickTaskForm'
 import { AdminCard } from './AdminCard'
 import { SortableItem } from './SortableItem'
 import type { Timeslot, Member } from '../../types'
@@ -64,6 +66,7 @@ export function TimeslotsTab() {
   const { data: timeslots, isLoading: timeslotsLoading } = useTimeslots()
   const { data: members } = useMembers()
   const { create, update, remove } = useTimeslotMutations()
+  const { create: createTodo } = useTodoMutations()
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingTimeslot, setEditingTimeslot] = useState<Timeslot | null>(null)
   const [deletingTimeslot, setDeletingTimeslot] = useState<Timeslot | null>(null)
@@ -73,6 +76,7 @@ export function TimeslotsTab() {
   const [showBulkDelete, setShowBulkDelete] = useState(false)
   const [isReordering, setIsReordering] = useState(false)
   const [localTimeslots, setLocalTimeslots] = useState<Timeslot[]>([])
+  const [quickTaskTimeslot, setQuickTaskTimeslot] = useState<Timeslot | null>(null)
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -404,6 +408,20 @@ export function TimeslotsTab() {
               isSelected={selectedIds.has(timeslot.id)}
               onSelect={() => toggleSelect(timeslot.id)}
               showCheckbox={true}
+              extraActions={
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    setQuickTaskTimeslot(timeslot)
+                  }}
+                  className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors"
+                  title="Quick add task"
+                >
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+                  </svg>
+                </button>
+              }
             >
               <div className="flex items-start gap-3">
                 <div className="w-10 h-10 rounded-full bg-gradient-to-br from-theme-primary to-theme-secondary flex items-center justify-center flex-shrink-0">
@@ -490,6 +508,32 @@ export function TimeslotsTab() {
         title="Delete Selected Time Slots"
         message={`Are you sure you want to delete ${selectedIds.size} time slot${selectedIds.size > 1 ? 's' : ''}? This action cannot be undone.`}
       />
+
+      {/* Quick Task Creation Modal */}
+      <Modal
+        isOpen={!!quickTaskTimeslot}
+        onClose={() => setQuickTaskTimeslot(null)}
+        title={`Add Task to ${quickTaskTimeslot?.name || ''}`}
+      >
+        {quickTaskTimeslot && (
+          <QuickTaskForm
+            timeslotId={quickTaskTimeslot.id}
+            timeslotName={quickTaskTimeslot.name}
+            onSubmit={(data) => {
+              createTodo.mutate(
+                { data },
+                {
+                  onSuccess: () => {
+                    setQuickTaskTimeslot(null)
+                    showToast('Task created', 'success')
+                  },
+                }
+              )
+            }}
+            onCancel={() => setQuickTaskTimeslot(null)}
+          />
+        )}
+      </Modal>
     </div>
   )
 }
