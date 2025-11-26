@@ -2,7 +2,8 @@ import { Database } from "bun:sqlite";
 import path from "node:path";
 
 const dbFileName = process.env.DB_NAME || "family-todos.db";
-const dbPath = path.join(process.cwd(), dbFileName);
+const dataDir = process.env.DATA_DIR || process.cwd();
+const dbPath = path.join(dataDir, dbFileName);
 
 let dbInstance: Database | null = null;
 

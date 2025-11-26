@@ -35,8 +35,11 @@ COPY --from=prerelease /usr/src/app/package.json .
 # Copy public directory (if it exists)
 COPY --from=prerelease /usr/src/app/public ./public
 
-# Create directory for database with proper permissions
-RUN mkdir -p /usr/src/app/data && chown -R bun:bun /usr/src/app
+# Create directory for database and uploads with proper permissions
+RUN mkdir -p /usr/src/app/data/uploads && chown -R bun:bun /usr/src/app
+
+# Set DATA_DIR for persistent storage
+ENV DATA_DIR=/usr/src/app/data
 
 # Run the app
 USER bun

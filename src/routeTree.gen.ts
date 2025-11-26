@@ -13,6 +13,7 @@ import { Route as StatsRouteImport } from './routes/stats'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as UploadsSplatRouteImport } from './routes/uploads/$'
 import { Route as ApiSseRouteImport } from './routes/api/sse'
 
 const StatsRoute = StatsRouteImport.update({
@@ -35,6 +36,11 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const UploadsSplatRoute = UploadsSplatRouteImport.update({
+  id: '/uploads/$',
+  path: '/uploads/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiSseRoute = ApiSseRouteImport.update({
   id: '/api/sse',
   path: '/api/sse',
@@ -47,6 +53,7 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/stats': typeof StatsRoute
   '/api/sse': typeof ApiSseRoute
+  '/uploads/$': typeof UploadsSplatRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -54,6 +61,7 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/stats': typeof StatsRoute
   '/api/sse': typeof ApiSseRoute
+  '/uploads/$': typeof UploadsSplatRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -62,13 +70,21 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/stats': typeof StatsRoute
   '/api/sse': typeof ApiSseRoute
+  '/uploads/$': typeof UploadsSplatRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/admin' | '/login' | '/stats' | '/api/sse'
+  fullPaths: '/' | '/admin' | '/login' | '/stats' | '/api/sse' | '/uploads/$'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/admin' | '/login' | '/stats' | '/api/sse'
-  id: '__root__' | '/' | '/admin' | '/login' | '/stats' | '/api/sse'
+  to: '/' | '/admin' | '/login' | '/stats' | '/api/sse' | '/uploads/$'
+  id:
+    | '__root__'
+    | '/'
+    | '/admin'
+    | '/login'
+    | '/stats'
+    | '/api/sse'
+    | '/uploads/$'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -77,6 +93,7 @@ export interface RootRouteChildren {
   LoginRoute: typeof LoginRoute
   StatsRoute: typeof StatsRoute
   ApiSseRoute: typeof ApiSseRoute
+  UploadsSplatRoute: typeof UploadsSplatRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -109,6 +126,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/uploads/$': {
+      id: '/uploads/$'
+      path: '/uploads/$'
+      fullPath: '/uploads/$'
+      preLoaderRoute: typeof UploadsSplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/sse': {
       id: '/api/sse'
       path: '/api/sse'
@@ -125,6 +149,7 @@ const rootRouteChildren: RootRouteChildren = {
   LoginRoute: LoginRoute,
   StatsRoute: StatsRoute,
   ApiSseRoute: ApiSseRoute,
+  UploadsSplatRoute: UploadsSplatRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

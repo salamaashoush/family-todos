@@ -32,6 +32,7 @@ yarn-error.log*
 # uploads - user uploaded files
 public/uploads/*
 !public/uploads/.gitkeep
+uploads/
 
 # tanstack
 .tanstack
