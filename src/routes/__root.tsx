@@ -23,8 +23,9 @@ const getCSPContent = () => {
     return "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' ws: wss:; worker-src 'self' blob:;"
   }
 
-  // Strict CSP for production - worker-src blob: needed for canvas-confetti
-  return "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self'; worker-src 'self' blob:; frame-ancestors 'none'; form-action 'self'; base-uri 'self';"
+  // Production CSP - 'unsafe-inline' required for TanStack Start hydration scripts
+  // worker-src blob: needed for canvas-confetti
+  return "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' wss:; worker-src 'self' blob:; frame-ancestors 'none'; form-action 'self'; base-uri 'self';"
 }
 
 export const Route = createRootRouteWithContext<{
