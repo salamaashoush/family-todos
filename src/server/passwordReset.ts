@@ -4,19 +4,12 @@ import { eq, and, gt } from "drizzle-orm";
 import { db, schema } from "../db";
 import { hashPassword } from "../utils/password";
 import { generateSecureToken } from "./crypto";
+import { sendPasswordResetEmail } from "../utils/email";
 
 const TOKEN_EXPIRY_HOURS = 1; // Token valid for 1 hour
 
 /**
- * Generate a secure random token
- */
-function generateToken(): string {
-  return generateSecureToken(32);
-}
-
-/**
  * Request a password reset
- * In production, this would send an email with the reset link
  */
 const RequestResetSchema = z.object({
   email: z.string().email("Invalid email address"),
@@ -47,7 +40,7 @@ export const requestPasswordReset = createServerFn({ method: "POST" })
       .where(eq(schema.passwordResetTokens.userId, user.id));
 
     // Generate new token
-    const token = generateToken();
+    const token = generateSecureToken(32);
     const expiresAt = new Date(Date.now() + TOKEN_EXPIRY_HOURS * 60 * 60 * 1000);
 
     // Save token
@@ -57,17 +50,13 @@ export const requestPasswordReset = createServerFn({ method: "POST" })
       expiresAt,
     });
 
-    // TODO: Integrate with email service (SendGrid, Resend, etc.) to send reset link
-    // For now, in development mode only, the token can be accessed via devToken
-    // SECURITY: Never log tokens to console - they may end up in log aggregation systems
+    // Send email via Resend
+    await sendPasswordResetEmail(data.email, token);
 
     return {
       success: true,
       message:
         "If an account with that email exists, you will receive a password reset link.",
-      // Only include token in development for testing - NEVER in production
-      ...(process.env.NODE_ENV === "development" &&
-        process.env.ENABLE_DEV_TOKENS === "true" && { devToken: token }),
     };
   });
 

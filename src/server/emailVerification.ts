@@ -3,12 +3,12 @@ import { z } from "zod";
 import { eq, and, gt } from "drizzle-orm";
 import { db, schema } from "../db";
 import { generateSecureToken } from "./crypto";
+import { sendVerificationEmail as sendVerificationEmailUtil } from "../utils/email";
 
 const TOKEN_EXPIRY_HOURS = 24; // Token valid for 24 hours
 
 /**
  * Send verification email to user
- * In production, this would integrate with an email service (SendGrid, Resend, etc.)
  */
 export const sendVerificationEmail = createServerFn({ method: "POST" })
   .inputValidator(z.object({ userId: z.number() }))
@@ -42,15 +42,12 @@ export const sendVerificationEmail = createServerFn({ method: "POST" })
       expiresAt,
     });
 
-    // TODO: Integrate with email service (SendGrid, Resend, etc.) to send verification link
-    // SECURITY: Never log tokens to console - they may end up in log aggregation systems
+    // Send email via Resend
+    await sendVerificationEmailUtil(user.email, token);
 
     return {
       success: true,
       message: "Verification email sent.",
-      // Only include token in development for testing - NEVER in production
-      ...(process.env.NODE_ENV === "development" &&
-        process.env.ENABLE_DEV_TOKENS === "true" && { devToken: token }),
     };
   });
 
@@ -175,15 +172,12 @@ export const resendVerificationEmail = createServerFn({ method: "POST" })
       expiresAt,
     });
 
-    // TODO: Integrate with email service (SendGrid, Resend, etc.) to send verification link
-    // SECURITY: Never log tokens to console - they may end up in log aggregation systems
+    // Send email via Resend (use data.email since we queried by it)
+    await sendVerificationEmailUtil(data.email, token);
 
     return {
       success: true,
       message:
         "If your email is registered and unverified, you will receive a verification link.",
-      // Only include token in development for testing - NEVER in production
-      ...(process.env.NODE_ENV === "development" &&
-        process.env.ENABLE_DEV_TOKENS === "true" && { devToken: token }),
     };
   });
