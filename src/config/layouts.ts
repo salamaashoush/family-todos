@@ -62,6 +62,7 @@ export function getDeviceType(width: number): DeviceType {
 export interface LayoutSettings {
   autoSwitchEnabled: boolean
   timeslotAutoExpand: boolean
+  showParentsInLayout: boolean
   defaultLayout: LayoutId
   deviceLayouts: Record<DeviceType, LayoutId>
 }
@@ -69,6 +70,7 @@ export interface LayoutSettings {
 export const DEFAULT_LAYOUT_SETTINGS: LayoutSettings = {
   autoSwitchEnabled: true,
   timeslotAutoExpand: true,
+  showParentsInLayout: false,
   defaultLayout: 'member-focus',
   deviceLayouts: {
     phone: 'quick-check',

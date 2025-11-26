@@ -24,6 +24,12 @@ export function SettingsTab() {
     setTimeout(() => setIsSaving(false), 300)
   }, [settings.timeslotAutoExpand, updateSettings])
 
+  const handleToggleShowParents = useCallback(() => {
+    setIsSaving(true)
+    updateSettings({ showParentsInLayout: !settings.showParentsInLayout })
+    setTimeout(() => setIsSaving(false), 300)
+  }, [settings.showParentsInLayout, updateSettings])
+
   const handleDefaultLayoutChange = useCallback(
     (layoutId: LayoutId) => {
       setIsSaving(true)
@@ -94,6 +100,26 @@ export function SettingsTab() {
             <span
               className={`absolute top-1 left-1 w-6 h-6 bg-white rounded-full shadow transition-transform ${
                 settings.timeslotAutoExpand ? 'translate-x-6' : 'translate-x-0'
+              }`}
+            />
+          </button>
+        </div>
+
+        <div className="flex items-center justify-between">
+          <div>
+            <h4 className="font-semibold text-gray-800">Show parents in layout</h4>
+            <p className="text-sm text-gray-600">Display parent/adult members in the task view</p>
+          </div>
+          <button
+            onClick={handleToggleShowParents}
+            disabled={isSaving}
+            className={`relative w-14 h-8 rounded-full transition-colors ${
+              settings.showParentsInLayout ? 'bg-theme-primary' : 'bg-gray-300'
+            }`}
+          >
+            <span
+              className={`absolute top-1 left-1 w-6 h-6 bg-white rounded-full shadow transition-transform ${
+                settings.showParentsInLayout ? 'translate-x-6' : 'translate-x-0'
               }`}
             />
           </button>

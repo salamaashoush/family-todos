@@ -73,7 +73,7 @@ function Home() {
     [baseHandleToggleTodo, checkAndCelebrate]
   )
 
-  const { layout, currentTimeslotId, isHydrated } = useLayout()
+  const { layout, settings, currentTimeslotId, isHydrated } = useLayout()
 
   useCurrentTimeslot(timeslots || [])
 
@@ -87,8 +87,15 @@ function Home() {
 
   useRealtime(selectedDate, handleRealtimeEvent)
 
+  // Filter out parents if showParentsInLayout is false
+  const filteredMembers = useMemo(() => {
+    if (!members) return []
+    if (settings.showParentsInLayout) return members
+    return members.filter((m) => m.is_parent !== 1)
+  }, [members, settings.showParentsInLayout])
+
   const layoutProps = {
-    members: members || [],
+    members: filteredMembers,
     timeslots: timeslots || [],
     todos: todos || [],
     completions: completions || [],
@@ -130,8 +137,19 @@ function Home() {
               </div>
             ))}
           </div>
-        ) : members && members.length > 0 ? (
+        ) : filteredMembers.length > 0 ? (
           renderLayout()
+        ) : members && members.length > 0 ? (
+          <div className="text-center py-12 sm:py-16">
+            <p className="text-xl sm:text-2xl text-gray-600 mb-4">All members are parents and hidden from view.</p>
+            <p className="text-gray-500 mb-4">Enable "Show parents in layout" in Settings to see them.</p>
+            <Link
+              to="/admin"
+              className="inline-block px-6 sm:px-8 py-4 sm:py-3 bg-theme-primary hover:bg-theme-primary active:bg-theme-primary text-white font-semibold rounded-xl transition-colors min-h-[48px]"
+            >
+              Go to Admin Settings
+            </Link>
+          </div>
         ) : (
           <div className="text-center py-12 sm:py-16">
             <p className="text-xl sm:text-2xl text-gray-600 mb-4">No family members yet!</p>

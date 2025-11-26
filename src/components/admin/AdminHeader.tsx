@@ -1,12 +1,20 @@
-import { Link, useNavigate } from '@tanstack/react-router'
+import { Link, useRouter } from '@tanstack/react-router'
+import { useQueryClient } from '@tanstack/react-query'
 import { logout } from '../../server/auth'
 
-export function AdminHeader() {
-  const navigate = useNavigate()
+interface AdminHeaderProps {
+  username: string
+}
+
+export function AdminHeader({ username }: AdminHeaderProps) {
+  const router = useRouter()
+  const queryClient = useQueryClient()
 
   const handleLogout = async () => {
     await logout()
-    navigate({ to: '/login' })
+    queryClient.clear()
+    await router.invalidate()
+    router.navigate({ to: '/login' })
   }
 
   return (
@@ -37,6 +45,12 @@ export function AdminHeader() {
           </div>
 
           <div className="flex items-center gap-1.5 sm:gap-2">
+            <div className="hidden sm:flex items-center gap-2 px-3 py-2 bg-gray-100 rounded-xl mr-1">
+              <div className="w-7 h-7 rounded-full bg-gradient-to-br from-theme-primary to-theme-secondary flex items-center justify-center text-white text-sm font-bold">
+                {username.charAt(0).toUpperCase()}
+              </div>
+              <span className="text-sm font-medium text-gray-700">{username}</span>
+            </div>
             <Link
               to="/"
               className="flex items-center justify-center gap-2 p-2 sm:px-3 sm:py-2 rounded-xl bg-gray-100 hover:bg-gray-200 active:bg-gray-300 transition-colors min-h-[44px] min-w-[44px]"

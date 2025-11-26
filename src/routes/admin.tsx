@@ -1,5 +1,6 @@
-import { createFileRoute, redirect } from '@tanstack/react-router'
-import { useState, useRef, useEffect, type ReactNode } from 'react'
+import { createFileRoute, redirect, useRouteContext, useSearch, useNavigate } from '@tanstack/react-router'
+import { useState, useRef, useEffect, useCallback, type ReactNode } from 'react'
+import { z } from 'zod'
 import { checkAuth } from '../server/auth'
 import { getMembers } from '../server/members'
 import { getTimeslots } from '../server/timeslots'
@@ -13,7 +14,15 @@ import { StatisticsTab } from '../components/admin/StatisticsTab'
 import { SettingsTab } from '../components/admin/SettingsTab'
 import { SecurityTab } from '../components/admin/SecurityTab'
 
+const tabIds = ['todos', 'timeslots', 'members', 'stats', 'security', 'settings'] as const
+type TabId = (typeof tabIds)[number]
+
+const searchSchema = z.object({
+  tab: z.enum(tabIds).catch('todos'),
+})
+
 export const Route = createFileRoute('/admin')({
+  validateSearch: searchSchema,
   beforeLoad: async () => {
     const auth = await checkAuth()
     if (!auth.authenticated) {
@@ -43,8 +52,6 @@ export const Route = createFileRoute('/admin')({
   },
   component: AdminPanel,
 })
-
-type TabId = 'todos' | 'timeslots' | 'members' | 'stats' | 'security' | 'settings'
 
 const tabs: { id: TabId; label: string; shortLabel: string; icon: ReactNode }[] = [
   {
@@ -111,9 +118,15 @@ const tabs: { id: TabId; label: string; shortLabel: string; icon: ReactNode }[] 
 ]
 
 function AdminPanel() {
-  const [activeTab, setActiveTab] = useState<TabId>('todos')
+  const { username } = useRouteContext({ from: '/admin' }) as { username: string }
+  const { tab: activeTab } = useSearch({ from: '/admin' })
+  const navigate = useNavigate()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
+
+  const setActiveTab = useCallback((tabId: TabId) => {
+    navigate({ to: '/admin', search: { tab: tabId }, replace: true })
+  }, [navigate])
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -130,7 +143,7 @@ function AdminPanel() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-100 via-purple-100 to-pink-100">
-      <AdminHeader />
+      <AdminHeader username={username} />
 
       <div className="max-w-[1400px] mx-auto p-3 sm:p-6 lg:p-8">
         <div className="bg-white rounded-2xl shadow-2xl overflow-hidden">

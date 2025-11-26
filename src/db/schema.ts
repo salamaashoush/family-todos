@@ -23,10 +23,18 @@ export function initializeDatabase() {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       name TEXT NOT NULL,
       avatar TEXT,
+      is_parent INTEGER DEFAULT 0,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )
   `);
+
+  // Migration: Add is_parent column if it doesn't exist
+  try {
+    db.run(`ALTER TABLE members ADD COLUMN is_parent INTEGER DEFAULT 0`);
+  } catch {
+    // Column already exists
+  }
 
   db.run(`
     CREATE TABLE IF NOT EXISTS timeslots (

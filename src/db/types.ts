@@ -2,6 +2,7 @@ export type Member = {
   id: number;
   name: string;
   avatar: string | null;
+  is_parent: number;
   created_at: string;
   updated_at: string;
 };
