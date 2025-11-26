@@ -12,6 +12,7 @@ import { MemberFocusLayout } from '../components/layouts/MemberFocusLayout'
 import { TimeslotFocusLayout } from '../components/layouts/TimeslotFocusLayout'
 import { QuickCheckLayout } from '../components/layouts/QuickCheckLayout'
 import { FamilyDashboardLayout } from '../components/layouts/FamilyDashboardLayout'
+import { filterTimeslotsByDateString } from '../utils/timeslots'
 import type { RealtimeEvent } from '../server/realtime'
 import { getMembers } from '../server/members'
 import { getTimeslots } from '../server/timeslots'
@@ -56,8 +57,14 @@ function Home() {
   const stableCompletions = useMemo(() => completions || [], [completions])
   const { isTodoCompleted } = useIsTodoCompleted(stableCompletions)
 
+  // Filter timeslots based on selected date and recurrence settings
+  const filteredTimeslots = useMemo(() => {
+    if (!timeslots) return []
+    return filterTimeslotsByDateString(timeslots, selectedDate)
+  }, [timeslots, selectedDate])
+
   const { checkAndCelebrate } = useCompletionCelebration({
-    timeslots: timeslots || [],
+    timeslots: filteredTimeslots,
     todos: todos || [],
     isTodoCompleted,
   })
@@ -75,7 +82,7 @@ function Home() {
 
   const { layout, settings, currentTimeslotId, isHydrated } = useLayout()
 
-  useCurrentTimeslot(timeslots || [])
+  useCurrentTimeslot(filteredTimeslots)
 
   const handleRealtimeEvent = useCallback((event: RealtimeEvent) => {
     if (event.type === 'task_completed') {
@@ -96,7 +103,7 @@ function Home() {
 
   const layoutProps = {
     members: filteredMembers,
-    timeslots: timeslots || [],
+    timeslots: filteredTimeslots,
     todos: todos || [],
     completions: completions || [],
     isTodoCompleted,

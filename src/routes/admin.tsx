@@ -18,7 +18,7 @@ const tabIds = ['todos', 'timeslots', 'members', 'stats', 'security', 'settings'
 type TabId = (typeof tabIds)[number]
 
 const searchSchema = z.object({
-  tab: z.enum(tabIds).catch('todos'),
+  tab: z.enum(tabIds).optional().catch('todos'),
 })
 
 export const Route = createFileRoute('/admin')({
@@ -119,7 +119,8 @@ const tabs: { id: TabId; label: string; shortLabel: string; icon: ReactNode }[] 
 
 function AdminPanel() {
   const { username } = useRouteContext({ from: '/admin' }) as { username: string }
-  const { tab: activeTab } = useSearch({ from: '/admin' })
+  const { tab } = useSearch({ from: '/admin' })
+  const activeTab: TabId = tab || 'todos'
   const navigate = useNavigate()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)

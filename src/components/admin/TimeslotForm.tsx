@@ -23,6 +23,17 @@ const timeslotSchema = z.object({
     message: 'End time must be after start time',
     path: ['end_time'],
   }
+).refine(
+  (data) => {
+    if (data.recurrence_type === 'weekly') {
+      return data.recurrence_days.length > 0
+    }
+    return true
+  },
+  {
+    message: 'Select at least one day for weekly schedule',
+    path: ['recurrence_days'],
+  }
 )
 
 type TimeslotFormData = z.infer<typeof timeslotSchema>
@@ -110,6 +121,64 @@ export function TimeslotForm({ timeslot, onSubmit, onCancel }: TimeslotFormProps
           )}
         />
       </div>
+
+      <form.Subscribe
+        selector={(state) => state.values.recurrence_type}
+        children={(recurrenceType) =>
+          recurrenceType === 'weekly' ? (
+            <form.Field
+              name="recurrence_days"
+              children={(field) => {
+                const DAYS = [
+                  { value: 'Mon', label: 'Mon' },
+                  { value: 'Tue', label: 'Tue' },
+                  { value: 'Wed', label: 'Wed' },
+                  { value: 'Thu', label: 'Thu' },
+                  { value: 'Fri', label: 'Fri' },
+                  { value: 'Sat', label: 'Sat' },
+                  { value: 'Sun', label: 'Sun' },
+                ]
+                const selectedDays = field.state.value ? field.state.value.split(',').filter(Boolean) : []
+
+                const toggleDay = (day: string) => {
+                  const newDays = selectedDays.includes(day)
+                    ? selectedDays.filter((d) => d !== day)
+                    : [...selectedDays, day]
+                  // Sort days in week order
+                  const dayOrder = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+                  newDays.sort((a, b) => dayOrder.indexOf(a) - dayOrder.indexOf(b))
+                  field.handleChange(newDays.join(','))
+                }
+
+                return (
+                  <div>
+                    <label className="block text-sm font-bold text-gray-700 mb-3">Repeat on Days *</label>
+                    <div className="flex flex-wrap gap-2">
+                      {DAYS.map((day) => (
+                        <button
+                          key={day.value}
+                          type="button"
+                          onClick={() => toggleDay(day.value)}
+                          className={`px-3 py-2 rounded-lg font-semibold text-sm transition-all focus:outline-none focus:ring-2 focus:ring-theme-primary/50 ${
+                            selectedDays.includes(day.value)
+                              ? 'bg-theme-primary text-white'
+                              : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                          }`}
+                        >
+                          {day.label}
+                        </button>
+                      ))}
+                    </div>
+                    {selectedDays.length === 0 && (
+                      <p className="text-sm text-amber-600 mt-2">Select at least one day</p>
+                    )}
+                  </div>
+                )
+              }}
+            />
+          ) : null
+        }
+      />
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <form.Field

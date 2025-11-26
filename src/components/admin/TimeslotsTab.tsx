@@ -407,14 +407,31 @@ export function TimeslotsTab() {
                 </div>
                 <div className="min-w-0 flex-1">
                   <h3 className="font-bold text-gray-800">{timeslot.name}</h3>
-                  {timeslot.start_time && timeslot.end_time && (
-                    <p className="text-sm text-gray-500 mt-0.5 flex items-center gap-1">
-                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
-                      {timeslot.start_time} - {timeslot.end_time}
-                    </p>
-                  )}
+                  <div className="flex flex-wrap items-center gap-2 mt-0.5">
+                    {timeslot.start_time && timeslot.end_time && (
+                      <span className="text-sm text-gray-500 flex items-center gap-1">
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        {timeslot.start_time} - {timeslot.end_time}
+                      </span>
+                    )}
+                    {timeslot.recurrence_type === 'daily' && (
+                      <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-medium">
+                        Every day
+                      </span>
+                    )}
+                    {timeslot.recurrence_type === 'weekly' && timeslot.recurrence_days && (
+                      <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-medium">
+                        {timeslot.recurrence_days}
+                      </span>
+                    )}
+                    {timeslot.recurrence_type === 'none' && (
+                      <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full font-medium">
+                        One-time
+                      </span>
+                    )}
+                  </div>
                   {timeslot.description && (
                     <p className="text-sm text-gray-500 mt-1 line-clamp-1">{timeslot.description}</p>
                   )}
