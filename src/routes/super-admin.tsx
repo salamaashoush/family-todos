@@ -75,9 +75,9 @@ type StatusFilter = "all" | "pending" | "active" | "suspended" | "rejected";
 type UserType = {
   id: number;
   username: string;
-  email: string;
-  accountStatus: string;
-  createdAt: string;
+  email: string | null;
+  accountStatus: "pending" | "active" | "suspended" | "rejected";
+  createdAt: Date;
 };
 
 function SuperAdminDashboard() {

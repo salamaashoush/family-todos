@@ -26,7 +26,7 @@ export function EmojiInput({
 }: EmojiInputProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [pickerStyle, setPickerStyle] = useState<React.CSSProperties>({})
-  const triggerRef = useRef<HTMLButtonElement>(null)
+  const triggerRef = useRef<HTMLDivElement>(null)
   const pickerRef = useRef<HTMLDivElement>(null)
 
   const updatePosition = useCallback(() => {

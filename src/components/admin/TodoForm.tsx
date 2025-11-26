@@ -12,7 +12,7 @@ import { Button, Input, Textarea, FileInput, MultiSelect, EmojiInput, Alert } fr
 import { Modal } from '../shared/Modal'
 import { TimeslotForm } from './TimeslotForm'
 import { MemberForm } from './MemberForm'
-import type { Todo, Timeslot, Member } from '../../types'
+import type { Todo, Timeslot } from '../../types'
 
 const todoSchema = z.object({
   title: z.string().min(1, 'Title is required').max(200, 'Title must be less than 200 characters'),

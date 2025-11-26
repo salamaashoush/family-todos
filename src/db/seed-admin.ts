@@ -1,5 +1,5 @@
 import { drizzle } from "drizzle-orm/bun-sql";
-import { eq } from "drizzle-orm";
+import { eq, sql as drizzleSql } from "drizzle-orm";
 import { SQL } from "bun";
 import { adminUsers, userFamilies } from "./schema/auth";
 import { families } from "./schema/families";
@@ -7,18 +7,29 @@ import { families } from "./schema/families";
 const MAX_RETRIES = 10;
 const RETRY_DELAY_MS = 3000;
 
+function generateShareToken(): string {
+  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+  let result = "";
+  for (let i = 0; i < 32; i++) {
+    result += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return result;
+}
+
 async function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-async function connectWithRetry(databaseUrl: string, retries = MAX_RETRIES): Promise<SQL> {
+async function connectWithRetry(databaseUrl: string, retries = MAX_RETRIES) {
   for (let attempt = 1; attempt <= retries; attempt++) {
     try {
       console.log(`[seed-admin] Connecting to database (attempt ${attempt}/${retries})...`);
-      const sql = new SQL(databaseUrl);
-      await sql.query("SELECT 1");
+      const client = new SQL(databaseUrl);
+      const db = drizzle({ client });
+      // Test the connection with drizzle
+      await db.execute(drizzleSql`SELECT 1`);
       console.log("[seed-admin] Database connection established!");
-      return sql;
+      return { client, db };
     } catch (error) {
       if (attempt === retries) {
         throw error;
@@ -51,8 +62,7 @@ async function seedDefaultAdmin() {
 
   console.log(`[seed-admin] Creating/updating admin user: ${adminUsername}`);
 
-  const sql = await connectWithRetry(databaseUrl);
-  const db = drizzle({ client: sql });
+  const { client, db } = await connectWithRetry(databaseUrl);
 
   // Hash the password
   const passwordHash = await Bun.password.hash(adminPassword, {
@@ -102,6 +112,7 @@ async function seedDefaultAdmin() {
         .values({
           name: "My Family",
           slug: "my-family",
+          shareToken: generateShareToken(),
           isOnboarded: true,
         })
         .returning({ id: families.id });
@@ -131,7 +142,7 @@ async function seedDefaultAdmin() {
     console.log("[seed-admin] Super admin created successfully");
   }
 
-  sql.close();
+  client.close();
   console.log("[seed-admin] Done!");
   process.exit(0);
 }
