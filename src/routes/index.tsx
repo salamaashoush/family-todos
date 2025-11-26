@@ -37,7 +37,7 @@ function LandingPage() {
 
             <div className="flex items-center gap-2">
               <a
-                href="https://github.com/sashoush/family-todos"
+                href="https://github.com/salamaashoush/family-todos"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="p-2 text-gray-500 hover:text-gray-700 transition-colors"
@@ -140,7 +140,7 @@ function LandingPage() {
             <span>Family Todos - Open source task management</span>
             <div className="flex items-center gap-6">
               <a
-                href="https://github.com/sashoush/family-todos"
+                href="https://github.com/salamaashoush/family-todos"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="hover:text-gray-700 transition-colors flex items-center gap-1.5"
