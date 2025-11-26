@@ -39,7 +39,7 @@ function AccordionTimeslot({
 
   return (
     <div
-      className={`rounded-2xl overflow-hidden transition-all ${
+      className={`rounded-2xl transition-all ${
         isCurrentTimeslot ? 'ring-3 ring-theme-accent ring-offset-2' : ''
       } ${allCompleted ? 'bg-green-50' : 'bg-white'}`}
     >
@@ -57,7 +57,7 @@ function AccordionTimeslot({
       />
 
       {isExpanded && (
-        <div className="p-4 space-y-3">
+        <div className="p-4 space-y-3 rounded-b-2xl">
           {timeslotTodos.length === 0 ? (
             <p className="text-gray-400 text-center py-4">No tasks for this timeslot</p>
           ) : (
@@ -68,7 +68,6 @@ function AccordionTimeslot({
                 isCompleted={isTodoCompleted(todo.id, timeslot.id, memberId)}
                 onToggle={() => handleToggle(todo.id)}
                 size="md"
-                variant="full"
               />
             ))
           )}
@@ -154,14 +153,14 @@ export function QuickCheckLayout({
       onTouchEnd={handleTouchEnd}
       className="min-h-[calc(100vh-200px)]"
     >
-      <div className="flex gap-2 overflow-x-auto pb-4 px-1 snap-x snap-mandatory scrollbar-hide">
+      <div className="flex gap-2 overflow-x-auto p-2 snap-x snap-mandatory scrollbar-hide">
         {members.map((member, index) => {
           const isSelected = index === selectedMemberIndex
           return (
             <button
               key={member.id}
               onClick={() => setSelectedMemberIndex(index)}
-              className={`flex-shrink-0 snap-start flex flex-col items-center gap-1 p-2 rounded-xl transition-all min-w-[72px] ${
+              className={`flex-shrink-0 snap-start flex flex-col items-center gap-1 p-2 rounded-xl transition-all min-w-[72px] focus:outline-none focus-visible:ring-2 focus-visible:ring-theme-primary focus-visible:ring-inset ${
                 isSelected
                   ? 'bg-gradient-to-b from-theme-primary to-theme-secondary scale-105'
                   : 'bg-white/50 hover:bg-white/80'

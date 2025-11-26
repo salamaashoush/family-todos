@@ -1,16 +1,14 @@
 import { useCallback, useRef } from 'react'
 import confetti from 'canvas-confetti'
-import type { Todo, Timeslot, Member } from '../types'
+import type { Todo, Timeslot } from '../types'
 
 interface UseCompletionCelebrationOptions {
-  members: Member[]
   timeslots: Timeslot[]
   todos: Todo[]
   isTodoCompleted: (todoId: number, timeslotId: number, memberId: number) => boolean
 }
 
 export function useCompletionCelebration({
-  members,
   timeslots,
   todos,
   isTodoCompleted,

@@ -61,8 +61,7 @@ function CurrentTimeslotCard({
               todo={todo}
               isCompleted={isTodoCompleted(todo.id, timeslot.id, member.id)}
               onToggle={() => handleToggle(todo.id)}
-              size="sm"
-              variant="compact"
+              size="md"
             />
           ))}
         </div>
@@ -109,7 +108,7 @@ function DaySummaryCard({ member, timeslots, todos, isTodoCompleted }: DaySummar
           name={member.name}
           avatar={member.avatar}
           size="md"
-          borderColor={allCompleted ? 'primary' : 'gray'}
+          borderColor={allCompleted ? 'green' : 'gray'}
           className={allCompleted ? 'text-green-600' : 'text-theme-primary'}
         />
         <div className="flex-1 min-w-0">
@@ -152,9 +151,23 @@ export function FamilyDashboardLayout({
       })()
     : null
 
+  const emptyTimeslot: Timeslot = {
+    id: 0,
+    name: '',
+    description: null,
+    start_time: null,
+    end_time: null,
+    recurrence_type: 'none',
+    recurrence_days: null,
+    is_active: 0,
+    created_at: '',
+    updated_at: '',
+    member_ids: [],
+  }
+
   const currentTimeslotMembers = useTimeslotMembers(
     members,
-    currentTimeslot || { id: 0, name: '', member_ids: [] }
+    currentTimeslot || emptyTimeslot
   )
 
   const overallDayProgress = useOverallDayProgress(members, timeslots, todos, isTodoCompleted)

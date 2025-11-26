@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect } from 'react'
 import { useTimeslotCelebration } from '../hooks/useCelebration'
 import { useTimeslotProgress } from '../hooks/useCompletionProgress'
-import { TodoItem } from './TodoItem'
+import { TodoCheckbox } from './shared'
 import type { TimeslotCardProps } from '../types'
 
 export function TimeslotCard({
@@ -68,12 +68,13 @@ export function TimeslotCard({
           <div className="text-center text-gray-400 py-4 text-sm">No tasks yet</div>
         )}
         {todos.map((todo) => (
-          <TodoItem
+          <TodoCheckbox
             key={todo.id}
             todo={todo}
-            memberId={memberId}
             isCompleted={isTodoCompleted(todo.id, timeslot.id, memberId)}
-            onToggle={(isCompleted) => handleToggle(todo.id, isCompleted)}
+            onToggle={() => handleToggle(todo.id, isTodoCompleted(todo.id, timeslot.id, memberId))}
+            size="lg"
+            showDetails
           />
         ))}
       </div>

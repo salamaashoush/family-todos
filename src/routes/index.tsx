@@ -57,7 +57,6 @@ function Home() {
   const { isTodoCompleted } = useIsTodoCompleted(stableCompletions)
 
   const { checkAndCelebrate } = useCompletionCelebration({
-    members: members || [],
     timeslots: timeslots || [],
     todos: todos || [],
     isTodoCompleted,
@@ -148,7 +147,7 @@ function Home() {
 
       <Link
         to="/stats"
-        className="fixed bottom-6 left-6 sm:bottom-8 sm:left-8 bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 active:from-yellow-700 active:to-orange-700 text-white p-4 sm:p-5 rounded-full shadow-2xl hover:shadow-yellow-500/50 transition-all transform hover:scale-110 active:scale-95 z-50 group min-w-[56px] min-h-[56px] sm:min-w-[64px] sm:min-h-[64px] flex items-center justify-center"
+        className="fixed bottom-6 left-6 sm:bottom-8 sm:left-8 bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 active:from-yellow-700 active:to-orange-700 text-white p-4 sm:p-5 rounded-full shadow-2xl hover:shadow-yellow-500/50 transition-all transform hover:scale-110 active:scale-95 z-50 group min-w-[56px] min-h-[56px] sm:min-w-[64px] sm:min-h-[64px] flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-yellow-500/50 focus:ring-offset-2"
         aria-label="Stats & Achievements"
       >
         <svg
@@ -172,7 +171,7 @@ function Home() {
 
       <Link
         to="/admin"
-        className="fixed bottom-6 right-6 sm:bottom-8 sm:right-8 bg-gradient-to-r from-theme-primary to-theme-secondary hover:from-theme-primary hover:to-pink-700 active:from-theme-primary active:to-pink-800 text-white p-4 sm:p-5 rounded-full shadow-2xl hover:shadow-theme-primary/50 transition-all transform hover:scale-110 active:scale-95 z-50 group min-w-[56px] min-h-[56px] sm:min-w-[64px] sm:min-h-[64px] flex items-center justify-center"
+        className="fixed bottom-6 right-6 sm:bottom-8 sm:right-8 bg-gradient-to-r from-theme-primary to-theme-secondary hover:from-theme-primary hover:to-pink-700 active:from-theme-primary active:to-pink-800 text-white p-4 sm:p-5 rounded-full shadow-2xl hover:shadow-theme-primary/50 transition-all transform hover:scale-110 active:scale-95 z-50 group min-w-[56px] min-h-[56px] sm:min-w-[64px] sm:min-h-[64px] flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-theme-primary/50 focus:ring-offset-2"
         aria-label="Admin Panel"
       >
         <svg

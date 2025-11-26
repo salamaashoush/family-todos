@@ -75,7 +75,7 @@ function LoginPage() {
         <div className="mt-6 text-center">
           <button
             onClick={() => router.navigate({ to: '/' })}
-            className="text-theme-primary hover:text-theme-secondary font-semibold transition-colors"
+            className="text-theme-primary hover:text-theme-secondary font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-theme-primary/50 rounded-lg px-2 py-1"
             type="button"
           >
             Back to Family Board

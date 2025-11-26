@@ -3,7 +3,7 @@ interface MemberAvatarProps {
   avatar?: string | null
   size?: 'sm' | 'md' | 'lg' | 'xl'
   className?: string
-  borderColor?: 'white' | 'primary' | 'gray'
+  borderColor?: 'white' | 'primary' | 'gray' | 'green'
 }
 
 const sizeClasses = {
@@ -17,6 +17,7 @@ const borderClasses = {
   white: 'border-white',
   primary: 'border-theme-primary',
   gray: 'border-gray-200',
+  green: 'border-green-500',
 }
 
 export function MemberAvatar({ name, avatar, size = 'md', className = '', borderColor = 'white' }: MemberAvatarProps) {

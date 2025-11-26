@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { useForm } from '@tanstack/react-form'
 import { z } from 'zod'
 import { useMembers } from '../../hooks/useQueries'
+import { getErrorMessage } from '../../utils/form'
 import { Button, Input, Textarea, Select } from '../shared'
 import type { Timeslot, Member } from '../../types'
 
@@ -88,9 +89,7 @@ export function TimeslotForm({ timeslot, onSubmit, onCancel }: TimeslotFormProps
               value={field.state.value}
               onChange={(e) => field.handleChange(e.target.value)}
               onBlur={field.handleBlur}
-              error={field.state.meta.isTouched && field.state.meta.errors.length > 0
-                ? field.state.meta.errors.join(', ')
-                : undefined}
+              error={field.state.meta.isTouched ? getErrorMessage(field.state.meta.errors) : undefined}
             />
           )}
         />
@@ -148,9 +147,7 @@ export function TimeslotForm({ timeslot, onSubmit, onCancel }: TimeslotFormProps
             onChange={(e) => field.handleChange(e.target.value)}
             onBlur={field.handleBlur}
             rows={2}
-            error={field.state.meta.isTouched && field.state.meta.errors.length > 0
-              ? field.state.meta.errors.join(', ')
-              : undefined}
+            error={field.state.meta.isTouched ? getErrorMessage(field.state.meta.errors) : undefined}
           />
         )}
       />
@@ -176,7 +173,7 @@ export function TimeslotForm({ timeslot, onSubmit, onCancel }: TimeslotFormProps
                         field.handleChange([...current, member.id])
                       }
                     }}
-                    className={`px-4 sm:px-5 py-2.5 sm:py-3 rounded-xl font-semibold transition-all transform hover:scale-105 active:scale-95 ${
+                    className={`px-4 sm:px-5 py-2.5 sm:py-3 rounded-xl font-semibold transition-all transform hover:scale-105 active:scale-95 focus:outline-none focus:ring-2 focus:ring-theme-primary/50 focus:ring-offset-2 ${
                       field.state.value.includes(member.id)
                         ? 'bg-gradient-to-r from-theme-primary to-theme-secondary text-white shadow-lg'
                         : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
@@ -187,8 +184,8 @@ export function TimeslotForm({ timeslot, onSubmit, onCancel }: TimeslotFormProps
                 ))}
               </div>
             )}
-            {field.state.meta.isTouched && field.state.meta.errors.length > 0 && (
-              <p className="text-sm text-red-600 mt-2">{field.state.meta.errors.join(', ')}</p>
+            {field.state.meta.isTouched && getErrorMessage(field.state.meta.errors) && (
+              <p className="text-sm text-red-600 mt-2">{getErrorMessage(field.state.meta.errors)}</p>
             )}
           </div>
         )}

@@ -47,8 +47,7 @@ function MemberCard({ member, todos, timeslotId, isTodoCompleted, onToggleTodo }
             todo={todo}
             isCompleted={isTodoCompleted(todo.id, timeslotId, member.id)}
             onToggle={() => handleToggle(todo.id)}
-            size="sm"
-            variant="compact"
+            size="md"
           />
         ))}
 
@@ -88,7 +87,7 @@ function TimeslotRow({
 
   return (
     <div
-      className={`rounded-2xl sm:rounded-3xl overflow-hidden transition-all ${
+      className={`rounded-2xl sm:rounded-3xl transition-all ${
         isCurrentTimeslot
           ? 'ring-4 ring-theme-accent ring-offset-2'
           : allCompleted
@@ -109,7 +108,7 @@ function TimeslotRow({
       />
 
       {isExpanded && (
-        <div className="bg-gray-100 p-4 sm:p-6">
+        <div className="bg-gray-100 p-4 sm:p-6 rounded-b-2xl sm:rounded-b-3xl">
           <div className="flex gap-4 overflow-x-auto pb-4 -mb-4 snap-x snap-mandatory">
             {timeslotMembers.map((member) => (
               <div key={member.id} className="snap-start">

@@ -24,13 +24,6 @@ export interface TimeslotCardProps {
   completedTimeslotsCount: number
 }
 
-export interface TodoItemProps {
-  todo: Todo
-  memberId: number
-  isCompleted: boolean
-  onToggle: (isCompleted: boolean) => void
-}
-
 export interface StatsDisplayProps {
   stats: MemberStats
   achievements: (Achievement & { earned_at: string | null })[]

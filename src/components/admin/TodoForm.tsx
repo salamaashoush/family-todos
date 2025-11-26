@@ -4,6 +4,7 @@ import { z } from 'zod'
 import { useTimeslots } from '../../hooks/useQueries'
 import { useImageUpload } from '../../hooks/useImageUpload'
 import { UPLOAD_CONFIG } from '../../constants'
+import { getErrorMessage } from '../../utils/form'
 import { showToast } from '../Toast'
 import { Button, Input, Textarea, FileInput } from '../shared'
 import type { Todo, Timeslot } from '../../types'
@@ -100,9 +101,7 @@ export function TodoForm({ todo, onSubmit, onCancel }: TodoFormProps) {
               value={field.state.value}
               onChange={(e) => field.handleChange(e.target.value)}
               onBlur={field.handleBlur}
-              error={field.state.meta.isTouched && field.state.meta.errors.length > 0
-                ? field.state.meta.errors.join(', ')
-                : undefined}
+              error={field.state.meta.isTouched ? getErrorMessage(field.state.meta.errors) : undefined}
             />
           )}
         />
@@ -118,9 +117,7 @@ export function TodoForm({ todo, onSubmit, onCancel }: TodoFormProps) {
               onChange={(e) => field.handleChange(e.target.value)}
               onBlur={field.handleBlur}
               className="text-2xl"
-              error={field.state.meta.isTouched && field.state.meta.errors.length > 0
-                ? field.state.meta.errors.join(', ')
-                : undefined}
+              error={field.state.meta.isTouched ? getErrorMessage(field.state.meta.errors) : undefined}
             />
           )}
         />
@@ -136,9 +133,7 @@ export function TodoForm({ todo, onSubmit, onCancel }: TodoFormProps) {
             onChange={(e) => field.handleChange(e.target.value)}
             onBlur={field.handleBlur}
             rows={2}
-            error={field.state.meta.isTouched && field.state.meta.errors.length > 0
-              ? field.state.meta.errors.join(', ')
-              : undefined}
+            error={field.state.meta.isTouched ? getErrorMessage(field.state.meta.errors) : undefined}
           />
         )}
       />
@@ -189,7 +184,7 @@ export function TodoForm({ todo, onSubmit, onCancel }: TodoFormProps) {
                       field.handleChange([...current, timeslot.id])
                     }
                   }}
-                  className={`p-3 sm:p-4 rounded-xl font-semibold text-left transition-all transform hover:scale-105 active:scale-95 ${
+                  className={`p-3 sm:p-4 rounded-xl font-semibold text-left transition-all transform hover:scale-105 active:scale-95 focus:outline-none focus:ring-2 focus:ring-theme-primary/50 focus:ring-offset-2 ${
                     field.state.value.includes(timeslot.id)
                       ? 'bg-gradient-to-r from-theme-primary to-theme-secondary text-white shadow-lg border-2 border-theme-primary'
                       : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border-2 border-gray-300'
@@ -205,8 +200,8 @@ export function TodoForm({ todo, onSubmit, onCancel }: TodoFormProps) {
                 ))}
               </div>
             )}
-            {field.state.meta.isTouched && field.state.meta.errors.length > 0 && (
-              <p className="text-sm text-red-600 mt-2">{field.state.meta.errors.join(', ')}</p>
+            {field.state.meta.isTouched && getErrorMessage(field.state.meta.errors) && (
+              <p className="text-sm text-red-600 mt-2">{getErrorMessage(field.state.meta.errors)}</p>
             )}
           </div>
         )}

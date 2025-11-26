@@ -36,7 +36,7 @@ export function ThemeSwitcher() {
     <div className="relative" ref={menuRef}>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center justify-center gap-2 p-2 sm:px-3 sm:py-2 rounded-xl bg-gray-100 hover:bg-gray-200 active:bg-gray-300 transition-colors min-h-[44px] min-w-[44px]"
+        className="flex items-center justify-center gap-2 p-2 sm:px-3 sm:py-2 rounded-xl bg-gray-100 hover:bg-gray-200 active:bg-gray-300 transition-colors min-h-[44px] min-w-[44px] focus:outline-none focus:ring-2 focus:ring-theme-primary/50 focus:ring-offset-2"
         aria-label="Change theme"
         aria-expanded={isOpen}
       >
@@ -73,7 +73,7 @@ export function ThemeSwitcher() {
                   setTheme(t.id)
                   setIsOpen(false)
                 }}
-                className={`w-full flex items-center gap-3 p-3 rounded-lg transition-colors text-left ${
+                className={`w-full flex items-center gap-3 p-3 rounded-lg transition-colors text-left focus:outline-none focus:ring-2 focus:ring-theme-primary/50 focus:ring-inset ${
                   mounted && theme === t.id
                     ? 'bg-gray-100'
                     : 'hover:bg-gray-50'

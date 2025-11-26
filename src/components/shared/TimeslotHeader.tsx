@@ -71,12 +71,12 @@ export function TimeslotHeader({
     return (
       <button
         onClick={onToggle}
-        className={`w-full p-4 flex items-center justify-between gap-3 transition-colors ${bgClass}`}
+        className={`w-full p-4 flex items-center justify-between gap-3 transition-colors rounded-t-2xl focus:outline-none focus:ring-2 focus:ring-white/50 focus:ring-inset ${bgClass}`}
       >
         {content}
       </button>
     )
   }
 
-  return <div className={`p-4 flex items-center justify-between gap-3 ${bgClass}`}>{content}</div>
+  return <div className={`p-4 flex items-center justify-between gap-3 rounded-t-2xl ${bgClass}`}>{content}</div>
 }

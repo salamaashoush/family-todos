@@ -1,5 +1,5 @@
 import { createFileRoute, redirect } from '@tanstack/react-router'
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, type ReactNode } from 'react'
 import { checkAuth } from '../server/auth'
 import { getMembers } from '../server/members'
 import { getTimeslots } from '../server/timeslots'
@@ -45,7 +45,7 @@ export const Route = createFileRoute('/admin')({
 
 type TabId = 'todos' | 'timeslots' | 'members' | 'stats' | 'settings'
 
-const tabs: { id: TabId; label: string; shortLabel: string; icon: JSX.Element }[] = [
+const tabs: { id: TabId; label: string; shortLabel: string; icon: ReactNode }[] = [
   {
     id: 'todos',
     label: 'Tasks',

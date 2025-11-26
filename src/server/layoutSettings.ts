@@ -50,7 +50,7 @@ export const getLayoutSettings = createServerFn({ method: 'GET' }).handler(async
 })
 
 export const updateLayoutSettings = createServerFn({ method: 'POST' })
-  .validator(LayoutSettingsSchema)
+  .inputValidator(LayoutSettingsSchema)
   .handler(async ({ data }) => {
     const updates: { key: string; value: string }[] = []
 

@@ -13,7 +13,7 @@ export function Header({ selectedDate, onDateChange }: HeaderProps) {
     <header className="bg-white/95 backdrop-blur-md shadow-lg sticky top-0 z-40 border-b-2 border-theme-primary/20">
       <div className="max-w-[1920px] mx-auto px-3 sm:px-4 lg:px-6">
         <div className="flex items-center justify-between h-14 sm:h-16">
-          <Link to="/" className="flex items-center gap-2 sm:gap-3 min-w-0">
+          <Link to="/" className="flex items-center gap-2 sm:gap-3 min-w-0 rounded-lg focus:outline-none focus:ring-2 focus:ring-theme-primary/50 focus:ring-offset-2">
             <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-br from-theme-primary to-theme-secondary flex items-center justify-center flex-shrink-0 shadow-md">
               <svg
                 xmlns="http://www.w3.org/2000/svg"

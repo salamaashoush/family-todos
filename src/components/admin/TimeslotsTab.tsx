@@ -425,7 +425,7 @@ export function TimeslotsTab() {
                         return member ? (
                           <span
                             key={id}
-                            className="inline-block text-xs bg-purple-100 text-theme-primary px-2 py-0.5 rounded-full font-medium"
+                            className="inline-block text-xs bg-theme-primary/10 text-theme-primary px-2 py-0.5 rounded-full font-medium"
                           >
                             {member.name}
                           </span>

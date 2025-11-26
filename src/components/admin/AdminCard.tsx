@@ -32,7 +32,7 @@ export function AdminCard({
               e.stopPropagation()
               onSelect()
             }}
-            className={`flex-shrink-0 w-7 h-7 rounded-lg border-2 flex items-center justify-center transition-all mt-0.5 ${
+            className={`flex-shrink-0 w-7 h-7 rounded-lg border-2 flex items-center justify-center transition-all mt-0.5 focus:outline-none focus:ring-2 focus:ring-theme-primary/50 focus:ring-offset-2 ${
               isSelected
                 ? 'bg-theme-primary border-theme-primary text-white'
                 : 'border-gray-300 hover:border-theme-primary hover:bg-theme-primary/5'
@@ -53,7 +53,7 @@ export function AdminCard({
               e.stopPropagation()
               onEdit()
             }}
-            className="p-2.5 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+            className="p-2.5 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-theme-primary/50 focus:ring-offset-2"
             aria-label="Edit"
           >
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -70,7 +70,7 @@ export function AdminCard({
               e.stopPropagation()
               onDelete()
             }}
-            className="p-2.5 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+            className="p-2.5 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-theme-primary/50 focus:ring-offset-2"
             aria-label="Delete"
           >
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">

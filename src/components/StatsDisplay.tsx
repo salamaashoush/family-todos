@@ -133,7 +133,7 @@ export function StatsDisplay({ stats, achievements }: StatsDisplayProps) {
       <div className="mt-3 pt-3 border-t-2 border-yellow-200">
         <button
           onClick={() => setShowWeeklyView(!showWeeklyView)}
-          className="w-full bg-white rounded-lg p-2 flex items-center justify-between border-2 border-theme-primary hover:border-theme-primary transition-all"
+          className="w-full bg-white rounded-lg p-2 flex items-center justify-between border-2 border-theme-primary hover:border-theme-primary transition-all focus:outline-none focus:ring-2 focus:ring-theme-primary/50 focus:ring-offset-2"
         >
           <span className="text-sm font-bold text-gray-700">Weekly Progress</span>
           <svg

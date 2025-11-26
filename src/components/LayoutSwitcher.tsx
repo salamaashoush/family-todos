@@ -1,8 +1,8 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, type ReactNode } from 'react'
 import { useLayout } from '../contexts/LayoutContext'
 import { layouts, type LayoutId } from '../config/layouts'
 
-const layoutIcons: Record<LayoutId, JSX.Element> = {
+const layoutIcons: Record<LayoutId, ReactNode> = {
   'member-focus': (
     <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
@@ -56,7 +56,7 @@ export function LayoutSwitcher() {
     <div className="relative" ref={menuRef}>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center justify-center gap-2 p-2 sm:px-3 sm:py-2 rounded-xl bg-gray-100 hover:bg-gray-200 active:bg-gray-300 transition-colors min-h-[44px] min-w-[44px]"
+        className="flex items-center justify-center gap-2 p-2 sm:px-3 sm:py-2 rounded-xl bg-gray-100 hover:bg-gray-200 active:bg-gray-300 transition-colors min-h-[44px] min-w-[44px] focus:outline-none focus:ring-2 focus:ring-theme-primary/50 focus:ring-offset-2"
         aria-label="Switch layout"
         aria-expanded={isOpen}
       >
@@ -85,7 +85,7 @@ export function LayoutSwitcher() {
                   setLayout(id)
                   setIsOpen(false)
                 }}
-                className={`w-full flex items-start gap-3 p-3 rounded-lg transition-colors text-left ${
+                className={`w-full flex items-start gap-3 p-3 rounded-lg transition-colors text-left focus:outline-none focus:ring-2 focus:ring-theme-primary/50 focus:ring-inset ${
                   layout === id
                     ? 'bg-gray-100'
                     : 'hover:bg-gray-50'

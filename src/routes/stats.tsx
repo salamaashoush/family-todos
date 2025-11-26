@@ -5,7 +5,7 @@ import { useLevelUpCelebration } from '../hooks/useCelebration'
 import { MemberAvatar } from '../components/shared'
 import { LEVEL_PROGRESS, WEEK_DAYS } from '../constants'
 import { getMembers } from '../server/members'
-import type { Member, MemberStats, Achievement } from '../types'
+import type { MemberStats, Achievement } from '../types'
 
 export const Route = createFileRoute('/stats')({
   loader: async ({ context: { queryClient } }) => {
@@ -18,12 +18,11 @@ export const Route = createFileRoute('/stats')({
 })
 
 interface MemberStatsViewProps {
-  member: Member
   stats: MemberStats
   achievements: (Achievement & { earned_at: string | null })[]
 }
 
-function MemberStatsView({ member, stats, achievements }: MemberStatsViewProps) {
+function MemberStatsView({ stats, achievements }: MemberStatsViewProps) {
   const earnedAchievements = achievements.filter((a) => a.earned_at)
   const nextAchievements = achievements.filter((a) => !a.earned_at).slice(0, 3)
   const levelProgress = ((stats.total_stars % LEVEL_PROGRESS.STARS_PER_LEVEL) / LEVEL_PROGRESS.STARS_PER_LEVEL) * 100
@@ -201,7 +200,7 @@ function StatsPage() {
           <div className="flex items-center gap-3">
             <Link
               to="/"
-              className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
+              className="p-2 rounded-lg hover:bg-gray-100 transition-colors focus:outline-none focus:ring-2 focus:ring-theme-primary/50 focus:ring-offset-2"
               aria-label="Back to Home"
             >
               <svg
@@ -230,14 +229,14 @@ function StatsPage() {
           </div>
         ) : members && members.length > 0 ? (
           <>
-            <div className="flex gap-3 overflow-x-auto pb-4 mb-6">
+            <div className="flex gap-3 overflow-x-auto p-2 mb-4">
               {members.map((member) => {
                 const isSelected = member.id === (selectedMember?.id ?? members[0]?.id)
                 return (
                   <button
                     key={member.id}
                     onClick={() => setSelectedMemberId(member.id)}
-                    className={`flex-shrink-0 flex flex-col items-center gap-2 p-3 rounded-xl transition-all min-w-[80px] ${
+                    className={`flex-shrink-0 flex flex-col items-center gap-2 p-3 rounded-xl transition-all min-w-[80px] focus:outline-none focus-visible:ring-2 focus-visible:ring-theme-primary focus-visible:ring-inset ${
                       isSelected
                         ? 'bg-gradient-to-b from-theme-primary to-theme-secondary scale-105 shadow-lg'
                         : 'bg-white hover:bg-gray-50 shadow'
@@ -269,7 +268,7 @@ function StatsPage() {
                 ))}
               </div>
             ) : stats && achievements && selectedMember ? (
-              <MemberStatsView member={selectedMember} stats={stats} achievements={achievements} />
+              <MemberStatsView stats={stats} achievements={achievements} />
             ) : (
               <div className="text-center py-12 text-gray-500">No stats available</div>
             )}

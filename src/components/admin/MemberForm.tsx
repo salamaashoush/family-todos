@@ -3,6 +3,7 @@ import { useForm } from '@tanstack/react-form'
 import { z } from 'zod'
 import { useImageUpload } from '../../hooks/useImageUpload'
 import { UPLOAD_CONFIG } from '../../constants'
+import { getErrorMessage } from '../../utils/form'
 import { showToast } from '../Toast'
 import { Button, Input, Checkbox, FileInput } from '../shared'
 import type { Member } from '../../types'
@@ -88,9 +89,7 @@ export function MemberForm({ member, onSubmit, onCancel }: MemberFormProps) {
             value={field.state.value}
             onChange={(e) => field.handleChange(e.target.value)}
             onBlur={field.handleBlur}
-            error={field.state.meta.isTouched && field.state.meta.errors.length > 0
-              ? field.state.meta.errors.join(', ')
-              : undefined}
+            error={field.state.meta.isTouched ? getErrorMessage(field.state.meta.errors) : undefined}
           />
         )}
       />

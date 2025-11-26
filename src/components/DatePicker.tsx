@@ -45,7 +45,7 @@ export function DatePicker({ selectedDate, onDateChange }: DatePickerProps) {
     <div className="relative flex items-center">
       <button
         onClick={goToPrevDay}
-        className="p-2 rounded-l-xl bg-gray-100 hover:bg-gray-200 active:bg-gray-300 transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center border-r border-gray-200"
+        className="p-2 rounded-l-xl bg-gray-100 hover:bg-gray-200 active:bg-gray-300 transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center border-r border-gray-200 focus:outline-none focus:ring-2 focus:ring-theme-primary/50 focus:ring-inset"
         aria-label="Previous day"
       >
         <svg className="w-4 h-4 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -55,7 +55,7 @@ export function DatePicker({ selectedDate, onDateChange }: DatePickerProps) {
 
       <button
         onClick={openDatePicker}
-        className="flex items-center gap-2 px-3 py-2 bg-gray-100 hover:bg-gray-200 active:bg-gray-300 transition-colors min-h-[44px]"
+        className="flex items-center gap-2 px-3 py-2 bg-gray-100 hover:bg-gray-200 active:bg-gray-300 transition-colors min-h-[44px] focus:outline-none focus:ring-2 focus:ring-theme-primary/50 focus:ring-inset"
         aria-label="Select date"
       >
         <svg className="w-4 h-4 text-gray-600 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -71,7 +71,7 @@ export function DatePicker({ selectedDate, onDateChange }: DatePickerProps) {
 
       <button
         onClick={goToNextDay}
-        className="p-2 rounded-r-xl bg-gray-100 hover:bg-gray-200 active:bg-gray-300 transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center border-l border-gray-200"
+        className="p-2 rounded-r-xl bg-gray-100 hover:bg-gray-200 active:bg-gray-300 transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center border-l border-gray-200 focus:outline-none focus:ring-2 focus:ring-theme-primary/50 focus:ring-inset"
         aria-label="Next day"
       >
         <svg className="w-4 h-4 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
