@@ -1,4 +1,4 @@
-import type { Member, Timeslot, Todo, TodoCompletion, MemberStats, Achievement, LayoutSettingRow } from '../db/schema'
+import type { Member, Timeslot, Todo, TodoCompletion, MemberStats, Achievement, LayoutSettingRow } from '../db/types'
 
 export type { Member, Timeslot, Todo, TodoCompletion, MemberStats, Achievement, LayoutSettingRow }
 

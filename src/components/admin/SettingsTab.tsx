@@ -48,13 +48,15 @@ export function SettingsTab() {
   )
 
   return (
-    <div className="space-y-8">
-      <div>
-        <h2 className="text-2xl font-bold text-gray-800 mb-2">Layout Settings</h2>
-        <p className="text-gray-600">Configure how the app displays on different devices.</p>
+    <div className="space-y-4">
+      {/* Header */}
+      <div className="flex flex-col gap-4">
+        <div className="flex items-center justify-between">
+          <h2 className="text-xl sm:text-2xl font-bold text-gray-800">Layout Settings</h2>
+        </div>
       </div>
 
-      <div className="bg-gray-50 rounded-xl p-6 space-y-6">
+      <div className="bg-white border-2 border-gray-200 rounded-xl p-4 sm:p-6 space-y-6">
         <h3 className="text-lg font-bold text-gray-800">Auto-Switch Options</h3>
 
         <div className="flex items-center justify-between">
@@ -98,7 +100,7 @@ export function SettingsTab() {
         </div>
       </div>
 
-      <div className="bg-gray-50 rounded-xl p-6 space-y-6">
+      <div className="bg-white border-2 border-gray-200 rounded-xl p-4 sm:p-6 space-y-6">
         <h3 className="text-lg font-bold text-gray-800">Default Layout</h3>
         <p className="text-sm text-gray-600">Used when auto-switch is disabled</p>
 
@@ -114,7 +116,7 @@ export function SettingsTab() {
                 className={`p-4 rounded-xl text-left transition-all ${
                   isSelected
                     ? 'bg-theme-primary text-white ring-2 ring-theme-primary ring-offset-2'
-                    : 'bg-white border-2 border-gray-200 hover:border-theme-primary'
+                    : 'bg-gray-50 border-2 border-gray-200 hover:border-theme-primary'
                 }`}
               >
                 <div className="font-bold">{layout.name}</div>
@@ -126,7 +128,7 @@ export function SettingsTab() {
       </div>
 
       {settings.autoSwitchEnabled && (
-        <div className="bg-gray-50 rounded-xl p-6 space-y-6">
+        <div className="bg-white border-2 border-gray-200 rounded-xl p-4 sm:p-6 space-y-6">
           <h3 className="text-lg font-bold text-gray-800">Device-Specific Layouts</h3>
           <p className="text-sm text-gray-600">Choose which layout to use for each device type</p>
 
@@ -152,7 +154,7 @@ export function SettingsTab() {
                           className={`p-3 rounded-lg text-center transition-all text-sm ${
                             isSelected
                               ? 'bg-theme-primary text-white'
-                              : 'bg-white border border-gray-200 hover:border-theme-primary text-gray-700'
+                              : 'bg-gray-50 border border-gray-200 hover:border-theme-primary text-gray-700'
                           }`}
                         >
                           {layout.name}
@@ -167,7 +169,7 @@ export function SettingsTab() {
         </div>
       )}
 
-      <div className="bg-blue-50 rounded-xl p-6">
+      <div className="bg-blue-50 border-2 border-blue-200 rounded-xl p-4 sm:p-6">
         <h3 className="text-lg font-bold text-blue-800 mb-3">Layout Descriptions</h3>
         <div className="space-y-4">
           {LAYOUT_IDS.map((layoutId) => {

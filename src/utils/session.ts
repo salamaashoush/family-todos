@@ -6,6 +6,7 @@ const SESSION_SECRET =
 
 type SessionData = {
   username?: string;
+  adminUserId?: number;
   isAuthenticated?: boolean;
 };
 

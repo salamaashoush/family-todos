@@ -23,7 +23,6 @@ export function initializeDatabase() {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       name TEXT NOT NULL,
       avatar TEXT,
-      is_admin INTEGER DEFAULT 0,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )
@@ -202,6 +201,22 @@ export function initializeDatabase() {
     )
   `);
 
+  db.run(`
+    CREATE TABLE IF NOT EXISTS admin_users (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      username TEXT NOT NULL UNIQUE,
+      password_hash TEXT NOT NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      last_login_at DATETIME
+    )
+  `);
+
+  db.run(`
+    CREATE INDEX IF NOT EXISTS idx_admin_users_username
+    ON admin_users(username)
+  `);
+
   seedInitialData();
 }
 
@@ -231,17 +246,17 @@ function seedInitialData() {
       clearDatabase();
     }
     const members = [
-      { name: 'Salama', avatar: null, is_admin: 1 },
-      { name: 'Farida', avatar: null, is_admin: 1 },
-      { name: 'Omar', avatar: null, is_admin: 0 },
-      { name: 'Ali', avatar: null, is_admin: 0 },
+      { name: 'Salama', avatar: null },
+      { name: 'Farida', avatar: null },
+      { name: 'Omar', avatar: null },
+      { name: 'Ali', avatar: null },
     ];
 
     const memberIds: number[] = [];
     for (const member of members) {
       const result = db.run(
-        'INSERT INTO members (name, avatar, is_admin) VALUES (?, ?, ?)',
-        [member.name, member.avatar, member.is_admin]
+        'INSERT INTO members (name, avatar) VALUES (?, ?)',
+        [member.name, member.avatar]
       );
       memberIds.push(result.lastInsertRowid as number);
     }
@@ -411,111 +426,47 @@ function seedInitialData() {
 
     console.log('Database seeded with initial family members, timeslots, todos, and achievements');
   }
+
+  // Create default admin user if none exists
+  const existingAdmin = db.query<{ count: number }, []>(
+    'SELECT COUNT(*) as count FROM admin_users'
+  ).get();
+
+  if (existingAdmin && existingAdmin.count === 0) {
+    const defaultUsername = process.env.ADMIN_USERNAME || 'admin';
+    const defaultPassword = process.env.ADMIN_PASSWORD || 'changeme123';
+
+    // Use sync password hashing for initialization
+    const passwordHash = Bun.password.hashSync(defaultPassword, {
+      algorithm: 'argon2id',
+      memoryCost: 65536,
+      timeCost: 3,
+    });
+
+    db.run(
+      'INSERT INTO admin_users (username, password_hash) VALUES (?, ?)',
+      [defaultUsername, passwordHash]
+    );
+
+    console.log(`Default admin user created. Username: ${defaultUsername}, Password: ${defaultPassword}`);
+    console.log('IMPORTANT: Change the default password immediately!');
+  }
 }
 
-export type Member = {
-  id: number;
-  name: string;
-  avatar: string | null;
-  is_admin: number;
-  created_at: string;
-  updated_at: string;
-};
-
-export type Timeslot = {
-  id: number;
-  name: string;
-  description: string | null;
-  start_time: string | null;
-  end_time: string | null;
-  recurrence_type: "daily" | "weekly" | "monthly" | "none";
-  recurrence_days: string | null;
-  is_active: number;
-  created_at: string;
-  updated_at: string;
-  member_ids?: number[];
-};
-
-export type TimeslotMember = {
-  id: number;
-  timeslot_id: number;
-  member_id: number;
-  created_at: string;
-};
-
-export type Todo = {
-  id: number;
-  title: string;
-  description: string | null;
-  image_url: string | null;
-  symbol: string | null;
-  position: number;
-  created_at: string;
-  updated_at: string;
-  timeslot_ids?: number[];
-};
-
-export type TodoTimeslot = {
-  id: number;
-  todo_id: number;
-  timeslot_id: number;
-  created_at: string;
-};
-
-export type TodoCompletion = {
-  id: number;
-  todo_id: number;
-  timeslot_id: number;
-  member_id: number;
-  completed_at: string;
-  completion_date: string;
-};
-
-export type TimeslotCompletion = {
-  id: number;
-  timeslot_id: number;
-  member_id: number;
-  completed_at: string;
-  completion_date: string;
-};
-
-export type MemberStats = {
-  id: number;
-  member_id: number;
-  total_stars: number;
-  current_streak: number;
-  longest_streak: number;
-  total_tasks_completed: number;
-  total_timeslots_completed: number;
-  level: number;
-  last_completion_date: string | null;
-  created_at: string;
-  updated_at: string;
-};
-
-export type Achievement = {
-  id: number;
-  name: string;
-  description: string;
-  icon: string;
-  requirement_type: string;
-  requirement_value: number;
-  star_reward: number;
-  created_at: string;
-};
-
-export type MemberAchievement = {
-  id: number;
-  member_id: number;
-  achievement_id: number;
-  earned_at: string;
-};
-
-export type LayoutSettingRow = {
-  id: number;
-  key: string;
-  value: string;
-  updated_at: string;
-};
+// Re-export types from separate file for client-safe imports
+export type {
+  Member,
+  Timeslot,
+  TimeslotMember,
+  Todo,
+  TodoTimeslot,
+  TodoCompletion,
+  TimeslotCompletion,
+  MemberStats,
+  Achievement,
+  MemberAchievement,
+  LayoutSettingRow,
+  AdminUser,
+} from "./types";
 
 initializeDatabase();

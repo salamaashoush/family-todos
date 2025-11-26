@@ -38,12 +38,12 @@ export function MembersTab() {
     )
   }, [members, searchQuery])
 
-  const handleAdd = async (data: { name: string; avatar: string; is_admin: number }) => {
+  const handleAdd = async (data: { name: string; avatar: string }) => {
     create.mutate({ data })
     setIsModalOpen(false)
   }
 
-  const handleUpdate = async (data: { name: string; avatar: string; is_admin: number }) => {
+  const handleUpdate = async (data: { name: string; avatar: string }) => {
     if (!editingMember) return
     update.mutate({ data: { id: editingMember.id, ...data } })
     setIsModalOpen(false)
@@ -234,11 +234,6 @@ export function MembersTab() {
                 )}
                 <div className="min-w-0 flex-1">
                   <h3 className="font-bold text-gray-800 truncate">{member.name}</h3>
-                  {member.is_admin === 1 && (
-                    <span className="inline-block text-xs bg-theme-primary/10 text-theme-primary px-2 py-0.5 rounded-full font-semibold mt-1">
-                      Admin
-                    </span>
-                  )}
                 </div>
               </div>
             </AdminCard>

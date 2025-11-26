@@ -14,15 +14,14 @@ export const getMembers = createServerFn({ method: "GET" }).handler(
 const CreateMemberSchema = z.object({
   name: z.string().min(1),
   avatar: z.string().optional(),
-  is_admin: z.number().optional(),
 });
 
 export const createMember = createServerFn({ method: "POST" })
   .inputValidator(CreateMemberSchema)
   .handler(async ({ data }) => {
     const result = db.run(
-      "INSERT INTO members (name, avatar, is_admin) VALUES (?, ?, ?)",
-      [data.name, data.avatar || null, data.is_admin || 0]
+      "INSERT INTO members (name, avatar) VALUES (?, ?)",
+      [data.name, data.avatar || null]
     );
 
     const member = db
@@ -36,7 +35,6 @@ const UpdateMemberSchema = z.object({
   id: z.number(),
   name: z.string().min(1).optional(),
   avatar: z.string().optional(),
-  is_admin: z.number().optional(),
 });
 
 export const updateMember = createServerFn({ method: "POST" })
@@ -52,10 +50,6 @@ export const updateMember = createServerFn({ method: "POST" })
     if (data.avatar !== undefined) {
       updates.push("avatar = ?");
       values.push(data.avatar);
-    }
-    if (data.is_admin !== undefined) {
-      updates.push("is_admin = ?");
-      values.push(data.is_admin);
     }
 
     updates.push("updated_at = CURRENT_TIMESTAMP");

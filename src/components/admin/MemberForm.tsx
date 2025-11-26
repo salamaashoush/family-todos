@@ -5,13 +5,12 @@ import { useImageUpload } from '../../hooks/useImageUpload'
 import { UPLOAD_CONFIG } from '../../constants'
 import { getErrorMessage } from '../../utils/form'
 import { showToast } from '../Toast'
-import { Button, Input, Checkbox, FileInput } from '../shared'
+import { Button, Input, FileInput } from '../shared'
 import type { Member } from '../../types'
 
 const memberSchema = z.object({
   name: z.string().min(1, 'Name is required').max(100, 'Name must be less than 100 characters'),
   avatar: z.string(),
-  is_admin: z.number().min(0).max(1),
 })
 
 type MemberFormData = z.infer<typeof memberSchema>
@@ -36,7 +35,6 @@ export function MemberForm({ member, onSubmit, onCancel }: MemberFormProps) {
     defaultValues: {
       name: '',
       avatar: '',
-      is_admin: 0,
     } as MemberFormData,
     validators: {
       onChange: memberSchema,
@@ -62,7 +60,6 @@ export function MemberForm({ member, onSubmit, onCancel }: MemberFormProps) {
     if (member) {
       form.setFieldValue('name', member.name)
       form.setFieldValue('avatar', member.avatar || '')
-      form.setFieldValue('is_admin', member.is_admin)
       setPreview(member.avatar || '')
     } else {
       form.reset()
@@ -111,18 +108,6 @@ export function MemberForm({ member, onSubmit, onCancel }: MemberFormProps) {
           helperText={`Max: ${UPLOAD_CONFIG.MAX_FILE_SIZE_MB}MB. Supports: ${UPLOAD_CONFIG.SUPPORTED_FORMATS}`}
         />
       </div>
-
-      <form.Field
-        name="is_admin"
-        children={(field) => (
-          <Checkbox
-            label="Admin Privileges"
-            description="Allow access to admin dashboard and settings"
-            checked={field.state.value === 1}
-            onChange={(e) => field.handleChange(e.target.checked ? 1 : 0)}
-          />
-        )}
-      />
 
       <form.Subscribe
         selector={(state) => [state.canSubmit, state.isSubmitting]}
