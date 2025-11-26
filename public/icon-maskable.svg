@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#8B5CF6"/>
+      <stop offset="100%" stop-color="#EC4899"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Full background for maskable (extends to edges) -->
+  <rect x="0" y="0" width="512" height="512" fill="#8B5CF6"/>
+  <rect x="0" y="0" width="512" height="512" fill="url(#bgGrad)"/>
+
+  <!-- Clipboard/Board shape - centered with padding for safe zone -->
+  <rect x="172" y="140" width="168" height="232" rx="14" ry="14" fill="white"/>
+
+  <!-- Clipboard top clip -->
+  <rect x="216" y="124" width="80" height="32" rx="6" ry="6" fill="white"/>
+  <rect x="232" y="132" width="48" height="16" rx="4" ry="4" fill="#8B5CF6"/>
+
+  <!-- Todo lines with checkboxes -->
+  <!-- Task 1 - Checked -->
+  <rect x="196" y="176" width="20" height="20" rx="5" ry="5" fill="#10B981"/>
+  <path d="M201 186 L204 189 L210 181" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  <rect x="226" y="181" width="90" height="10" rx="3" ry="3" fill="#E5E7EB"/>
+
+  <!-- Task 2 - Checked -->
+  <rect x="196" y="216" width="20" height="20" rx="5" ry="5" fill="#10B981"/>
+  <path d="M201 226 L204 229 L210 221" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  <rect x="226" y="221" width="76" height="10" rx="3" ry="3" fill="#E5E7EB"/>
+
+  <!-- Task 3 - Unchecked -->
+  <rect x="196" y="256" width="20" height="20" rx="5" ry="5" fill="none" stroke="#D1D5DB" stroke-width="2.5"/>
+  <rect x="226" y="261" width="64" height="10" rx="3" ry="3" fill="#E5E7EB"/>
+
+  <!-- Task 4 - Unchecked -->
+  <rect x="196" y="296" width="20" height="20" rx="5" ry="5" fill="none" stroke="#D1D5DB" stroke-width="2.5"/>
+  <rect x="226" y="301" width="94" height="10" rx="3" ry="3" fill="#E5E7EB"/>
+
+  <!-- Family dots in corner (inside safe zone) -->
+  <circle cx="300" cy="348" r="10" fill="white" fill-opacity="0.85"/>
+  <circle cx="320" cy="350" r="8" fill="white" fill-opacity="0.85"/>
+  <circle cx="338" cy="348" r="9" fill="white" fill-opacity="0.85"/>
+</svg>

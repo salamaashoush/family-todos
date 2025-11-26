@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Background rounded square with gradient -->
+  <rect x="32" y="32" width="448" height="448" rx="96" ry="96" fill="#8B5CF6"/>
+  <rect x="32" y="32" width="448" height="448" rx="96" ry="96" fill="url(#bgGrad)"/>
+
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#8B5CF6"/>
+      <stop offset="100%" stop-color="#EC4899"/>
+    </linearGradient>
+  </defs>
+
+  <!-- House/Home shape representing family -->
+  <path d="M256 100 L380 200 L380 380 L132 380 L132 200 Z" fill="white" fill-opacity="0.15"/>
+
+  <!-- Clipboard/Board shape -->
+  <rect x="152" y="160" width="208" height="260" rx="16" ry="16" fill="white"/>
+
+  <!-- Clipboard top clip -->
+  <rect x="206" y="140" width="100" height="40" rx="8" ry="8" fill="white"/>
+  <rect x="226" y="150" width="60" height="20" rx="6" ry="6" fill="#8B5CF6"/>
+
+  <!-- Todo lines with checkboxes -->
+  <!-- Task 1 - Checked -->
+  <rect x="180" y="200" width="24" height="24" rx="6" ry="6" fill="#10B981"/>
+  <path d="M186 212 L190 216 L198 206" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  <rect x="216" y="206" width="116" height="12" rx="4" ry="4" fill="#E5E7EB"/>
+
+  <!-- Task 2 - Checked -->
+  <rect x="180" y="248" width="24" height="24" rx="6" ry="6" fill="#10B981"/>
+  <path d="M186 260 L190 264 L198 254" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  <rect x="216" y="254" width="100" height="12" rx="4" ry="4" fill="#E5E7EB"/>
+
+  <!-- Task 3 - Unchecked -->
+  <rect x="180" y="296" width="24" height="24" rx="6" ry="6" fill="none" stroke="#D1D5DB" stroke-width="3"/>
+  <rect x="216" y="302" width="80" height="12" rx="4" ry="4" fill="#E5E7EB"/>
+
+  <!-- Task 4 - Unchecked -->
+  <rect x="180" y="344" width="24" height="24" rx="6" ry="6" fill="none" stroke="#D1D5DB" stroke-width="3"/>
+  <rect x="216" y="350" width="120" height="12" rx="4" ry="4" fill="#E5E7EB"/>
+
+  <!-- Small family figures at bottom corner -->
+  <circle cx="380" cy="420" r="16" fill="white" fill-opacity="0.9"/>
+  <circle cx="410" cy="424" r="12" fill="white" fill-opacity="0.9"/>
+  <circle cx="436" cy="420" r="14" fill="white" fill-opacity="0.9"/>
+</svg>

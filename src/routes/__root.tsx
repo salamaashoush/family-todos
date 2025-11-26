@@ -37,10 +37,50 @@ export const Route = createRootRouteWithContext<{
       },
       {
         name: 'viewport',
-        content: 'width=device-width, initial-scale=1',
+        content: 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover',
       },
       {
-        title: 'Family Todo Board',
+        title: 'Family Todos',
+      },
+      // PWA meta tags
+      {
+        name: 'description',
+        content: 'A family task management app to organize and track household chores and responsibilities',
+      },
+      {
+        name: 'theme-color',
+        content: '#8B5CF6',
+      },
+      {
+        name: 'application-name',
+        content: 'Family Todos',
+      },
+      // iOS specific
+      {
+        name: 'apple-mobile-web-app-capable',
+        content: 'yes',
+      },
+      {
+        name: 'apple-mobile-web-app-status-bar-style',
+        content: 'black-translucent',
+      },
+      {
+        name: 'apple-mobile-web-app-title',
+        content: 'Family Todos',
+      },
+      // Microsoft specific
+      {
+        name: 'msapplication-TileColor',
+        content: '#8B5CF6',
+      },
+      {
+        name: 'msapplication-TileImage',
+        content: '/icon-144.png',
+      },
+      // Android specific
+      {
+        name: 'mobile-web-app-capable',
+        content: 'yes',
       },
       // Security headers via meta tags
       // Note: Some of these are better set as HTTP headers, but meta tags provide baseline protection
@@ -74,6 +114,50 @@ export const Route = createRootRouteWithContext<{
         rel: 'stylesheet',
         href: appCss,
       },
+      // PWA manifest
+      {
+        rel: 'manifest',
+        href: '/manifest.json',
+      },
+      // Favicon
+      {
+        rel: 'icon',
+        type: 'image/x-icon',
+        href: '/favicon.ico',
+      },
+      {
+        rel: 'icon',
+        type: 'image/png',
+        sizes: '32x32',
+        href: '/icon-32.png',
+      },
+      {
+        rel: 'icon',
+        type: 'image/png',
+        sizes: '16x16',
+        href: '/icon-16.png',
+      },
+      // Apple touch icons
+      {
+        rel: 'apple-touch-icon',
+        href: '/apple-touch-icon.png',
+      },
+      {
+        rel: 'apple-touch-icon',
+        sizes: '152x152',
+        href: '/icon-152.png',
+      },
+      {
+        rel: 'apple-touch-icon',
+        sizes: '167x167',
+        href: '/icon-167.png',
+      },
+      {
+        rel: 'apple-touch-icon',
+        sizes: '180x180',
+        href: '/icon-180.png',
+      },
+      // Apple splash screens would go here for iOS
     ],
   }),
   component: RootComponent,
@@ -230,7 +314,30 @@ function RootDocument({ children }: { children: React.ReactNode }) {
         <TanStackRouterDevtools position="bottom-right" />
         <ReactQueryDevtools buttonPosition="bottom-left" />
         <Scripts />
+        <ServiceWorkerRegistration />
       </body>
     </html>
   )
+}
+
+function ServiceWorkerRegistration() {
+  return (
+    <script
+      dangerouslySetInnerHTML={{
+        __html: `
+          if ('serviceWorker' in navigator) {
+            window.addEventListener('load', function() {
+              navigator.serviceWorker.register('/sw.js')
+                .then(function(registration) {
+                  console.log('ServiceWorker registration successful with scope: ', registration.scope);
+                })
+                .catch(function(err) {
+                  console.log('ServiceWorker registration failed: ', err);
+                });
+            });
+          }
+        `,
+      }}
+    />
+  );
 }
