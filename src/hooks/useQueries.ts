@@ -35,10 +35,10 @@ export function useMembers() {
   });
 }
 
-export function useTimeslots() {
+export function useTimeslots(date?: string) {
   return useQuery({
-    queryKey: ["timeslots"],
-    queryFn: () => getTimeslots({ data: {} }),
+    queryKey: ["timeslots", date],
+    queryFn: () => getTimeslots({ data: { date } }),
   });
 }
 

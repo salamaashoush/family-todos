@@ -30,8 +30,8 @@ export const Route = createFileRoute('/')({
         queryFn: () => getMembers(),
       }),
       queryClient.ensureQueryData({
-        queryKey: ['timeslots'],
-        queryFn: () => getTimeslots({ data: {} }),
+        queryKey: ['timeslots', date],
+        queryFn: () => getTimeslots({ data: { date } }),
       }),
       queryClient.ensureQueryData({
         queryKey: ['todos'],
@@ -50,7 +50,8 @@ function Home() {
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0])
 
   const { data: members, isLoading: membersLoading } = useMembers()
-  const { data: timeslots } = useTimeslots()
+  // Pass selectedDate to useTimeslots for server-side recurrence filtering
+  const { data: timeslots } = useTimeslots(selectedDate)
   const { data: todos } = useTodos()
   const { data: completions } = useCompletions(selectedDate)
 
@@ -58,9 +59,11 @@ function Home() {
   const stableCompletions = useMemo(() => completions || [], [completions])
   const { isTodoCompleted } = useIsTodoCompleted(stableCompletions)
 
-  // Filter timeslots based on selected date and recurrence settings
+  // Timeslots are now filtered server-side, but keep client-side filtering as fallback
+  // for robustness (double-check recurrence rules)
   const filteredTimeslots = useMemo(() => {
     if (!timeslots) return []
+    // Server already filters by date, but we apply client-side filter as safety net
     return filterTimeslotsByDateString(timeslots, selectedDate)
   }, [timeslots, selectedDate])
 
@@ -83,7 +86,8 @@ function Home() {
 
   const { layout, settings, currentTimeslotId, isHydrated } = useLayout()
 
-  useCurrentTimeslot(filteredTimeslots)
+  // Only highlight current timeslot when viewing today
+  useCurrentTimeslot(filteredTimeslots, selectedDate)
 
   const handleRealtimeEvent = useCallback((event: RealtimeEvent) => {
     if (event.type === 'task_completed') {

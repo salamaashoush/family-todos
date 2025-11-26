@@ -27,6 +27,7 @@ INSERT INTO "member_stats" ("member_id", "total_stars", "current_streak", "longe
 ON CONFLICT DO NOTHING;
 
 -- Seed timeslots (common family routines)
+-- recurrence_days uses numeric day values: 0=Sunday, 1=Monday, ..., 6=Saturday (matches Date.getDay())
 INSERT INTO "timeslots" ("id", "family_id", "name", "description", "start_time", "end_time", "recurrence_type", "recurrence_days", "is_active") VALUES
 (1, 1, 'Morning Routine', 'Start the day right', '07:00', '08:00', 'daily', '0,1,2,3,4,5,6', true),
 (2, 1, 'After School', 'Homework and activities', '15:00', '17:00', 'weekly', '1,2,3,4,5', true),

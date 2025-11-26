@@ -1,16 +1,31 @@
 import type { Timeslot } from '../types'
 
-const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] as const
+// Day names for display purposes (index matches Date.getDay(): 0=Sunday, 6=Saturday)
+export const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] as const
 
 /**
- * Get the day abbreviation for a given date
+ * Get the numeric day of week for a given date (0=Sunday, 6=Saturday)
  */
-export function getDayAbbreviation(date: Date): string {
-  return DAY_NAMES[date.getDay()]
+export function getDayOfWeek(date: Date): number {
+  return date.getDay()
+}
+
+/**
+ * Convert numeric days CSV string to day names for display
+ * e.g., "0,6" -> "Sun, Sat"
+ */
+export function formatRecurrenceDays(recurrenceDays: string | null): string {
+  if (!recurrenceDays) return ''
+  return recurrenceDays
+    .split(',')
+    .map((d) => DAY_NAMES[parseInt(d.trim(), 10)])
+    .filter(Boolean)
+    .join(', ')
 }
 
 /**
  * Check if a timeslot should be shown on a given date based on its recurrence settings
+ * recurrenceDays is stored as CSV of numeric days: "0,1,2,3,4,5,6" (0=Sunday, 6=Saturday)
  */
 export function shouldShowTimeslot(timeslot: Timeslot, date: Date): boolean {
   const { recurrenceType, recurrenceDays } = timeslot
@@ -23,9 +38,9 @@ export function shouldShowTimeslot(timeslot: Timeslot, date: Date): boolean {
     case 'weekly':
       // Weekly timeslots show only on specified days
       if (!recurrenceDays) return true // If no days specified, show always (fallback)
-      const dayAbbr = getDayAbbreviation(date)
-      const days = recurrenceDays.split(',').map((d: string) => d.trim())
-      return days.includes(dayAbbr)
+      const dayOfWeek = getDayOfWeek(date)
+      const days = recurrenceDays.split(',').map((d: string) => parseInt(d.trim(), 10))
+      return days.includes(dayOfWeek)
 
     case 'monthly':
       // Monthly could be implemented later (e.g., specific day of month)

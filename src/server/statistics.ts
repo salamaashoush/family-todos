@@ -201,6 +201,9 @@ async function checkAchievements(memberId: number) {
       case "timeslots_completed":
         earned = stats.totalTimeslotsCompleted >= achievement.requirementValue;
         break;
+      case "level":
+        earned = stats.level >= achievement.requirementValue;
+        break;
     }
 
     if (earned) {

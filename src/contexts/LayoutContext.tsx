@@ -140,11 +140,23 @@ export function useLayout() {
   return context
 }
 
-export function useCurrentTimeslot(timeslots: { id: number; startTime: string; endTime: string }[]) {
+export function useCurrentTimeslot(
+  timeslots: { id: number; startTime: string; endTime: string }[],
+  selectedDate?: string
+) {
   const { settings, setCurrentTimeslotId } = useLayout()
 
   useEffect(() => {
     if (!settings.timeslotAutoExpand) {
+      setCurrentTimeslotId(null)
+      return
+    }
+
+    // Only show current timeslot when viewing today's date
+    const today = new Date().toISOString().split('T')[0]
+    const isToday = !selectedDate || selectedDate === today
+
+    if (!isToday) {
       setCurrentTimeslotId(null)
       return
     }
@@ -178,5 +190,5 @@ export function useCurrentTimeslot(timeslots: { id: number; startTime: string; e
     }, 60000)
 
     return () => clearInterval(interval)
-  }, [timeslots, settings.timeslotAutoExpand, setCurrentTimeslotId])
+  }, [timeslots, settings.timeslotAutoExpand, setCurrentTimeslotId, selectedDate])
 }

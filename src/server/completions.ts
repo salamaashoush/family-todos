@@ -5,6 +5,37 @@ import { db, schema } from "../db";
 import { updateStats } from "./statistics";
 import { broadcast } from "./realtime";
 
+/**
+ * Check if a timeslot is scheduled for a given date based on recurrence rules
+ * @param recurrenceType - 'daily', 'weekly', 'monthly', or 'none'
+ * @param recurrenceDays - CSV of numeric days: "0,1,2,3,4,5,6" (0=Sunday, 6=Saturday)
+ * @param dateString - Date in YYYY-MM-DD format
+ */
+function isTimeslotScheduledForDate(
+  recurrenceType: string,
+  recurrenceDays: string | null,
+  dateString: string
+): boolean {
+  switch (recurrenceType) {
+    case "daily":
+      return true;
+    case "weekly":
+      if (!recurrenceDays) return true;
+      // Parse date as UTC to get consistent day of week
+      const [year, month, day] = dateString.split("-").map(Number);
+      const dateObj = new Date(Date.UTC(year, month - 1, day));
+      const dayOfWeek = dateObj.getUTCDay();
+      const days = recurrenceDays.split(",").map((d) => parseInt(d.trim(), 10));
+      return days.includes(dayOfWeek);
+    case "monthly":
+      return true;
+    case "none":
+      return true;
+    default:
+      return true;
+  }
+}
+
 const GetCompletionsSchema = z.object({
   date: z.string().optional(),
   memberId: z.number().optional(),
@@ -61,6 +92,53 @@ export const completeTodo = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const completionDate =
       data.completionDate || new Date().toISOString().split("T")[0];
+
+    // Validate that todo belongs to the specified timeslot
+    const [todoTimeslot] = await db
+      .select()
+      .from(schema.todoTimeslots)
+      .where(
+        and(
+          eq(schema.todoTimeslots.todoId, data.todoId),
+          eq(schema.todoTimeslots.timeslotId, data.timeslotId)
+        )
+      )
+      .limit(1);
+
+    if (!todoTimeslot) {
+      throw new Error("Todo does not belong to the specified timeslot");
+    }
+
+    // Validate that member is assigned to the specified timeslot
+    const [timeslotMember] = await db
+      .select()
+      .from(schema.timeslotMembers)
+      .where(
+        and(
+          eq(schema.timeslotMembers.timeslotId, data.timeslotId),
+          eq(schema.timeslotMembers.memberId, data.memberId)
+        )
+      )
+      .limit(1);
+
+    if (!timeslotMember) {
+      throw new Error("Member is not assigned to the specified timeslot");
+    }
+
+    // Validate that timeslot is scheduled for this date based on recurrence rules
+    const [timeslot] = await db
+      .select()
+      .from(schema.timeslots)
+      .where(eq(schema.timeslots.id, data.timeslotId))
+      .limit(1);
+
+    if (!timeslot) {
+      throw new Error("Timeslot not found");
+    }
+
+    if (!isTimeslotScheduledForDate(timeslot.recurrenceType, timeslot.recurrenceDays, completionDate)) {
+      throw new Error("Timeslot is not scheduled for this date");
+    }
 
     // Check if already completed
     const [existing] = await db
@@ -261,17 +339,22 @@ async function checkAndCompleteTimeslot(
 
   const totalTodos = totalTodosResult?.count || 0;
 
-  // Get completed todos for this timeslot
+  // Get completed todos for this specific timeslot, member, and date
+  // Important: Filter by BOTH the junction table (todo belongs to timeslot)
+  // AND the completion's timeslotId (completion was made for this timeslot)
   const [completedTodosResult] = await db
     .select({ count: count() })
     .from(schema.todoCompletions)
     .innerJoin(
       schema.todoTimeslots,
-      eq(schema.todoCompletions.todoId, schema.todoTimeslots.todoId)
+      and(
+        eq(schema.todoCompletions.todoId, schema.todoTimeslots.todoId),
+        eq(schema.todoTimeslots.timeslotId, timeslotId)
+      )
     )
     .where(
       and(
-        eq(schema.todoTimeslots.timeslotId, timeslotId),
+        eq(schema.todoCompletions.timeslotId, timeslotId),
         eq(schema.todoCompletions.memberId, memberId),
         eq(schema.todoCompletions.completionDate, completionDate)
       )

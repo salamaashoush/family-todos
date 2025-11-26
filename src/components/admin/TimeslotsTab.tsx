@@ -16,6 +16,7 @@ import {
 } from '@dnd-kit/sortable'
 import { useTimeslots, useMembers } from '../../hooks/useQueries'
 import { useTimeslotMutations } from '../../hooks/useAdminMutations'
+import { formatRecurrenceDays } from '../../utils/timeslots'
 import { Modal } from '../shared/Modal'
 import { ConfirmDialog } from '../shared/ConfirmDialog'
 import { Button } from '../shared/Button'
@@ -428,7 +429,7 @@ export function TimeslotsTab() {
                     )}
                     {timeslot.recurrenceType === 'weekly' && timeslot.recurrenceDays && (
                       <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-medium">
-                        {timeslot.recurrenceDays}
+                        {formatRecurrenceDays(timeslot.recurrenceDays)}
                       </span>
                     )}
                     {timeslot.recurrenceType === 'none' && (

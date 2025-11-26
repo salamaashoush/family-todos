@@ -8,8 +8,37 @@ import type { RecurrenceType } from "../db/schema";
 // This will be replaced with session-based family ID in multi-tenancy phase
 const DEFAULT_FAMILY_ID = 1;
 
+/**
+ * Check if a timeslot should be shown on a given day of week
+ * @param recurrenceType - 'daily', 'weekly', 'monthly', or 'none'
+ * @param recurrenceDays - CSV of numeric days: "0,1,2,3,4,5,6" (0=Sunday, 6=Saturday)
+ * @param dayOfWeek - Day of week from Date.getDay() (0=Sunday, 6=Saturday)
+ */
+function shouldShowTimeslotOnDay(
+  recurrenceType: string,
+  recurrenceDays: string | null,
+  dayOfWeek: number
+): boolean {
+  switch (recurrenceType) {
+    case "daily":
+      return true;
+    case "weekly":
+      if (!recurrenceDays) return true;
+      const days = recurrenceDays.split(",").map((d) => parseInt(d.trim(), 10));
+      return days.includes(dayOfWeek);
+    case "monthly":
+      // For now, show every day (can be enhanced later)
+      return true;
+    case "none":
+      return true;
+    default:
+      return true;
+  }
+}
+
 const GetTimeslotsSchema = z.object({
   memberId: z.number().optional(),
+  date: z.string().optional(), // YYYY-MM-DD format for server-side recurrence filtering
 });
 
 export const getTimeslots = createServerFn({ method: "GET" })
@@ -47,14 +76,27 @@ export const getTimeslots = createServerFn({ method: "GET" })
     }
 
     // Combine timeslots with their member IDs
-    const timeslotsWithMembers = timeslots.map((timeslot) => ({
+    let timeslotsWithMembers = timeslots.map((timeslot) => ({
       ...timeslot,
       memberIds: timeslotMembersMap.get(timeslot.id) || [],
     }));
 
+    // Filter by date/recurrence if specified (server-side filtering)
+    if (data.date) {
+      // Parse date and get day of week (0=Sunday, 6=Saturday)
+      // Use UTC to avoid timezone issues
+      const [year, month, day] = data.date.split("-").map(Number);
+      const dateObj = new Date(Date.UTC(year, month - 1, day));
+      const dayOfWeek = dateObj.getUTCDay();
+
+      timeslotsWithMembers = timeslotsWithMembers.filter((t) =>
+        shouldShowTimeslotOnDay(t.recurrenceType, t.recurrenceDays, dayOfWeek)
+      );
+    }
+
     // Filter by member if specified
     if (data.memberId) {
-      return timeslotsWithMembers.filter((t) =>
+      timeslotsWithMembers = timeslotsWithMembers.filter((t) =>
         t.memberIds.includes(data.memberId!)
       );
     }

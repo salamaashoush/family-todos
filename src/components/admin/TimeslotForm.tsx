@@ -129,14 +129,15 @@ export function TimeslotForm({ timeslot, onSubmit, onCancel }: TimeslotFormProps
             <form.Field
               name="recurrenceDays"
               children={(field) => {
+                // Days with numeric values matching Date.getDay() (0=Sunday, 6=Saturday)
                 const DAYS = [
-                  { value: 'Mon', label: 'Mon' },
-                  { value: 'Tue', label: 'Tue' },
-                  { value: 'Wed', label: 'Wed' },
-                  { value: 'Thu', label: 'Thu' },
-                  { value: 'Fri', label: 'Fri' },
-                  { value: 'Sat', label: 'Sat' },
-                  { value: 'Sun', label: 'Sun' },
+                  { value: '0', label: 'Sun' },
+                  { value: '1', label: 'Mon' },
+                  { value: '2', label: 'Tue' },
+                  { value: '3', label: 'Wed' },
+                  { value: '4', label: 'Thu' },
+                  { value: '5', label: 'Fri' },
+                  { value: '6', label: 'Sat' },
                 ]
                 const selectedDays = field.state.value ? field.state.value.split(',').filter(Boolean) : []
 
@@ -144,9 +145,8 @@ export function TimeslotForm({ timeslot, onSubmit, onCancel }: TimeslotFormProps
                   const newDays = selectedDays.includes(day)
                     ? selectedDays.filter((d) => d !== day)
                     : [...selectedDays, day]
-                  // Sort days in week order
-                  const dayOrder = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
-                  newDays.sort((a, b) => dayOrder.indexOf(a) - dayOrder.indexOf(b))
+                  // Sort days numerically (0-6)
+                  newDays.sort((a, b) => parseInt(a, 10) - parseInt(b, 10))
                   field.handleChange(newDays.join(','))
                 }
 

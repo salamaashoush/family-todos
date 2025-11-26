@@ -31,7 +31,7 @@ export const timeslots = pgTable(
       .default("daily")
       .notNull()
       .$type<RecurrenceType>(),
-    recurrenceDays: varchar("recurrence_days", { length: 50 }), // CSV: "0,1,2,3,4,5,6"
+    recurrenceDays: varchar("recurrence_days", { length: 50 }), // CSV numeric days: "0,1,2,3,4,5,6" (0=Sunday, 6=Saturday, matches Date.getDay())
     isActive: boolean("is_active").default(true).notNull(),
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at").defaultNow().notNull(),
