@@ -6,7 +6,7 @@ import { useAppSession } from "~/utils/session";
 import { getTenantContext } from "../utils/tenant";
 import { TEMPLATES, type TemplateId } from "../config/templates";
 import type { RecurrenceType } from "../db/schema";
-import { generateShareToken } from "./publicBoard";
+import { generateShareToken } from "./crypto";
 
 // Get onboarding status
 export const getOnboardingStatus = createServerFn({ method: "GET" }).handler(

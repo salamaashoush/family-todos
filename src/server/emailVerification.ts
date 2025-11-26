@@ -2,16 +2,9 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { eq, and, gt } from "drizzle-orm";
 import { db, schema } from "../db";
-import crypto from "crypto";
+import { generateSecureToken } from "./crypto";
 
 const TOKEN_EXPIRY_HOURS = 24; // Token valid for 24 hours
-
-/**
- * Generate a secure random token
- */
-function generateToken(): string {
-  return crypto.randomBytes(32).toString("hex");
-}
 
 /**
  * Send verification email to user
@@ -37,8 +30,10 @@ export const sendVerificationEmail = createServerFn({ method: "POST" })
       .where(eq(schema.emailVerificationTokens.userId, user.id));
 
     // Generate new token
-    const token = generateToken();
-    const expiresAt = new Date(Date.now() + TOKEN_EXPIRY_HOURS * 60 * 60 * 1000);
+    const token = generateSecureToken(32);
+    const expiresAt = new Date(
+      Date.now() + TOKEN_EXPIRY_HOURS * 60 * 60 * 1000
+    );
 
     // Save token
     await db.insert(schema.emailVerificationTokens).values({
@@ -157,7 +152,8 @@ export const resendVerificationEmail = createServerFn({ method: "POST" })
     if (!user || user.emailVerified) {
       return {
         success: true,
-        message: "If your email is registered and unverified, you will receive a verification link.",
+        message:
+          "If your email is registered and unverified, you will receive a verification link.",
       };
     }
 
@@ -167,8 +163,10 @@ export const resendVerificationEmail = createServerFn({ method: "POST" })
       .where(eq(schema.emailVerificationTokens.userId, user.id));
 
     // Generate new token
-    const token = generateToken();
-    const expiresAt = new Date(Date.now() + TOKEN_EXPIRY_HOURS * 60 * 60 * 1000);
+    const token = generateSecureToken(32);
+    const expiresAt = new Date(
+      Date.now() + TOKEN_EXPIRY_HOURS * 60 * 60 * 1000
+    );
 
     // Save token
     await db.insert(schema.emailVerificationTokens).values({
@@ -182,7 +180,8 @@ export const resendVerificationEmail = createServerFn({ method: "POST" })
 
     return {
       success: true,
-      message: "If your email is registered and unverified, you will receive a verification link.",
+      message:
+        "If your email is registered and unverified, you will receive a verification link.",
       // Only include token in development for testing - NEVER in production
       ...(process.env.NODE_ENV === "development" &&
         process.env.ENABLE_DEV_TOKENS === "true" && { devToken: token }),

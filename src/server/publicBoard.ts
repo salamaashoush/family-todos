@@ -2,7 +2,6 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { eq, and, asc, sql, or } from "drizzle-orm";
 import { db, schema } from "../db";
-import crypto from "crypto";
 import { requireRole } from "../utils/tenant";
 import { checkRateLimit, recordAttempt } from "../utils/rateLimiter";
 import { isValidShareToken } from "../utils/security";
@@ -10,13 +9,7 @@ import { logAudit } from "../utils/audit";
 import { broadcastToFamily } from "./realtime";
 import { updateStats } from "./statistics";
 import { revokeUnqualifiedAchievements } from "./statistics-helpers";
-
-/**
- * Generate a secure share token
- */
-export function generateShareToken(): string {
-  return crypto.randomBytes(32).toString("hex");
-}
+import { generateShareToken } from "./crypto";
 
 /**
  * Get family data by share token (public access - no auth required)

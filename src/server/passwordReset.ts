@@ -3,7 +3,7 @@ import { z } from "zod";
 import { eq, and, gt } from "drizzle-orm";
 import { db, schema } from "../db";
 import { hashPassword } from "../utils/password";
-import crypto from "crypto";
+import { generateSecureToken } from "./crypto";
 
 const TOKEN_EXPIRY_HOURS = 1; // Token valid for 1 hour
 
@@ -11,7 +11,7 @@ const TOKEN_EXPIRY_HOURS = 1; // Token valid for 1 hour
  * Generate a secure random token
  */
 function generateToken(): string {
-  return crypto.randomBytes(32).toString("hex");
+  return generateSecureToken(32);
 }
 
 /**

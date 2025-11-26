@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { writeFile, mkdir } from "node:fs/promises";
 import path from "node:path";
-import crypto from "node:crypto";
+import { generateSecureToken } from "./crypto";
 
 const dataDir = process.env.DATA_DIR || process.cwd();
 const uploadDir = path.join(dataDir, "uploads");
@@ -35,7 +35,7 @@ export const uploadImage = createServerFn({ method: "POST" })
     const buffer = Buffer.from(await file.arrayBuffer());
 
     const ext = path.extname(file.name);
-    const randomName = crypto.randomBytes(16).toString("hex");
+    const randomName = generateSecureToken(16);
     const filename = `${randomName}${ext}`;
 
     await mkdir(uploadDir, { recursive: true });
