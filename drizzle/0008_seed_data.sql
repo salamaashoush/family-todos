@@ -5,9 +5,9 @@ INSERT INTO "admin_users" ("username", "password_hash", "is_super_admin", "is_de
 VALUES ('admin', '$argon2id$v=19$m=65536,t=3,p=1$ZPkP0yIhPB5BiF4nfwC2q5Qv9RA0UO3Sl4H2JXtazow$xnWMeaSWiVp9ecWj/yhSdXqyytSWw5XzJ/3hTQ6g0GY', true, true, 'active')
 ON CONFLICT ("username") DO NOTHING;
 
--- Seed default family
-INSERT INTO "families" ("id", "name", "slug", "is_onboarded")
-VALUES (1, 'My Family', 'my-family', true)
+-- Seed default family (with a fixed share_token for reproducibility)
+INSERT INTO "families" ("id", "name", "slug", "share_token", "is_onboarded")
+VALUES (1, 'My Family', 'my-family', 'defaultShareToken1234567890abcdef', true)
 ON CONFLICT DO NOTHING;
 
 -- Link admin to family (get admin id dynamically)
