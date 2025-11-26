@@ -131,7 +131,7 @@ export function MultiSelect({
 
         {/* Dropdown */}
         {isOpen && (
-          <div className="absolute z-50 w-full mt-1 bg-white border-2 border-gray-200 rounded-xl shadow-lg overflow-hidden">
+          <div className="absolute z-[100] w-full mt-1 bg-white border-2 border-gray-200 rounded-xl shadow-lg overflow-hidden">
             {/* Search input */}
             <div className="p-2 border-b border-gray-100">
               <div className="relative">

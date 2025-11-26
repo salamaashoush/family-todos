@@ -80,28 +80,27 @@ export function Modal({ isOpen, onClose, title, children, size = 'md' }: ModalPr
           relative bg-white shadow-2xl w-full
           ${sizeStyles[size]}
           max-h-[95vh] sm:max-h-[90vh]
-          overflow-hidden
           rounded-t-2xl sm:rounded-2xl
           animate-in slide-in-from-bottom-4 sm:slide-in-from-bottom-0 sm:zoom-in-95 duration-200
           flex flex-col
         `}
       >
         {/* Header */}
-        <div className="flex-shrink-0 bg-gradient-to-r from-theme-primary to-theme-secondary p-4 sm:p-5 flex items-center justify-between">
+        <div className="flex-shrink-0 bg-gradient-to-r from-theme-primary to-theme-secondary px-4 py-3 flex items-center justify-between rounded-t-2xl">
           <h2
             id="modal-title"
-            className="text-lg sm:text-xl font-bold text-white"
+            className="text-base sm:text-lg font-bold text-white"
           >
             {title}
           </h2>
           <button
             onClick={onClose}
-            className="text-white hover:bg-white/20 rounded-full p-2 transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-white/50 focus:ring-offset-2 focus:ring-offset-theme-primary"
+            className="text-white hover:bg-white/20 rounded-full p-1.5 transition-colors min-w-[36px] min-h-[36px] flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-white/50"
             aria-label="Close modal"
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"
-              className="h-6 w-6"
+              className="h-5 w-5"
               fill="none"
               viewBox="0 0 24 24"
               stroke="currentColor"
