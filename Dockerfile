@@ -36,8 +36,8 @@ COPY --from=prerelease /usr/src/app/package.json .
 # Copy drizzle SQL migration files
 COPY --from=prerelease /usr/src/app/drizzle drizzle
 
-# Copy only the migrate script (not the full src/db which has schema dependencies)
-COPY --from=prerelease /usr/src/app/src/db/migrate.ts src/db/migrate.ts
+# Copy database scripts and schema (needed for migrations and seed-admin)
+COPY --from=prerelease /usr/src/app/src/db src/db
 
 # Copy public directory for static assets (icons, manifest, etc.)
 COPY --from=prerelease /usr/src/app/public ./public
@@ -60,5 +60,7 @@ EXPOSE 3000/tcp
 HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
   CMD bun -e "fetch('http://localhost:3000/api/health').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"
 
-# Run migrations then start server
-CMD ["sh", "-c", "bun run src/db/migrate.ts && bun run .output/server/index.mjs"]
+# Run migrations, seed admin, then start server
+# - migrate.ts: Runs SQL migrations from drizzle folder
+# - seed-admin.ts: Creates/updates super admin from env vars (DEFAULT_ADMIN_USERNAME, DEFAULT_ADMIN_PASSWORD)
+CMD ["sh", "-c", "bun run src/db/migrate.ts && bun run src/db/seed-admin.ts && bun run .output/server/index.mjs"]
