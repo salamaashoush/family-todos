@@ -51,7 +51,7 @@ export function AdminHeader({ username, shareToken }: AdminHeaderProps) {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
               </svg>
             </div>
-            <h1 className="text-base sm:text-lg lg:text-xl font-bold text-gray-800">
+            <h1 className="hidden sm:block text-lg lg:text-xl font-bold text-gray-800">
               Admin Panel
             </h1>
           </div>

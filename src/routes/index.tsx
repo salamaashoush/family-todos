@@ -1,5 +1,5 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { checkAuth } from "../server/auth";
+import { createFileRoute, Link, redirect } from "@tanstack/react-router";
+import { checkAuth, getCurrentFamilyShareToken } from "../server/auth";
 import {
   CheckCircle,
   Users,
@@ -10,9 +10,31 @@ import {
 } from "lucide-react";
 
 export const Route = createFileRoute("/")({
-  loader: async () => {
+  beforeLoad: async () => {
     const auth = await checkAuth();
+
+    // If user is authenticated with a family, redirect to their family board
+    if (auth.authenticated && auth.currentFamilyId) {
+      const { shareToken } = await getCurrentFamilyShareToken();
+
+      if (shareToken) {
+        throw redirect({
+          to: "/family/$token",
+          params: { token: shareToken },
+        });
+      }
+
+      // Fallback to admin dashboard if no share token
+      throw redirect({ to: "/admin" });
+    }
+
+    // Return context for loader to use
     return { isAuthenticated: auth.authenticated };
+  },
+  loader: async ({ context }) => {
+    // Use the auth check result from beforeLoad if available, otherwise check again
+    // This prevents double-checking auth when beforeLoad already ran
+    return { isAuthenticated: (context as { isAuthenticated?: boolean })?.isAuthenticated ?? false };
   },
   component: LandingPage,
 });

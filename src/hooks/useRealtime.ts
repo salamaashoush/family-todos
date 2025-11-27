@@ -235,9 +235,6 @@ export function useRealtime(
         if (isMounted && retryCountRef.current < MAX_RETRIES) {
           retryCountRef.current++;
           const delay = getNextDelay();
-          console.log(
-            `[Realtime] Reconnecting in ${delay}ms (attempt ${retryCountRef.current}/${MAX_RETRIES})`
-          );
           reconnectTimeout = setTimeout(connect, delay);
         }
       };

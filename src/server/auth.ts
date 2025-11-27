@@ -238,5 +238,30 @@ export const getUserFamilies = createServerFn({ method: "GET" }).handler(
   }
 );
 
+// Get current family's share token for authenticated user (any role)
+export const getCurrentFamilyShareToken = createServerFn({ method: "GET" }).handler(
+  async () => {
+    const session = await useAppSession();
+
+    if (!session.data.isAuthenticated || !session.data.currentFamilyId) {
+      return { shareToken: null };
+    }
+
+    // Verify user has access to this family
+    const familyIds = session.data.familyIds || [];
+    if (!familyIds.includes(session.data.currentFamilyId)) {
+      return { shareToken: null };
+    }
+
+    const [family] = await db
+      .select({ shareToken: schema.families.shareToken })
+      .from(schema.families)
+      .where(eq(schema.families.id, session.data.currentFamilyId))
+      .limit(1);
+
+    return { shareToken: family?.shareToken || null };
+  }
+);
+
 // Re-export AdminUser type for backwards compatibility
 export type { AdminUser } from "../db/schema";

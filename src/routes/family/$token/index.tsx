@@ -503,7 +503,7 @@ function PublicFamilyBoard() {
                   />
                 </svg>
               </div>
-              <h1 className="text-base sm:text-lg lg:text-xl font-bold text-gray-800 truncate">
+              <h1 className="hidden sm:block text-lg lg:text-xl font-bold text-gray-800 truncate">
                 {family?.name || "Family"} Tasks
               </h1>
             </div>

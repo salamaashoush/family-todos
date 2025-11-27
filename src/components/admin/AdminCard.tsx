@@ -1,5 +1,6 @@
 import { ReactNode, useState, useRef, useEffect } from 'react'
 import { createPortal } from 'react-dom'
+import { MoreVertical, Pencil, Trash2, Check } from 'lucide-react'
 
 export interface ActionItem {
   label: string
@@ -21,24 +22,6 @@ interface AdminCardProps {
   hideDelete?: boolean
   hideEdit?: boolean
 }
-
-const MoreIcon = () => (
-  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
-  </svg>
-)
-
-const EditIcon = () => (
-  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-  </svg>
-)
-
-const DeleteIcon = () => (
-  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-  </svg>
-)
 
 export function AdminCard({
   children,
@@ -65,14 +48,14 @@ export function AdminCard({
     if (!hideEdit && onEdit) {
       menuActions.push({
         label: 'Edit',
-        icon: <EditIcon />,
+        icon: <Pencil className="w-4 h-4" />,
         onClick: onEdit,
       })
     }
     if (!hideDelete && onDelete) {
       menuActions.push({
         label: 'Delete',
-        icon: <DeleteIcon />,
+        icon: <Trash2 className="w-4 h-4" />,
         onClick: onDelete,
         variant: 'danger',
       })
@@ -149,11 +132,7 @@ export function AdminCard({
             }`}
             aria-label={isSelected ? 'Deselect' : 'Select'}
           >
-            {isSelected && (
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-              </svg>
-            )}
+            {isSelected && <Check className="w-4 h-4" strokeWidth={3} />}
           </button>
         )}
         <div className="flex-1 min-w-0">{children}</div>
@@ -174,7 +153,7 @@ export function AdminCard({
                   aria-label="More actions"
                   aria-expanded={isDropdownOpen}
                 >
-                  <MoreIcon />
+                  <MoreVertical className="w-5 h-5" />
                 </button>
 
                 {isDropdownOpen && createPortal(

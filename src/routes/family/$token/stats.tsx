@@ -2,6 +2,7 @@ import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
 import { useState, useMemo, useCallback, useRef, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { z } from 'zod'
+import { Gift, Star, Flame, Check, Target, Link2, ChevronLeft, BarChart3, ChevronDown } from 'lucide-react'
 import { useLevelUpCelebration } from '../../../hooks/useCelebration'
 import { MemberAvatar } from '../../../components/shared'
 import { Modal } from '../../../components/shared/Modal'
@@ -46,9 +47,7 @@ function StatsError() {
     <div className="min-h-screen bg-gradient-to-br from-theme-bg-from via-theme-bg-via to-theme-bg-to flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md text-center">
         <div className="w-20 h-20 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-6">
-          <svg className="w-10 h-10 text-yellow-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
-          </svg>
+          <Link2 className="w-10 h-10 text-yellow-600" />
         </div>
         <h1 className="text-2xl font-bold text-gray-800 mb-2">
           Invalid Board Link
@@ -80,62 +79,16 @@ type RedemptionWithReward = {
   rewardIcon: string | null
 }
 
-const GiftIcon = () => (
-  <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5.5A2.5 2.5 0 109.5 8H12zm-7 4h14M5 12a2 2 0 110-4h14a2 2 0 110 4M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7" />
-  </svg>
-)
-
-const StarIcon = () => (
-  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-  </svg>
-)
-
-const StarIconLarge = () => (
-  <svg className="w-8 h-8 text-yellow-500" fill="currentColor" viewBox="0 0 24 24">
-    <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
-  </svg>
-)
-
-const FireIcon = () => (
-  <svg className="w-8 h-8 text-orange-500" fill="currentColor" viewBox="0 0 24 24">
-    <path d="M12 23c-4.97 0-9-4.03-9-9 0-3.53 2.04-6.55 5-8.03V5c0-.55.45-1 1-1s1 .45 1 1v.97c.96-.59 2.04-1.03 3.21-1.25.75-.14 1.29.68.88 1.34-.25.4-.68.65-1.09.79-1.07.36-2.02.96-2.78 1.73C8.24 10.58 7 12.67 7 15c0 2.76 2.24 5 5 5s5-2.24 5-5c0-1.63-.79-3.08-2-4-.55-.42-.63-1.2-.16-1.69.47-.49 1.25-.46 1.77.01C18.81 10.97 20 13.31 20 16c0 3.87-3.13 7-7 7h-1z" />
-  </svg>
-)
-
-const CheckIcon = () => (
-  <svg className="w-8 h-8 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-  </svg>
-)
-
-const TargetIcon = () => (
-  <svg className="w-8 h-8 text-theme-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-    <circle cx="12" cy="12" r="10" />
-    <circle cx="12" cy="12" r="6" />
-    <circle cx="12" cy="12" r="2" fill="currentColor" />
-  </svg>
-)
-
 const tabs: { id: TabId; label: string; icon: React.ReactNode }[] = [
   {
     id: 'stats',
     label: 'Stats & Achievements',
-    icon: (
-      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-      </svg>
-    ),
+    icon: <BarChart3 className="w-4 h-4" />,
   },
   {
     id: 'rewards',
     label: 'Rewards Store',
-    icon: (
-      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5.5A2.5 2.5 0 109.5 8H12zm-7 4h14M5 12a2 2 0 110-4h14a2 2 0 110 4M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7" />
-      </svg>
-    ),
+    icon: <Gift className="w-4 h-4" />,
   },
 ]
 
@@ -175,7 +128,7 @@ function MemberStatsView({ stats, achievements, token, memberId }: MemberStatsVi
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="bg-white rounded-2xl p-4 shadow-lg border-4 border-yellow-400">
           <div className="flex items-center gap-2 mb-2">
-            <StarIconLarge />
+            <Star className="w-8 h-8 text-yellow-500 fill-current" />
             <span className="text-sm font-bold text-gray-600">Level {stats.level}</span>
           </div>
           <div className="text-4xl font-bold text-theme-primary">{stats.totalStars}</div>
@@ -193,7 +146,7 @@ function MemberStatsView({ stats, achievements, token, memberId }: MemberStatsVi
 
         <div className="bg-white rounded-2xl p-4 shadow-lg border-4 border-orange-400">
           <div className="flex items-center gap-2 mb-2">
-            <FireIcon />
+            <Flame className="w-8 h-8 text-orange-500" />
             <span className="text-sm font-bold text-gray-600">Streak</span>
           </div>
           <div className="text-4xl font-bold text-orange-600">{stats.currentStreak}</div>
@@ -205,7 +158,7 @@ function MemberStatsView({ stats, achievements, token, memberId }: MemberStatsVi
 
         <div className="bg-white rounded-2xl p-4 shadow-lg border-4 border-green-400">
           <div className="flex items-center gap-2 mb-2">
-            <CheckIcon />
+            <Check className="w-8 h-8 text-green-500" strokeWidth={2.5} />
             <span className="text-sm font-bold text-gray-600">Tasks</span>
           </div>
           <div className="text-4xl font-bold text-green-600">{stats.totalTasksCompleted}</div>
@@ -214,7 +167,7 @@ function MemberStatsView({ stats, achievements, token, memberId }: MemberStatsVi
 
         <div className="bg-white rounded-2xl p-4 shadow-lg border-4 border-theme-primary">
           <div className="flex items-center gap-2 mb-2">
-            <TargetIcon />
+            <Target className="w-8 h-8 text-theme-primary" />
             <span className="text-sm font-bold text-gray-600">Timeslots</span>
           </div>
           <div className="text-4xl font-bold text-theme-primary">{stats.totalTimeslotsCompleted}</div>
@@ -300,7 +253,7 @@ function MemberStatsView({ stats, achievements, token, memberId }: MemberStatsVi
                   <div className="text-base font-bold text-gray-700">{achievement.name}</div>
                   <div className="text-sm text-gray-500">{achievement.description}</div>
                 </div>
-                <span className="text-lg font-bold text-theme-primary flex-shrink-0 flex items-center gap-1">+{achievement.starReward} <StarIcon /></span>
+                <span className="text-lg font-bold text-theme-primary flex-shrink-0 flex items-center gap-1">+{achievement.starReward} <Star className="w-5 h-5 fill-current" /></span>
               </div>
             ))}
           </div>
@@ -400,12 +353,12 @@ function RewardsView({ memberId, memberName, token }: RewardsViewProps) {
           <div>
             <div className="text-sm font-bold text-gray-600 mb-1">Available Points</div>
             <div className="text-4xl font-bold text-yellow-600 flex items-center gap-2">
-              <StarIcon />
+              <Star className="w-5 h-5 fill-current" />
               {memberPoints || 0}
             </div>
           </div>
           <div className="w-16 h-16 rounded-full bg-gradient-to-br from-yellow-400 to-orange-500 flex items-center justify-center">
-            <StarIcon />
+            <Star className="w-5 h-5 fill-current" />
           </div>
         </div>
       </div>
@@ -440,7 +393,7 @@ function RewardsView({ memberId, memberName, token }: RewardsViewProps) {
                 >
                   <div className="flex items-start gap-4">
                     <div className="w-14 h-14 rounded-full bg-gradient-to-br from-yellow-400 to-orange-500 flex items-center justify-center flex-shrink-0 text-3xl">
-                      {reward.icon || <GiftIcon />}
+                      {reward.icon || <Gift className="w-8 h-8" />}
                     </div>
                     <div className="flex-1 min-w-0">
                       <h4 className="font-bold text-gray-800 text-lg">{reward.name}</h4>
@@ -448,7 +401,7 @@ function RewardsView({ memberId, memberName, token }: RewardsViewProps) {
                         <p className="text-sm text-gray-500 mt-1 line-clamp-2">{reward.description}</p>
                       )}
                       <div className="flex items-center gap-1 mt-2">
-                        <StarIcon />
+                        <Star className="w-5 h-5 fill-current" />
                         <span className={`font-bold ${canAfford ? 'text-yellow-600' : 'text-red-500'}`}>
                           {reward.pointCost} points
                         </span>
@@ -467,7 +420,7 @@ function RewardsView({ memberId, memberName, token }: RewardsViewProps) {
         ) : (
           <div className="text-center py-8 bg-gray-50 rounded-xl">
             <div className="w-16 h-16 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center text-gray-400">
-              <GiftIcon />
+              <Gift className="w-8 h-8" />
             </div>
             <p className="text-gray-500">No rewards available yet</p>
             <p className="text-sm text-gray-400 mt-1">Ask a parent to add some rewards!</p>
@@ -487,7 +440,7 @@ function RewardsView({ memberId, memberName, token }: RewardsViewProps) {
               >
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-full bg-gradient-to-br from-yellow-400 to-orange-500 flex items-center justify-center text-xl">
-                    {redemption.rewardIcon || <GiftIcon />}
+                    {redemption.rewardIcon || <Gift className="w-8 h-8" />}
                   </div>
                   <div>
                     <h4 className="font-semibold text-gray-800">{redemption.rewardName}</h4>
@@ -515,12 +468,12 @@ function RewardsView({ memberId, memberName, token }: RewardsViewProps) {
         {selectedReward && (
           <div className="text-center">
             <div className="w-20 h-20 mx-auto rounded-full bg-gradient-to-br from-yellow-400 to-orange-500 flex items-center justify-center text-4xl mb-4">
-              {selectedReward.icon || <GiftIcon />}
+              {selectedReward.icon || <Gift className="w-8 h-8" />}
             </div>
             <h3 className="text-xl font-bold text-gray-800 mb-2">{selectedReward.name}</h3>
             <p className="text-gray-500 mb-4">{selectedReward.description}</p>
             <div className="flex items-center justify-center gap-2 text-lg mb-6">
-              <StarIcon />
+              <Star className="w-5 h-5 fill-current" />
               <span className="font-bold text-yellow-600">{selectedReward.pointCost} points</span>
             </div>
             <p className="text-sm text-gray-600 mb-6">
@@ -632,28 +585,12 @@ function StatsPage() {
                 className="flex items-center justify-center p-2 rounded-xl bg-gray-100 hover:bg-gray-200 active:bg-gray-300 transition-colors min-h-[44px] min-w-[44px] focus:outline-none focus:ring-2 focus:ring-theme-primary/50 focus:ring-offset-2"
                 aria-label="Back to Family Board"
               >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="h-5 w-5 text-gray-600"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                </svg>
+                <ChevronLeft className="h-5 w-5 text-gray-600" />
               </Link>
               <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-br from-theme-primary to-theme-secondary flex items-center justify-center flex-shrink-0 shadow-md">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="h-5 w-5 sm:h-6 sm:w-6 text-white"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                </svg>
+                <BarChart3 className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
               </div>
-              <h1 className="text-base sm:text-lg lg:text-xl font-bold text-gray-800">
+              <h1 className="hidden sm:block text-lg lg:text-xl font-bold text-gray-800">
                 Stats & Rewards
               </h1>
             </div>
@@ -709,14 +646,7 @@ function StatsPage() {
                   {activeTabData.icon}
                   <span className="font-bold">{activeTabData.label}</span>
                 </div>
-                <svg
-                  className={`w-5 h-5 transition-transform ${mobileMenuOpen ? 'rotate-180' : ''}`}
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                </svg>
+                <ChevronDown className={`w-5 h-5 transition-transform ${mobileMenuOpen ? 'rotate-180' : ''}`} />
               </button>
 
               {mobileMenuOpen && (
@@ -739,9 +669,7 @@ function StatsPage() {
                       </span>
                       <span className="font-medium">{tab.label}</span>
                       {activeTab === tab.id && (
-                        <svg className="w-5 h-5 ml-auto text-theme-primary" fill="currentColor" viewBox="0 0 20 20">
-                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                        </svg>
+                        <Check className="w-5 h-5 ml-auto text-theme-primary" />
                       )}
                     </button>
                   ))}

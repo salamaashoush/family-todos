@@ -1,35 +1,12 @@
 import { useState, useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
+import { Plus, Trash2, Gift, Star, Search, CheckCircle, PlusCircle } from 'lucide-react'
 import { useRewardMutations, useRedemptionMutations } from '../../hooks/useAdminMutations'
 import { getRewards, getPendingRedemptions } from '../../server/rewards'
 import { Modal, ConfirmDialog, Button, Input, Select, SkeletonCard, EmptyState, Badge } from '../shared'
 import { AdminCard } from './AdminCard'
 import { RewardForm } from './RewardForm'
 import type { Reward, RewardRedemption } from '../../types'
-
-const PlusIcon = () => (
-  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-  </svg>
-)
-
-const TrashIcon = () => (
-  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-  </svg>
-)
-
-const GiftIcon = ({ className = "w-6 h-6" }: { className?: string }) => (
-  <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5.5A2.5 2.5 0 109.5 8H12zm-7 4h14M5 12a2 2 0 110-4h14a2 2 0 110 4M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7" />
-  </svg>
-)
-
-const StarIcon = () => (
-  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-  </svg>
-)
 
 interface RewardFormData {
   name: string
@@ -198,7 +175,7 @@ export function RewardsTab() {
         <div className="flex items-center justify-between">
           <h2 className="text-xl sm:text-2xl font-bold text-gray-800">Rewards System</h2>
           {activeSection === 'rewards' && (
-            <Button onClick={openAddModal} leftIcon={<PlusIcon />}>
+            <Button onClick={openAddModal} leftIcon={<Plus className="w-5 h-5" />}>
               <span className="hidden sm:inline">Add Reward</span>
               <span className="sm:hidden">Add</span>
             </Button>
@@ -245,11 +222,7 @@ export function RewardsTab() {
                 placeholder="Search rewards..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                leftIcon={
-                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                  </svg>
-                }
+                leftIcon={<Search className="w-5 h-5" />}
               />
             </div>
             <Select
@@ -270,13 +243,11 @@ export function RewardsTab() {
                   onClick={toggleSelectAll}
                   className="p-2 hover:bg-theme-primary/20 rounded-lg transition-colors"
                 >
-                  <svg className="w-5 h-5 text-theme-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    {selectedIds.size === filteredRewards.length ? (
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    ) : (
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h8M12 8v8m9-4a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    )}
-                  </svg>
+                  {selectedIds.size === filteredRewards.length ? (
+                    <CheckCircle className="w-5 h-5 text-theme-primary" />
+                  ) : (
+                    <PlusCircle className="w-5 h-5 text-theme-primary" />
+                  )}
                 </button>
                 <span className="font-semibold text-theme-primary">
                   {selectedIds.size} selected
@@ -294,7 +265,7 @@ export function RewardsTab() {
                   variant="danger"
                   size="sm"
                   onClick={() => setShowBulkDelete(true)}
-                  leftIcon={<TrashIcon />}
+                  leftIcon={<Trash2 className="w-5 h-5" />}
                 >
                   Delete
                 </Button>
@@ -323,7 +294,7 @@ export function RewardsTab() {
               />
             ) : (
               <EmptyState
-                icon={<GiftIcon className="w-12 h-12 text-gray-300 mb-4" />}
+                icon={<Gift className="w-12 h-12 text-gray-300 mb-4" />}
                 title="No rewards yet"
                 description="Click 'Add Reward' above to create one"
               />
@@ -341,7 +312,7 @@ export function RewardsTab() {
                 >
                   <div className="flex items-start gap-3">
                     <div className="w-12 h-12 rounded-full bg-gradient-to-br from-yellow-400 to-orange-500 flex items-center justify-center flex-shrink-0 text-2xl">
-                      {reward.icon || <GiftIcon />}
+                      {reward.icon || <Gift className="w-6 h-6" />}
                     </div>
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
@@ -354,7 +325,7 @@ export function RewardsTab() {
                         <p className="text-sm text-gray-500 mt-0.5 line-clamp-1">{reward.description}</p>
                       )}
                       <div className="flex items-center gap-1 mt-1 text-yellow-600">
-                        <StarIcon />
+                        <Star className="w-4 h-4 fill-current" />
                         <span className="font-bold">{reward.pointCost} points</span>
                       </div>
                     </div>
@@ -381,7 +352,7 @@ export function RewardsTab() {
                     <div className="flex items-start justify-between gap-4">
                       <div className="flex items-start gap-3">
                         <div className="w-10 h-10 rounded-full bg-gradient-to-br from-yellow-400 to-orange-500 flex items-center justify-center flex-shrink-0 text-xl">
-                          <GiftIcon />
+                          <Gift className="w-5 h-5" />
                         </div>
                         <div>
                           <h4 className="font-bold text-gray-800">{redemption.rewardName}</h4>
@@ -389,7 +360,7 @@ export function RewardsTab() {
                             Requested by <span className="font-medium">{redemption.memberName}</span>
                           </p>
                           <div className="flex items-center gap-1 mt-1 text-yellow-600 text-sm">
-                            <StarIcon />
+                            <Star className="w-4 h-4 fill-current" />
                             <span className="font-medium">{redemption.pointsSpent} points</span>
                           </div>
                           <p className="text-xs text-gray-400 mt-1">
@@ -427,11 +398,7 @@ export function RewardsTab() {
             </>
           ) : (
             <EmptyState
-              icon={
-                <svg className="w-12 h-12 text-gray-300 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              }
+              icon={<CheckCircle className="w-12 h-12 text-gray-300 mb-4" />}
               title="No pending redemptions"
               description="When family members redeem rewards, they'll appear here"
             />

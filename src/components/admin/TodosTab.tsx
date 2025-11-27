@@ -14,6 +14,7 @@ import {
   sortableKeyboardCoordinates,
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable'
+import { Plus, GripHorizontal, Trash2, ClipboardList, ArrowUpDown, Search, CheckCircle, PlusCircle } from 'lucide-react'
 import { useTodos, useTimeslots } from '../../hooks/useQueries'
 import { useTodoMutations } from '../../hooks/useAdminMutations'
 import { Modal, ConfirmDialog, Button, Select, SkeletonCard, EmptyState, Badge } from '../shared'
@@ -22,30 +23,6 @@ import { AdminCard } from './AdminCard'
 import { SortableItem } from './SortableItem'
 import { getDisplaySymbol } from '../../utils/symbols'
 import type { Todo, Timeslot } from '../../types'
-
-const PlusIcon = () => (
-  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-  </svg>
-)
-
-const ReorderIcon = () => (
-  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8h16M4 16h16" />
-  </svg>
-)
-
-const TrashIcon = () => (
-  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-  </svg>
-)
-
-const ClipboardIcon = () => (
-  <svg className="w-12 h-12 text-gray-300 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
-  </svg>
-)
 
 interface TodoFormData {
   title: string
@@ -214,12 +191,12 @@ export function TodosTab() {
                 variant="secondary"
                 onClick={startReordering}
                 disabled={!canReorder || !todos?.length}
-                leftIcon={<ReorderIcon />}
+                leftIcon={<GripHorizontal className="w-5 h-5" />}
               >
                 <span className="hidden sm:inline">Reorder</span>
               </Button>
             )}
-            <Button onClick={openAddModal} leftIcon={<PlusIcon />}>
+            <Button onClick={openAddModal} leftIcon={<Plus className="w-5 h-5" />}>
               <span className="hidden sm:inline">Add Task</span>
               <span className="sm:hidden">Add</span>
             </Button>
@@ -230,9 +207,7 @@ export function TodosTab() {
         {isReordering && (
           <div className="flex items-center justify-between bg-blue-50 border-2 border-blue-200 rounded-xl p-3">
             <div className="flex items-center gap-2 text-blue-700">
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
-              </svg>
+              <ArrowUpDown className="w-5 h-5" />
               <span className="font-medium">Drag tasks to reorder</span>
             </div>
             <div className="flex items-center gap-2">
@@ -250,14 +225,7 @@ export function TodosTab() {
         {!isReordering && (
           <div className="flex flex-col sm:flex-row gap-3">
             <div className="relative flex-1">
-              <svg
-                className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              </svg>
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" />
               <input
                 type="text"
                 placeholder="Search tasks..."
@@ -288,13 +256,11 @@ export function TodosTab() {
                 onClick={toggleSelectAll}
                 className="p-2 hover:bg-theme-primary/20 rounded-lg transition-colors"
               >
-                <svg className="w-5 h-5 text-theme-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  {selectedIds.size === filteredTodos.length ? (
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  ) : (
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h8M12 8v8m9-4a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  )}
-                </svg>
+                {selectedIds.size === filteredTodos.length ? (
+                  <CheckCircle className="w-5 h-5 text-theme-primary" />
+                ) : (
+                  <PlusCircle className="w-5 h-5 text-theme-primary" />
+                )}
               </button>
               <span className="font-semibold text-theme-primary">
                 {selectedIds.size} selected
@@ -312,7 +278,7 @@ export function TodosTab() {
                 variant="danger"
                 size="sm"
                 onClick={() => setShowBulkDelete(true)}
-                leftIcon={<TrashIcon />}
+                leftIcon={<Trash2 className="w-5 h-5" />}
               >
                 Delete
               </Button>
@@ -342,7 +308,7 @@ export function TodosTab() {
           />
         ) : (
           <EmptyState
-            icon={<ClipboardIcon />}
+            icon={<ClipboardList className="w-12 h-12 text-gray-300 mb-4" />}
             title="No tasks yet"
             description="Click 'Add Task' above to create one"
           />

@@ -1,56 +1,9 @@
 import { useMemo, useState } from 'react'
+import { ChevronDown, Star, Flame, CheckCircle, Trophy, Users, Clock } from 'lucide-react'
 import { useMembers, useAllAchievements } from '../../hooks/useQueries'
 import { MemberStatsCard } from './MemberStatsCard'
 import { useMemberStats, useMemberAchievements } from '../../hooks/useQueries'
 import type { Member, Achievement, MemberStats } from '../../types'
-
-// Icon components
-const ChevronIcon = ({ isOpen }: { isOpen: boolean }) => (
-  <svg
-    className={`w-5 h-5 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}
-    fill="none"
-    viewBox="0 0 24 24"
-    stroke="currentColor"
-  >
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-  </svg>
-)
-
-const StarIcon = () => (
-  <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
-    <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
-  </svg>
-)
-
-const FireIcon = () => (
-  <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
-    <path d="M12 23c-4.97 0-9-4.03-9-9 0-3.53 2.04-6.55 5-8.03V5c0-.55.45-1 1-1s1 .45 1 1v.97c.96-.59 2.04-1.03 3.21-1.25.75-.14 1.29.68.88 1.34-.25.4-.68.65-1.09.79-1.07.36-2.02.96-2.78 1.73C8.24 10.58 7 12.67 7 15c0 2.76 2.24 5 5 5s5-2.24 5-5c0-1.63-.79-3.08-2-4-.55-.42-.63-1.2-.16-1.69.47-.49 1.25-.46 1.77.01C18.81 10.97 20 13.31 20 16c0 3.87-3.13 7-7 7h-1z" />
-  </svg>
-)
-
-const CheckIcon = () => (
-  <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-  </svg>
-)
-
-const TrophyIcon = () => (
-  <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
-    <path d="M19 5h-2V3H7v2H5c-1.1 0-2 .9-2 2v1c0 2.55 1.92 4.63 4.39 4.94.63 1.5 1.98 2.63 3.61 2.96V19H8v2h8v-2h-3v-3.1c1.63-.33 2.98-1.46 3.61-2.96C19.08 12.63 21 10.55 21 8V7c0-1.1-.9-2-2-2zM5 8V7h2v3.82C5.84 10.4 5 9.3 5 8zm14 0c0 1.3-.84 2.4-2 2.82V7h2v1z" />
-  </svg>
-)
-
-const UsersIcon = () => (
-  <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" />
-  </svg>
-)
-
-const ClockIcon = () => (
-  <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-  </svg>
-)
 
 // Aggregate stats component
 interface AggregateStatsProps {
@@ -122,7 +75,7 @@ function AggregateStatsSection({ members }: AggregateStatsProps) {
     {
       label: 'Total Stars',
       value: aggregateData.totalStars,
-      icon: <StarIcon />,
+      icon: <Star className="w-6 h-6 fill-current" />,
       color: 'text-yellow-500',
       bgColor: 'bg-yellow-50',
       borderColor: 'border-yellow-300',
@@ -130,7 +83,7 @@ function AggregateStatsSection({ members }: AggregateStatsProps) {
     {
       label: 'Tasks Done',
       value: aggregateData.totalTasks,
-      icon: <CheckIcon />,
+      icon: <CheckCircle className="w-6 h-6" />,
       color: 'text-green-500',
       bgColor: 'bg-green-50',
       borderColor: 'border-green-300',
@@ -138,7 +91,7 @@ function AggregateStatsSection({ members }: AggregateStatsProps) {
     {
       label: 'Timeslots',
       value: aggregateData.totalTimeslots,
-      icon: <ClockIcon />,
+      icon: <Clock className="w-6 h-6" />,
       color: 'text-blue-500',
       bgColor: 'bg-blue-50',
       borderColor: 'border-blue-300',
@@ -146,7 +99,7 @@ function AggregateStatsSection({ members }: AggregateStatsProps) {
     {
       label: 'Achievements',
       value: aggregateData.totalAchievements,
-      icon: <TrophyIcon />,
+      icon: <Trophy className="w-6 h-6" />,
       color: 'text-theme-primary',
       bgColor: 'bg-theme-primary/10',
       borderColor: 'border-theme-primary/30',
@@ -154,7 +107,7 @@ function AggregateStatsSection({ members }: AggregateStatsProps) {
     {
       label: 'Best Streak',
       value: `${aggregateData.highestStreak}d`,
-      icon: <FireIcon />,
+      icon: <Flame className="w-6 h-6" />,
       color: 'text-orange-500',
       bgColor: 'bg-orange-50',
       borderColor: 'border-orange-300',
@@ -162,7 +115,7 @@ function AggregateStatsSection({ members }: AggregateStatsProps) {
     {
       label: 'Members',
       value: members.length,
-      icon: <UsersIcon />,
+      icon: <Users className="w-6 h-6" />,
       color: 'text-theme-secondary',
       bgColor: 'bg-theme-secondary/10',
       borderColor: 'border-theme-secondary/30',
@@ -255,7 +208,7 @@ function CollapsibleSection({ title, count, defaultOpen = true, children }: Coll
           )}
         </div>
         <div className="p-2 rounded-lg text-gray-500 group-hover:bg-gray-100 group-hover:text-gray-700 transition-colors">
-          <ChevronIcon isOpen={isOpen} />
+          <ChevronDown className={`w-5 h-5 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
         </div>
       </button>
       <div
@@ -390,7 +343,7 @@ function CollapsibleAchievementGroup({ type, achievements }: CollapsibleAchievem
           {achievements.length}
         </span>
         <div className="ml-auto p-1 text-gray-500">
-          <ChevronIcon isOpen={isOpen} />
+          <ChevronDown className={`w-5 h-5 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
         </div>
       </button>
       <div
@@ -416,7 +369,7 @@ function CollapsibleAchievementGroup({ type, achievements }: CollapsibleAchievem
                       {achievement.requirementValue} {type.replace(/_/g, ' ')}
                     </span>
                     <span className="inline-flex items-center gap-1 bg-yellow-100 border border-yellow-300 rounded-full px-2 py-0.5 text-xs font-bold text-yellow-700">
-                      +{achievement.starReward} <StarIcon />
+                      +{achievement.starReward} <Star className="w-3 h-3 fill-current" />
                     </span>
                   </div>
                 </div>

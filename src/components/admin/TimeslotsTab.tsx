@@ -14,6 +14,7 @@ import {
   sortableKeyboardCoordinates,
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable'
+import { Plus, GripHorizontal, Trash2, Clock } from 'lucide-react'
 import { useTimeslots, useMembers } from '../../hooks/useQueries'
 import { useTimeslotMutations, useTodoMutations } from '../../hooks/useAdminMutations'
 import { formatRecurrenceDays } from '../../utils/timeslots'
@@ -27,30 +28,6 @@ import { QuickTaskForm } from './QuickTaskForm'
 import { AdminCard } from './AdminCard'
 import { SortableItem } from './SortableItem'
 import type { Timeslot, Member } from '../../types'
-
-const PlusIcon = () => (
-  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-  </svg>
-)
-
-const ReorderIcon = () => (
-  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8h16M4 16h16" />
-  </svg>
-)
-
-const TrashIcon = () => (
-  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-  </svg>
-)
-
-const ClockIcon = () => (
-  <svg className="w-12 h-12 text-gray-300 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-  </svg>
-)
 
 interface TimeslotFormData {
   name: string
@@ -221,12 +198,12 @@ export function TimeslotsTab() {
                 variant="secondary"
                 onClick={startReordering}
                 disabled={!canReorder || !timeslots?.length}
-                leftIcon={<ReorderIcon />}
+                leftIcon={<GripHorizontal className="w-5 h-5" />}
               >
                 <span className="hidden sm:inline">Reorder</span>
               </Button>
             )}
-            <Button onClick={openAddModal} leftIcon={<PlusIcon />}>
+            <Button onClick={openAddModal} leftIcon={<Plus className="w-5 h-5" />}>
               <span className="hidden sm:inline">Add Slot</span>
               <span className="sm:hidden">Add</span>
             </Button>
@@ -319,7 +296,7 @@ export function TimeslotsTab() {
                 variant="danger"
                 size="sm"
                 onClick={() => setShowBulkDelete(true)}
-                leftIcon={<TrashIcon />}
+                leftIcon={<Trash2 className="w-5 h-5" />}
               >
                 Delete
               </Button>
@@ -357,7 +334,7 @@ export function TimeslotsTab() {
             </>
           ) : (
             <div className="flex flex-col items-center">
-              <ClockIcon />
+              <Clock className="w-12 h-12 text-gray-300 mb-4" />
               <p className="text-lg">No time slots yet</p>
               <p className="text-sm text-gray-400 mt-1">Click "Add Time Slot" above to create one</p>
             </div>

@@ -31,8 +31,8 @@ export function Header({ selectedDate, onDateChange }: HeaderProps) {
                 />
               </svg>
             </div>
-            <h1 className="text-base sm:text-lg lg:text-xl font-bold text-gray-800 truncate">
-              <span className="hidden xs:inline">Family </span>Todos
+            <h1 className="hidden sm:block text-lg lg:text-xl font-bold text-gray-800 truncate">
+              Family Todos
             </h1>
           </Link>
 
