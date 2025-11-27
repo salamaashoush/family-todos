@@ -1,5 +1,4 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { log } from "../../utils/logger";
 
 const dataDir = process.env.DATA_DIR || process.cwd();
 const uploadDir = `${dataDir}/uploads`;
@@ -12,14 +11,12 @@ export const Route = createFileRoute("/uploads/$")({
         const filename = params._splat;
 
         if (!filename) {
-          log.warn("Upload request without filename");
           return new Response("Not found", { status: 404 });
         }
 
         // Prevent directory traversal - only get the basename
         const safeName = filename.split("/").pop() || "";
         if (!safeName || safeName.includes("..")) {
-          log.warn("Invalid upload filename", { filename });
           return new Response("Not found", { status: 404 });
         }
 
@@ -30,11 +27,8 @@ export const Route = createFileRoute("/uploads/$")({
           const exists = await file.exists();
 
           if (!exists) {
-            log.warn("Upload file not found", { filePath });
             return new Response("Not found", { status: 404 });
           }
-
-          log.info("Serving upload", { filePath, type: file.type, size: file.size });
 
           return new Response(file, {
             headers: {
@@ -42,8 +36,7 @@ export const Route = createFileRoute("/uploads/$")({
               "Cache-Control": "public, max-age=31536000, immutable",
             },
           });
-        } catch (err) {
-          log.error("Error serving upload", err, { filePath });
+        } catch {
           return new Response("Not found", { status: 404 });
         }
       },

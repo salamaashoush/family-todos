@@ -1,7 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { db } from "../../db";
 import { sql } from "drizzle-orm";
-import { log } from "../../utils/logger";
 
 export const Route = createFileRoute("/api/health")({
   component: () => null,
@@ -18,7 +17,6 @@ export const Route = createFileRoute("/api/health")({
             database: "connected",
           });
         } catch (error) {
-          log.error("Health check failed", error);
           return Response.json(
             {
               status: "unhealthy",

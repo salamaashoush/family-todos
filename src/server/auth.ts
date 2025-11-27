@@ -10,7 +10,6 @@ import {
   clearLoginRateLimit,
 } from "../utils/rateLimiter";
 import { randomDelay } from "../utils/security";
-import { log } from "../utils/logger";
 
 const LoginSchema = z.object({
   username: z.string().min(1),
@@ -20,12 +19,9 @@ const LoginSchema = z.object({
 export const login = createServerFn({ method: "POST" })
   .inputValidator(LoginSchema)
   .handler(async ({ data }) => {
-    log.info("Login attempt", { username: data.username });
-
     // Check rate limit using username as identifier
     const rateLimit = checkLoginRateLimit(data.username);
     if (!rateLimit.allowed) {
-      log.warn("Login rate limited", { username: data.username, retryAfter: rateLimit.retryAfter });
       // Add random delay even for rate-limited requests to prevent timing analysis
       await randomDelay(100, 300);
       throw new Error(
@@ -56,14 +52,12 @@ export const login = createServerFn({ method: "POST" })
     await randomDelay(50, 150);
 
     if (!adminUser || !isValid) {
-      log.warn("Login failed", { username: data.username, userExists: !!adminUser });
       recordFailedLogin(data.username);
       throw new Error("Invalid credentials");
     }
 
     // Clear rate limit on successful login
     clearLoginRateLimit(data.username);
-    log.info("Login successful", { username: data.username, userId: adminUser.id });
 
     // Update last login timestamp
     await db
