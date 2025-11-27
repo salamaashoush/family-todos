@@ -106,3 +106,47 @@ export async function sendPasswordResetEmail(to: string, token: string) {
     text: `Reset your password\n\nClick this link to reset: ${resetUrl}\n\nThis link expires in 1 hour.\n\nIf you didn't request this, ignore this email.`,
   });
 }
+
+export async function sendMemberInviteEmail(
+  to: string,
+  token: string,
+  memberName: string,
+  familyName: string
+) {
+  const inviteUrl = `${APP_URL}/accept-invite?token=${token}`;
+
+  return sendEmail({
+    to,
+    subject: `You've been invited to manage ${familyName} - ${APP_NAME}`,
+    html: `
+      <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
+        <h2>You're invited!</h2>
+        <p>You've been invited to help manage <strong>${familyName}</strong> on ${APP_NAME}.</p>
+        <p>Your profile "${memberName}" will be linked to your new account, giving you access to:</p>
+        <ul style="color: #444; line-height: 1.8;">
+          <li>Manage family tasks and schedules</li>
+          <li>Track progress and rewards</li>
+          <li>Add and edit family members</li>
+        </ul>
+        <p style="margin: 24px 0;">
+          <a href="${inviteUrl}"
+             style="background-color: #8B5CF6; color: white; padding: 12px 24px;
+                    text-decoration: none; border-radius: 8px; display: inline-block;">
+            Accept Invitation
+          </a>
+        </p>
+        <p style="color: #666; font-size: 14px;">
+          Or copy this link: <a href="${inviteUrl}">${inviteUrl}</a>
+        </p>
+        <p style="color: #666; font-size: 14px;">
+          This invitation expires in 3 days.
+        </p>
+        <hr style="border: none; border-top: 1px solid #eee; margin: 24px 0;">
+        <p style="color: #999; font-size: 12px;">
+          If you weren't expecting this invitation, you can ignore this email.
+        </p>
+      </div>
+    `,
+    text: `You're invited!\n\nYou've been invited to help manage ${familyName} on ${APP_NAME}.\n\nClick this link to accept: ${inviteUrl}\n\nThis invitation expires in 3 days.\n\nIf you weren't expecting this, ignore this email.`,
+  });
+}

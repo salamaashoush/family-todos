@@ -171,6 +171,7 @@ export const createFamily = createServerFn({ method: "POST" })
         familyId: family.id,
         name: adminUser?.username || "Parent",
         isParent: true,
+        linkedUserId: session.data.adminUserId,
       })
       .returning();
 

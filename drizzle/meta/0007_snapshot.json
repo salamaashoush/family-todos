@@ -1,6 +1,6 @@
 {
-  "id": "844348c4-5e28-4427-9727-df59f9d5a7c1",
-  "prevId": "8b27b208-45a6-46be-bd58-6efca69504ff",
+  "id": "84979e25-903e-4bdf-b7a2-999852213337",
+  "prevId": "844348c4-5e28-4427-9727-df59f9d5a7c1",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -1008,7 +1008,7 @@
           "name": "share_token",
           "type": "varchar(64)",
           "primaryKey": false,
-          "notNull": false
+          "notNull": true
         },
         "subscription_tier": {
           "name": "subscription_tier",
@@ -1059,18 +1059,167 @@
       "foreignKeys": {},
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
-        "families_slug_unique": {
-          "name": "families_slug_unique",
-          "nullsNotDistinct": false,
-          "columns": [
-            "slug"
-          ]
-        },
         "families_share_token_unique": {
           "name": "families_share_token_unique",
           "nullsNotDistinct": false,
           "columns": [
             "share_token"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.member_invite_tokens": {
+      "name": "member_invite_tokens",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "member_id": {
+          "name": "member_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "family_id": {
+          "name": "family_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "email": {
+          "name": "email",
+          "type": "varchar(320)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "token": {
+          "name": "token",
+          "type": "varchar(64)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "role": {
+          "name": "role",
+          "type": "varchar(20)",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'admin'"
+        },
+        "expires_at": {
+          "name": "expires_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "used_at": {
+          "name": "used_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "idx_member_invite_token": {
+          "name": "idx_member_invite_token",
+          "columns": [
+            {
+              "expression": "token",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_member_invite_member": {
+          "name": "idx_member_invite_member",
+          "columns": [
+            {
+              "expression": "member_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_member_invite_email_family": {
+          "name": "idx_member_invite_email_family",
+          "columns": [
+            {
+              "expression": "email",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "family_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "member_invite_tokens_member_id_members_id_fk": {
+          "name": "member_invite_tokens_member_id_members_id_fk",
+          "tableFrom": "member_invite_tokens",
+          "tableTo": "members",
+          "columnsFrom": [
+            "member_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "member_invite_tokens_family_id_families_id_fk": {
+          "name": "member_invite_tokens_family_id_families_id_fk",
+          "tableFrom": "member_invite_tokens",
+          "tableTo": "families",
+          "columnsFrom": [
+            "family_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "member_invite_tokens_token_unique": {
+          "name": "member_invite_tokens_token_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "token"
           ]
         }
       },
@@ -1113,6 +1262,12 @@
           "notNull": true,
           "default": false
         },
+        "linked_user_id": {
+          "name": "linked_user_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
         "created_at": {
           "name": "created_at",
           "type": "timestamp",
@@ -1134,6 +1289,21 @@
           "columns": [
             {
               "expression": "family_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_members_linked_user": {
+          "name": "idx_members_linked_user",
+          "columns": [
+            {
+              "expression": "linked_user_id",
               "isExpression": false,
               "asc": true,
               "nulls": "last"

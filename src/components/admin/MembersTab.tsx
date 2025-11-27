@@ -1,28 +1,13 @@
 import { useState, useMemo } from 'react'
+import { useMutation, useQuery } from '@tanstack/react-query'
+import { Plus, Trash2, Users, Mail, Pencil, UserCheck, Search, CheckCircle, PlusCircle } from 'lucide-react'
 import { useMembers } from '../../hooks/useQueries'
 import { useMemberMutations } from '../../hooks/useAdminMutations'
-import { Modal, ConfirmDialog, Button, SkeletonCard, EmptyState } from '../shared'
+import { Modal, ConfirmDialog, Button, SkeletonCard, EmptyState, Input } from '../shared'
 import { MemberForm } from './MemberForm'
 import { AdminCard } from './AdminCard'
+import { sendMemberInvite, getMemberInviteStatus, resendMemberInvite, cancelMemberInvite } from '../../server/memberInvite'
 import type { Member } from '../../types'
-
-const PlusIcon = () => (
-  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-  </svg>
-)
-
-const TrashIcon = () => (
-  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-  </svg>
-)
-
-const UsersIcon = () => (
-  <svg className="w-12 h-12 text-gray-300 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-  </svg>
-)
 
 export function MembersTab() {
   const { data: members, isLoading } = useMembers()
@@ -33,6 +18,50 @@ export function MembersTab() {
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set())
   const [searchQuery, setSearchQuery] = useState('')
   const [showBulkDelete, setShowBulkDelete] = useState(false)
+  const [invitingMember, setInvitingMember] = useState<Member | null>(null)
+  const [inviteEmail, setInviteEmail] = useState('')
+  const [inviteError, setInviteError] = useState('')
+  const [inviteSuccess, setInviteSuccess] = useState('')
+
+  const inviteStatusQuery = useQuery({
+    queryKey: ['memberInviteStatus', invitingMember?.id],
+    queryFn: () => getMemberInviteStatus({ data: { memberId: invitingMember!.id } }),
+    enabled: !!invitingMember,
+  })
+
+  const sendInviteMutation = useMutation({
+    mutationFn: sendMemberInvite,
+    onSuccess: (result) => {
+      setInviteSuccess(result.message)
+      setInviteEmail('')
+      inviteStatusQuery.refetch()
+    },
+    onError: (error) => {
+      setInviteError(error instanceof Error ? error.message : 'Failed to send invite')
+    },
+  })
+
+  const resendInviteMutation = useMutation({
+    mutationFn: resendMemberInvite,
+    onSuccess: (result) => {
+      setInviteSuccess(result.message)
+      inviteStatusQuery.refetch()
+    },
+    onError: (error) => {
+      setInviteError(error instanceof Error ? error.message : 'Failed to resend invite')
+    },
+  })
+
+  const cancelInviteMutation = useMutation({
+    mutationFn: cancelMemberInvite,
+    onSuccess: () => {
+      setInviteSuccess('Invite cancelled')
+      inviteStatusQuery.refetch()
+    },
+    onError: (error) => {
+      setInviteError(error instanceof Error ? error.message : 'Failed to cancel invite')
+    },
+  })
 
   const filteredMembers = useMemo(() => {
     if (!members) return []
@@ -103,6 +132,42 @@ export function MembersTab() {
     setEditingMember(null)
   }
 
+  const openInviteModal = (member: Member) => {
+    setInvitingMember(member)
+    setInviteEmail('')
+    setInviteError('')
+    setInviteSuccess('')
+  }
+
+  const closeInviteModal = () => {
+    setInvitingMember(null)
+    setInviteEmail('')
+    setInviteError('')
+    setInviteSuccess('')
+  }
+
+  const handleSendInvite = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!invitingMember || !inviteEmail) return
+    setInviteError('')
+    setInviteSuccess('')
+    sendInviteMutation.mutate({ data: { memberId: invitingMember.id, email: inviteEmail } })
+  }
+
+  const handleResendInvite = () => {
+    if (!invitingMember) return
+    setInviteError('')
+    setInviteSuccess('')
+    resendInviteMutation.mutate({ data: { memberId: invitingMember.id } })
+  }
+
+  const handleCancelInvite = () => {
+    if (!invitingMember) return
+    setInviteError('')
+    setInviteSuccess('')
+    cancelInviteMutation.mutate({ data: { memberId: invitingMember.id } })
+  }
+
   const isSelecting = selectedIds.size > 0
 
   return (
@@ -111,7 +176,7 @@ export function MembersTab() {
       <div className="flex flex-col gap-4">
         <div className="flex items-center justify-between">
           <h2 className="text-xl sm:text-2xl font-bold text-gray-800">Family Members</h2>
-          <Button onClick={openAddModal} leftIcon={<PlusIcon />}>
+          <Button onClick={openAddModal} leftIcon={<Plus className="w-5 h-5" />}>
             <span className="hidden sm:inline">Add Member</span>
             <span className="sm:hidden">Add</span>
           </Button>
@@ -119,14 +184,7 @@ export function MembersTab() {
 
         {/* Search */}
         <div className="relative">
-          <svg
-            className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-          </svg>
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" />
           <input
             type="text"
             placeholder="Search members..."
@@ -144,13 +202,11 @@ export function MembersTab() {
                 onClick={toggleSelectAll}
                 className="p-2 hover:bg-theme-primary/20 rounded-lg transition-colors"
               >
-                <svg className="w-5 h-5 text-theme-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  {selectedIds.size === filteredMembers.length ? (
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  ) : (
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h8M12 8v8m9-4a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  )}
-                </svg>
+                {selectedIds.size === filteredMembers.length ? (
+                  <CheckCircle className="w-5 h-5 text-theme-primary" />
+                ) : (
+                  <PlusCircle className="w-5 h-5 text-theme-primary" />
+                )}
               </button>
               <span className="font-semibold text-theme-primary">
                 {selectedIds.size} selected
@@ -168,7 +224,7 @@ export function MembersTab() {
                 variant="danger"
                 size="sm"
                 onClick={() => setShowBulkDelete(true)}
-                leftIcon={<TrashIcon />}
+                leftIcon={<Trash2 className="w-5 h-5" />}
               >
                 Delete
               </Button>
@@ -192,47 +248,73 @@ export function MembersTab() {
           />
         ) : (
           <EmptyState
-            icon={<UsersIcon />}
+            icon={<Users className="w-12 h-12 text-gray-300 mb-4" />}
             title="No family members yet"
             description="Click 'Add Member' above to create one"
           />
         )
       ) : (
         <div className="space-y-3">
-          {filteredMembers.map((member: Member) => (
-            <AdminCard
-              key={member.id}
-              onDelete={() => setDeletingMember(member)}
-              onEdit={() => openEditModal(member)}
-              isSelected={selectedIds.has(member.id)}
-              onSelect={() => toggleSelect(member.id)}
-              showCheckbox={true}
-            >
-              <div className="flex items-center gap-3">
-                {member.avatar ? (
-                  <img
-                    src={member.avatar}
-                    alt={member.name}
-                    className="w-12 h-12 rounded-full object-cover border-2 border-theme-primary/20 flex-shrink-0"
-                  />
-                ) : (
-                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-theme-primary to-theme-secondary flex items-center justify-center text-white font-bold text-lg flex-shrink-0">
-                    {member.name.charAt(0).toUpperCase()}
-                  </div>
-                )}
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
-                    <h3 className="font-bold text-gray-800 truncate">{member.name}</h3>
-                    {member.isParent && (
-                      <span className="flex-shrink-0 text-xs font-medium bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">
-                        Parent
-                      </span>
-                    )}
+          {filteredMembers.map((member: Member) => {
+            const actions = [
+              {
+                label: 'Edit',
+                icon: <Pencil className="w-4 h-4" />,
+                onClick: () => openEditModal(member),
+              },
+              ...(!member.linkedUserId ? [{
+                label: 'Invite to Admin',
+                icon: <Mail className="w-4 h-4" />,
+                onClick: () => openInviteModal(member),
+              }] : []),
+              {
+                label: 'Delete',
+                icon: <Trash2 className="w-4 h-4" />,
+                onClick: () => setDeletingMember(member),
+                variant: 'danger' as const,
+              },
+            ]
+
+            return (
+              <AdminCard
+                key={member.id}
+                actions={actions}
+                isSelected={selectedIds.has(member.id)}
+                onSelect={() => toggleSelect(member.id)}
+                showCheckbox={true}
+              >
+                <div className="flex items-center gap-3">
+                  {member.avatar ? (
+                    <img
+                      src={member.avatar}
+                      alt={member.name}
+                      className="w-12 h-12 rounded-full object-cover border-2 border-theme-primary/20 flex-shrink-0"
+                    />
+                  ) : (
+                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-theme-primary to-theme-secondary flex items-center justify-center text-white font-bold text-lg flex-shrink-0">
+                      {member.name.charAt(0).toUpperCase()}
+                    </div>
+                  )}
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h3 className="font-bold text-gray-800 truncate">{member.name}</h3>
+                      {member.isParent && (
+                        <span className="flex-shrink-0 text-xs font-medium bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">
+                          Parent
+                        </span>
+                      )}
+                      {member.linkedUserId && (
+                        <span className="flex-shrink-0 text-xs font-medium bg-green-100 text-green-700 px-2 py-0.5 rounded-full flex items-center gap-1">
+                          <UserCheck className="w-3 h-3" />
+                          Has Account
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
-              </div>
-            </AdminCard>
-          ))}
+              </AdminCard>
+            )
+          })}
         </div>
       )}
 
@@ -263,6 +345,89 @@ export function MembersTab() {
         title="Delete Selected Members"
         message={`Are you sure you want to delete ${selectedIds.size} member${selectedIds.size > 1 ? 's' : ''}? This action cannot be undone.`}
       />
+
+      {/* Invite Modal */}
+      <Modal
+        isOpen={!!invitingMember}
+        onClose={closeInviteModal}
+        title={`Invite ${invitingMember?.name}`}
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-gray-600">
+            Send an invite to give this family member their own login account.
+            They'll be able to manage tasks, rewards, and other family settings.
+          </p>
+
+          {inviteError && (
+            <div className="bg-red-50 border-2 border-red-200 text-red-700 px-4 py-3 rounded-xl text-sm">
+              {inviteError}
+            </div>
+          )}
+
+          {inviteSuccess && (
+            <div className="bg-green-50 border-2 border-green-200 text-green-700 px-4 py-3 rounded-xl text-sm">
+              {inviteSuccess}
+            </div>
+          )}
+
+          {inviteStatusQuery.data?.hasPendingInvite ? (
+            <>
+              <div className="bg-yellow-50 border-2 border-yellow-200 rounded-xl p-4">
+                <p className="text-yellow-800 font-semibold">Pending Invite</p>
+                <p className="text-yellow-700 text-sm mt-1">
+                  An invite was sent to <span className="font-medium">{inviteStatusQuery.data.email}</span>
+                </p>
+                <p className="text-yellow-600 text-xs mt-2">
+                  Expires: {new Date(inviteStatusQuery.data.expiresAt!).toLocaleDateString()}
+                </p>
+              </div>
+              <div className="flex justify-end gap-3 pt-4">
+                <Button
+                  variant="secondary"
+                  onClick={handleCancelInvite}
+                  isLoading={cancelInviteMutation.isPending}
+                >
+                  Cancel Invite
+                </Button>
+                <Button
+                  onClick={handleResendInvite}
+                  isLoading={resendInviteMutation.isPending}
+                >
+                  Resend Invite
+                </Button>
+              </div>
+            </>
+          ) : (
+            <form onSubmit={handleSendInvite} className="space-y-4">
+              <Input
+                id="inviteEmail"
+                name="email"
+                type="email"
+                label="Email Address *"
+                value={inviteEmail}
+                onChange={(e) => setInviteEmail(e.target.value)}
+                placeholder="Enter their email address"
+              />
+              <div className="flex justify-end gap-3 pt-4">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={closeInviteModal}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  isLoading={sendInviteMutation.isPending}
+                  disabled={!inviteEmail}
+                >
+                  Send Invite
+                </Button>
+              </div>
+            </form>
+          )}
+        </div>
+      </Modal>
     </div>
   )
 }

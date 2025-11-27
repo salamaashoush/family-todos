@@ -18,6 +18,7 @@ import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as ForcePasswordChangeRouteImport } from './routes/force-password-change'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as AccountStatusRouteImport } from './routes/account-status'
+import { Route as AcceptInviteRouteImport } from './routes/accept-invite'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as OnboardingIndexRouteImport } from './routes/onboarding/index'
 import { Route as UploadsSplatRouteImport } from './routes/uploads/$'
@@ -71,6 +72,11 @@ const AccountStatusRoute = AccountStatusRouteImport.update({
   path: '/account-status',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AcceptInviteRoute = AcceptInviteRouteImport.update({
+  id: '/accept-invite',
+  path: '/accept-invite',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -109,6 +115,7 @@ const FamilyTokenStatsRoute = FamilyTokenStatsRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/accept-invite': typeof AcceptInviteRoute
   '/account-status': typeof AccountStatusRoute
   '/admin': typeof AdminRoute
   '/force-password-change': typeof ForcePasswordChangeRoute
@@ -127,6 +134,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/accept-invite': typeof AcceptInviteRoute
   '/account-status': typeof AccountStatusRoute
   '/admin': typeof AdminRoute
   '/force-password-change': typeof ForcePasswordChangeRoute
@@ -146,6 +154,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/accept-invite': typeof AcceptInviteRoute
   '/account-status': typeof AccountStatusRoute
   '/admin': typeof AdminRoute
   '/force-password-change': typeof ForcePasswordChangeRoute
@@ -166,6 +175,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/accept-invite'
     | '/account-status'
     | '/admin'
     | '/force-password-change'
@@ -184,6 +194,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/accept-invite'
     | '/account-status'
     | '/admin'
     | '/force-password-change'
@@ -202,6 +213,7 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/accept-invite'
     | '/account-status'
     | '/admin'
     | '/force-password-change'
@@ -221,6 +233,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AcceptInviteRoute: typeof AcceptInviteRoute
   AccountStatusRoute: typeof AccountStatusRoute
   AdminRoute: typeof AdminRoute
   ForcePasswordChangeRoute: typeof ForcePasswordChangeRoute
@@ -303,6 +316,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AccountStatusRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/accept-invite': {
+      id: '/accept-invite'
+      path: '/accept-invite'
+      fullPath: '/accept-invite'
+      preLoaderRoute: typeof AcceptInviteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -357,6 +377,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AcceptInviteRoute: AcceptInviteRoute,
   AccountStatusRoute: AccountStatusRoute,
   AdminRoute: AdminRoute,
   ForcePasswordChangeRoute: ForcePasswordChangeRoute,
