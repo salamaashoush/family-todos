@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { addSSEConnection, removeSSEConnection } from "../../server/realtime";
 import { useAppSession } from "../../utils/session";
 
-const KEEP_ALIVE_INTERVAL = 30000; // 30 seconds
+const KEEP_ALIVE_INTERVAL = 15000; // 15 seconds - shorter for Cloudflare compatibility
 
 /**
  * Generate a unique client ID
@@ -97,9 +97,10 @@ export const Route = createFileRoute("/api/sse")({
         return new Response(stream, {
           headers: {
             "Content-Type": "text/event-stream",
-            "Cache-Control": "no-cache",
-            Connection: "keep-alive",
-            "X-Accel-Buffering": "no", // Disable buffering in nginx
+            "Cache-Control": "no-cache, no-store, must-revalidate",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+            "CF-Cache-Status": "DYNAMIC",
           },
         });
       },
