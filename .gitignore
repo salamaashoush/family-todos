@@ -29,10 +29,8 @@ yarn-error.log*
 *.db-shm
 *.db-wal
 
-# uploads - user uploaded files
-public/uploads/*
-!public/uploads/.gitkeep
-uploads/
+# uploads - user uploaded files (only data directory)
+/data/uploads/
 
 # tanstack
 .tanstack

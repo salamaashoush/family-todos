@@ -39,6 +39,10 @@ COPY --from=prerelease /usr/src/app/drizzle drizzle
 # Copy database scripts and schema (needed for migrations and seed-admin)
 COPY --from=prerelease /usr/src/app/src/db src/db
 
+# Copy instrumentation for OTEL
+COPY --from=prerelease /usr/src/app/src/instrumentation.ts src/instrumentation.ts
+COPY --from=prerelease /usr/src/app/src/utils/logger.ts src/utils/logger.ts
+
 # Copy public directory for static assets (icons, manifest, etc.)
 COPY --from=prerelease /usr/src/app/public ./public
 
@@ -49,6 +53,10 @@ RUN mkdir -p /usr/src/app/data/uploads && chown -R bun:bun /usr/src/app
 ENV NODE_ENV=production
 ENV DATA_DIR=/usr/src/app/data
 ENV PORT=3000
+# OTEL configuration (set OTEL_ENABLED=true and OTEL_EXPORTER_OTLP_ENDPOINT in Coolify to enable)
+ENV OTEL_ENABLED=false
+ENV OTEL_SERVICE_NAME=family-todos
+ENV LOG_LEVEL=info
 
 # Run as non-root user
 USER bun
@@ -60,8 +68,9 @@ EXPOSE 3000/tcp
 HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
   CMD bun -e "fetch('http://localhost:3000/api/health').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"
 
-# Run migrations, seed data, then start server
+# Run migrations, seed data, then start server with OTEL instrumentation
 # - migrate.ts: Runs SQL migrations from drizzle folder
 # - seed-admin.ts: Creates/updates super admin from env vars (DEFAULT_ADMIN_USERNAME, DEFAULT_ADMIN_PASSWORD)
 # - seed-achievements.ts: Seeds global achievements (idempotent - skips existing)
-CMD ["sh", "-c", "bun run src/db/migrate.ts && bun run src/db/seed-admin.ts && bun run src/db/seed-achievements.ts && bun run .output/server/index.mjs"]
+# - preload instrumentation.ts for OTEL auto-instrumentation
+CMD ["sh", "-c", "bun run src/db/migrate.ts && bun run src/db/seed-admin.ts && bun run src/db/seed-achievements.ts && bun run --preload src/instrumentation.ts .output/server/index.mjs"]
