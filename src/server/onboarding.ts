@@ -130,6 +130,13 @@ export const createFamily = createServerFn({ method: "POST" })
       throw new Error("Not authenticated");
     }
 
+    // Get the admin user to use their username for the member
+    const [adminUser] = await db
+      .select({ username: schema.adminUsers.username })
+      .from(schema.adminUsers)
+      .where(eq(schema.adminUsers.id, session.data.adminUserId))
+      .limit(1);
+
     // Generate slug from name with a short random suffix to ensure uniqueness
     const baseSlug = data.name
       .toLowerCase()
@@ -155,6 +162,21 @@ export const createFamily = createServerFn({ method: "POST" })
       userId: session.data.adminUserId,
       familyId: family.id,
       role: "owner",
+    });
+
+    // Create the admin user as a parent family member automatically
+    const [ownerMember] = await db
+      .insert(schema.members)
+      .values({
+        familyId: family.id,
+        name: adminUser?.username || "Parent",
+        isParent: true,
+      })
+      .returning();
+
+    // Initialize member stats for the owner
+    await db.insert(schema.memberStats).values({
+      memberId: ownerMember.id,
     });
 
     // Update session
