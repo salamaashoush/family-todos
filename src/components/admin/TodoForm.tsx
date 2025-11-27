@@ -221,7 +221,10 @@ export function TodoForm({ todo, onSubmit, onCancel }: TodoFormProps) {
           accept="image/*"
           onChange={handleImageChange}
           previewUrl={imagePreview}
-          onClear={resetImage}
+          onClear={() => {
+            resetImage()
+            form.setFieldValue('imageUrl', '')
+          }}
           helperText={`Max: ${UPLOAD_CONFIG.MAX_FILE_SIZE_MB}MB`}
         />
 

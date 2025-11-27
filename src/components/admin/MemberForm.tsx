@@ -99,7 +99,10 @@ export function MemberForm({ member, onSubmit, onCancel }: MemberFormProps) {
         accept="image/*"
         onChange={handleImageChange}
         previewUrl={imagePreview}
-        onClear={resetImage}
+        onClear={() => {
+          resetImage()
+          form.setFieldValue('avatar', '')
+        }}
         helperText={`Max: ${UPLOAD_CONFIG.MAX_FILE_SIZE_MB}MB`}
       />
 
