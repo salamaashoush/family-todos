@@ -66,6 +66,8 @@ export const Route = createFileRoute("/api/sse")({
 
         const clientId = generateClientId();
 
+        let cleanup: (() => void) | null = null;
+
         const stream = new ReadableStream({
           start(controller: SSEController) {
             controller.clientId = clientId;
@@ -80,15 +82,15 @@ export const Route = createFileRoute("/api/sse")({
             // Setup keep-alive
             const keepAlive = createKeepAlive(controller);
 
-            // Store cleanup function
-            controller.cleanup = () => {
+            // Store cleanup function in outer scope
+            cleanup = () => {
               clearInterval(keepAlive);
               removeSSEConnection(clientId, effectiveFamilyId);
             };
           },
 
-          cancel(controller: SSEController) {
-            controller.cleanup?.();
+          cancel() {
+            cleanup?.();
           },
         });
 
