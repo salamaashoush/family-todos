@@ -142,16 +142,6 @@ function PublicFamilyBoard() {
   const queryClient = useQueryClient();
   const [selectedDate, setSelectedDate] = useState(initialDate);
 
-  // Prayer times fetch functions for this token - must be before any early returns (React hooks rule)
-  const fetchPrayerSettings = useCallback(
-    () => getPublicPrayerSettings({ data: { token } }),
-    [token]
-  );
-  const fetchAdhanSettings = useCallback(
-    () => getPublicAdhanSettings({ data: { token } }),
-    [token]
-  );
-
   // Prayer reminder state - must be before any early returns (React hooks rule)
   const [activeReminder, setActiveReminder] = useState<{
     prayer: PrayerName;
@@ -508,12 +498,7 @@ function PublicFamilyBoard() {
   };
 
   return (
-    <PrayerTimesProvider
-      fetchSettings={fetchPrayerSettings}
-      fetchAdhanSettings={fetchAdhanSettings}
-      settingsQueryKey={["public-prayer-settings", token]}
-      adhanSettingsQueryKey={["public-adhan-settings", token]}
-    >
+    <PrayerTimesProvider publicToken={token}>
       <div className="min-h-screen bg-gradient-to-br from-theme-bg-from via-theme-bg-via to-theme-bg-to">
         <Toast />
         <AchievementUnlockModal

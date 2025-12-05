@@ -1,7 +1,6 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useMemo } from "react";
 import { usePrayerTimesContext } from "../../contexts/PrayerTimesContext";
-import { usePrayerTimes } from "../../hooks/usePrayerTimes";
-import { PRAYER_NAMES, type PrayerName } from "../../utils/prayerCalculations";
+import { PRAYER_NAMES, getPrayerOrder, formatPrayerTime, type PrayerName } from "../../utils/prayerCalculations";
 
 interface PrayerTimesPanelProps {
   showSettingsLink?: boolean;
@@ -17,22 +16,45 @@ export function PrayerTimesPanel({
   const {
     isEnabled,
     settings,
-    adhanSettings,
+    prayerTimes,
     isPanelOpen,
     setIsPanelOpen,
     isAdhanPlaying,
     adhanPrayer,
     testFullscreenAdhan,
-    nextPrayer: contextNextPrayer,
+    nextPrayer,
+    timeUntilNextPrayer,
+    prayerSource,
+    mosqueName,
   } = usePrayerTimesContext();
 
   const panelRef = useRef<HTMLDivElement>(null);
 
-  const { prayerList, nextPrayer, timeUntilNextPrayer } = usePrayerTimes({
-    settings,
-    adhanSettings,
-    enabled: isEnabled,
-  });
+  // Build prayer list from context's prayerTimes (which handles both calculated and mosque-based)
+  const prayerList = useMemo(() => {
+    if (!prayerTimes || !settings) return [];
+
+    const order = getPrayerOrder();
+    const now = new Date();
+
+    return order.map((prayer) => {
+      const time = prayerTimes[prayer];
+      const isPast = time < now;
+      const isCurrent = prayerTimes.currentPrayer === prayer;
+      const isNext = prayerTimes.nextPrayer === prayer;
+
+      return {
+        name: prayer,
+        englishName: PRAYER_NAMES[prayer].english,
+        arabicName: PRAYER_NAMES[prayer].arabic,
+        time,
+        formattedTime: formatPrayerTime(time, settings.timezone),
+        isPast,
+        isCurrent,
+        isNext,
+      };
+    });
+  }, [prayerTimes, settings]);
 
   // Close panel on click outside
   useEffect(() => {
@@ -95,7 +117,14 @@ export function PrayerTimesPanel({
         <div className="flex items-center justify-between">
           <div>
             <h3 className="font-bold text-lg">Prayer Times</h3>
-            <p className="text-sm opacity-90">{settings.city || "Your Location"}</p>
+            <p className="text-sm opacity-90">
+              {prayerSource === "mosque" && mosqueName
+                ? mosqueName
+                : settings.city || "Your Location"}
+            </p>
+            {prayerSource === "mosque" && (
+              <span className="text-xs opacity-75">From Mosque</span>
+            )}
           </div>
           <button
             onClick={() => setIsPanelOpen(false)}
@@ -146,7 +175,7 @@ export function PrayerTimesPanel({
         {/* Test Adhan Button */}
         <button
           onClick={() => {
-            const prayer = contextNextPrayer || "fajr";
+            const prayer = nextPrayer || "fajr";
             testFullscreenAdhan(prayer);
             setIsPanelOpen(false);
           }}

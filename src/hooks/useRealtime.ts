@@ -136,6 +136,24 @@ function invalidateQueries(
             predicate: (query) => query.queryKey[0] === "public-completions",
           });
           break;
+        case "settings":
+          // Invalidate prayer settings queries
+          queryClient.invalidateQueries({ queryKey: ["prayer-settings"] });
+          queryClient.invalidateQueries({
+            predicate: (query) => query.queryKey[0] === "public-prayer-settings",
+          });
+          queryClient.invalidateQueries({ queryKey: ["adhan-settings"] });
+          queryClient.invalidateQueries({
+            predicate: (query) => query.queryKey[0] === "public-adhan-settings",
+          });
+          // Also invalidate mosque prayer times (in case mosque changed)
+          queryClient.invalidateQueries({
+            predicate: (query) => query.queryKey[0] === "mosque-prayer-times",
+          });
+          queryClient.invalidateQueries({
+            predicate: (query) => query.queryKey[0] === "public-mosque-prayer-times",
+          });
+          break;
       }
       break;
   }

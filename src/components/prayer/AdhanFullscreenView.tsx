@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import { usePrayerTimesContext } from "../../contexts/PrayerTimesContext";
-import { PRAYER_NAMES, type PrayerName } from "../../utils/prayerCalculations";
+import { PRAYER_NAMES, formatPrayerTime, type PrayerName } from "../../utils/prayerCalculations";
 import {
   AdhanAudioManager,
   DEFAULT_ADHAN_URLS,
@@ -18,6 +18,10 @@ export function AdhanFullscreenView({ className = "" }: AdhanFullscreenViewProps
     adhanSettings,
     stopAdhan,
     settings,
+    prayerSource,
+    mosqueName,
+    mosquePrayerTimes,
+    prayerTimes,
   } = usePrayerTimesContext();
 
   const audioManagerRef = useRef<AdhanAudioManager | null>(null);
@@ -32,6 +36,32 @@ export function AdhanFullscreenView({ className = "" }: AdhanFullscreenViewProps
   const currentAdhanSettings = adhanPrayer
     ? adhanSettings.find((s) => s.prayerName === adhanPrayer)
     : null;
+
+  // Get iqama time for the current prayer (only available with mosque-based times)
+  const iqamaTime = useMemo(() => {
+    if (!adhanPrayer || prayerSource !== "mosque" || !mosquePrayerTimes?.iqama) {
+      return null;
+    }
+    // sunrise doesn't have iqama
+    if (adhanPrayer === "sunrise") return null;
+
+    // Type-safe access to iqama times
+    const iqamaMap = mosquePrayerTimes.iqama;
+    switch (adhanPrayer) {
+      case "fajr": return iqamaMap.fajr || null;
+      case "dhuhr": return iqamaMap.dhuhr || null;
+      case "asr": return iqamaMap.asr || null;
+      case "maghrib": return iqamaMap.maghrib || null;
+      case "isha": return iqamaMap.isha || null;
+      default: return null;
+    }
+  }, [adhanPrayer, prayerSource, mosquePrayerTimes]);
+
+  // Get the adhan time for current prayer
+  const adhanTime = useMemo(() => {
+    if (!adhanPrayer || !prayerTimes) return null;
+    return prayerTimes[adhanPrayer];
+  }, [adhanPrayer, prayerTimes]);
 
   // Initialize audio manager
   useEffect(() => {
@@ -132,6 +162,20 @@ export function AdhanFullscreenView({ className = "" }: AdhanFullscreenViewProps
     }
   }, [isMuted, currentAdhanSettings?.adhanVolume]);
 
+  // Handle ESC key to dismiss
+  useEffect(() => {
+    if (!isFullscreenAdhan) return;
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        handleDismiss();
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [isFullscreenAdhan, handleDismiss]);
+
   if (!isFullscreenAdhan || !adhanPrayer) {
     return null;
   }
@@ -157,53 +201,80 @@ export function AdhanFullscreenView({ className = "" }: AdhanFullscreenViewProps
       />
 
       {/* Content */}
-      <div className="relative z-10 text-center text-white px-4 max-w-lg">
-        {/* Mosque Icon */}
-        <div className="mb-8">
-          <svg
-            className={`w-24 h-24 mx-auto ${isPlaying ? "animate-pulse" : ""}`}
-            viewBox="0 0 24 24"
-            fill="currentColor"
-          >
-            <path d="M12 2C11.5 2 11 2.19 10.59 2.59L7.29 5.88C6.5 6.67 6 7.67 6 8.75V21H8V14C8 13.45 8.45 13 9 13H15C15.55 13 16 13.45 16 14V21H18V8.75C18 7.67 17.5 6.67 16.71 5.88L13.41 2.59C13 2.19 12.5 2 12 2M12 4.41L14.59 7H9.41L12 4.41M10 15V21H14V15H10Z" />
-          </svg>
-        </div>
-
-        {/* Prayer Name */}
-        <div className="mb-4">
-          <h1 className="text-5xl sm:text-6xl font-bold mb-2 font-arabic">
-            {prayerName.arabic}
-          </h1>
-          <h2 className="text-3xl sm:text-4xl font-light opacity-90">
-            {prayerName.english}
-          </h2>
-        </div>
-
-        {/* Status */}
-        <p className="text-xl opacity-75 mb-8">
-          {isPlaying ? "Adhan is playing..." : "Time for prayer"}
-        </p>
-
-        {/* Audio Waveform Animation */}
-        {isPlaying && (
-          <div className="flex items-end justify-center gap-1 h-12 mb-8">
-            {[...Array(20)].map((_, i) => (
-              <div
-                key={i}
-                className="w-1 bg-white/60 rounded-full animate-pulse"
-                style={{
-                  height: `${Math.random() * 100}%`,
-                  animationDelay: `${i * 0.05}s`,
-                  animationDuration: `${0.5 + Math.random() * 0.5}s`,
-                }}
-              />
-            ))}
+      <div className="relative z-10 text-center text-white px-4 max-w-2xl">
+        {/* Top Row: Icon + Prayer Name + Times */}
+        <div className="flex flex-col md:flex-row md:items-center md:justify-center md:gap-8 mb-4">
+          {/* Mosque Icon */}
+          <div className="mb-4 md:mb-0">
+            <svg
+              className={`w-16 h-16 md:w-20 md:h-20 mx-auto ${isPlaying ? "animate-pulse" : ""}`}
+              viewBox="0 0 24 24"
+              fill="currentColor"
+            >
+              <path d="M12 2C11.5 2 11 2.19 10.59 2.59L7.29 5.88C6.5 6.67 6 7.67 6 8.75V21H8V14C8 13.45 8.45 13 9 13H15C15.55 13 16 13.45 16 14V21H18V8.75C18 7.67 17.5 6.67 16.71 5.88L13.41 2.59C13 2.19 12.5 2 12 2M12 4.41L14.59 7H9.41L12 4.41M10 15V21H14V15H10Z" />
+            </svg>
           </div>
-        )}
+
+          {/* Prayer Name */}
+          <div className="mb-4 md:mb-0">
+            <h1 className="text-4xl sm:text-5xl font-bold mb-1 font-arabic">
+              {prayerName.arabic}
+            </h1>
+            <h2 className="text-2xl sm:text-3xl font-light opacity-90">
+              {prayerName.english}
+            </h2>
+          </div>
+
+          {/* Adhan & Iqama Times (when using mosque) */}
+          {prayerSource === "mosque" && adhanTime && (
+            <div className="flex items-center justify-center gap-6 md:gap-8 md:ml-4">
+              <div className="text-center">
+                <span className="text-xs opacity-60 block">Adhan</span>
+                <span className="text-2xl md:text-3xl font-bold">
+                  {formatPrayerTime(adhanTime, settings?.timezone)}
+                </span>
+              </div>
+              {iqamaTime && (
+                <>
+                  <div className="w-px h-10 bg-white/30" />
+                  <div className="text-center">
+                    <span className="text-xs opacity-60 block">Iqama</span>
+                    <span className="text-2xl md:text-3xl font-bold text-amber-300">
+                      {formatPrayerTime(iqamaTime, settings?.timezone)}
+                    </span>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Status + Waveform Row */}
+        <div className="flex items-center justify-center gap-4 mb-4">
+          <p className="text-lg opacity-75">
+            {isPlaying ? "Adhan is playing..." : "Time for prayer"}
+          </p>
+          {/* Audio Waveform Animation */}
+          {isPlaying && (
+            <div className="flex items-end gap-0.5 h-8">
+              {[...Array(12)].map((_, i) => (
+                <div
+                  key={i}
+                  className="w-1 bg-white/60 rounded-full animate-pulse"
+                  style={{
+                    height: `${Math.random() * 100}%`,
+                    animationDelay: `${i * 0.05}s`,
+                    animationDuration: `${0.5 + Math.random() * 0.5}s`,
+                  }}
+                />
+              ))}
+            </div>
+          )}
+        </div>
 
         {/* Progress Bar */}
         {duration > 0 && (
-          <div className="w-full max-w-md mx-auto mb-8">
+          <div className="w-full max-w-md mx-auto mb-4">
             <div className="h-1 bg-white/20 rounded-full overflow-hidden">
               <div
                 className="h-full bg-white/60 rounded-full transition-all duration-300"
@@ -281,13 +352,27 @@ export function AdhanFullscreenView({ className = "" }: AdhanFullscreenViewProps
           </button>
         </div>
 
+        {/* Adhan Dua */}
+        <div className="mt-4 p-3 bg-white/10 rounded-xl max-w-xl mx-auto">
+          <p className="text-base md:text-lg font-arabic leading-relaxed mb-2 text-white/90">
+            اللَّهُمَّ رَبَّ هَذِهِ الدَّعْوَةِ التَّامَّةِ وَالصَّلَاةِ الْقَائِمَةِ آتِ مُحَمَّدًا الْوَسِيلَةَ وَالْفَضِيلَةَ وَابْعَثْهُ مَقَامًا مَحْمُودًا الَّذِي وَعَدْتَهُ
+          </p>
+          <p className="text-xs text-white/60 leading-relaxed">
+            O Allah, Lord of this perfect call and established prayer, grant Muhammad the intercession and favor, and raise him to the honored station You have promised him.
+          </p>
+        </div>
+
         {/* Location Info */}
-        {settings?.city && (
-          <p className="mt-8 text-sm opacity-50">
+        {(prayerSource === "mosque" && mosqueName) ? (
+          <p className="mt-3 text-sm opacity-50">
+            {mosqueName}
+          </p>
+        ) : settings?.city ? (
+          <p className="mt-3 text-sm opacity-50">
             {settings.city}
             {settings.country ? `, ${settings.country}` : ""}
           </p>
-        )}
+        ) : null}
       </div>
 
       {/* Close hint */}

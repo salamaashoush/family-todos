@@ -9,8 +9,17 @@ import {
   madhabEnum,
   highLatitudeRuleEnum,
   prayerNameEnum,
+  prayerSourceEnum,
   type PrayerNameType,
+  type PrayerSourceType,
 } from "../db/schema/prayer";
+import {
+  searchMosques as mawaqitSearch,
+  searchMosquesByLocation as mawaqitSearchByLocation,
+  getMosquePrayerTimes as mawaqitGetPrayerTimes,
+  type MawaqitMosque,
+  type MawaqitPrayerTimesResponse,
+} from "../utils/mawaqit";
 
 // Schemas for validation
 const PrayerSettingsSchema = z.object({
@@ -31,6 +40,11 @@ const PrayerSettingsSchema = z.object({
   isEnabled: z.boolean().default(true),
   showFloatingButton: z.boolean().default(true),
   fullscreenAdhanEnabled: z.boolean().default(true),
+  // Mosque-based prayer times (Mawaqit)
+  prayerSource: z.enum(prayerSourceEnum).default("calculated"),
+  mosqueUuid: z.string().optional().nullable(),
+  mosqueName: z.string().optional().nullable(),
+  mosqueAddress: z.string().optional().nullable(),
 });
 
 const AdhanSettingsSchema = z.object({
@@ -121,6 +135,11 @@ export const savePrayerSettings = createServerFn({ method: "POST" })
           isEnabled: data.isEnabled,
           showFloatingButton: data.showFloatingButton,
           fullscreenAdhanEnabled: data.fullscreenAdhanEnabled,
+          // Mosque-based prayer times
+          prayerSource: data.prayerSource,
+          mosqueUuid: data.mosqueUuid || null,
+          mosqueName: data.mosqueName || null,
+          mosqueAddress: data.mosqueAddress || null,
           updatedAt: new Date(),
         })
         .where(eq(schema.prayerSettings.id, existing.id))
@@ -156,6 +175,11 @@ export const savePrayerSettings = createServerFn({ method: "POST" })
           isEnabled: data.isEnabled,
           showFloatingButton: data.showFloatingButton,
           fullscreenAdhanEnabled: data.fullscreenAdhanEnabled,
+          // Mosque-based prayer times
+          prayerSource: data.prayerSource,
+          mosqueUuid: data.mosqueUuid || null,
+          mosqueName: data.mosqueName || null,
+          mosqueAddress: data.mosqueAddress || null,
         })
         .returning();
 
@@ -339,4 +363,87 @@ export const togglePrayerTimesEnabled = createServerFn({ method: "POST" })
     });
 
     return updated;
+  });
+
+// =============================================================================
+// Mawaqit API Routes (Mosque-based Prayer Times)
+// =============================================================================
+
+// Search for mosques by text query
+const MosqueSearchSchema = z.object({ query: z.string().min(2).max(100) });
+
+export const searchMosques = createServerFn({ method: "GET" })
+  .inputValidator(MosqueSearchSchema)
+  .handler(async ({ data }) => {
+    // No auth required - search is public
+    try {
+      const mosques = await mawaqitSearch(data.query);
+      return { mosques };
+    } catch (error) {
+      console.error("Mosque search error:", error);
+      throw new Error("Failed to search mosques. Please try again.");
+    }
+  });
+
+// Search for mosques by location (nearby mosques)
+const MosqueLocationSearchSchema = z.object({
+  latitude: z.number().min(-90).max(90),
+  longitude: z.number().min(-180).max(180),
+});
+
+export const searchMosquesByLocation = createServerFn({ method: "GET" })
+  .inputValidator(MosqueLocationSearchSchema)
+  .handler(async ({ data }) => {
+    // No auth required - search is public
+    try {
+      const mosques = await mawaqitSearchByLocation(data.latitude, data.longitude);
+      return { mosques };
+    } catch (error) {
+      console.error("Mosque location search error:", error);
+      throw new Error("Failed to find nearby mosques. Please try again.");
+    }
+  });
+
+// Get mosque prayer times by UUID
+const MosquePrayerTimesSchema = z.object({ uuid: z.string().min(1) });
+
+export const getMosquePrayerTimes = createServerFn({ method: "GET" })
+  .inputValidator(MosquePrayerTimesSchema)
+  .handler(async ({ data }) => {
+    try {
+      const prayerTimes = await mawaqitGetPrayerTimes(data.uuid);
+      return prayerTimes;
+    } catch (error) {
+      console.error("Mosque prayer times error:", error);
+      throw new Error("Failed to fetch mosque prayer times. Please try again.");
+    }
+  });
+
+// Get mosque prayer times for public board (by share token)
+const PublicMosquePrayerTimesSchema = z.object({
+  token: z.string(),
+  uuid: z.string().min(1),
+});
+
+export const getPublicMosquePrayerTimes = createServerFn({ method: "GET" })
+  .inputValidator(PublicMosquePrayerTimesSchema)
+  .handler(async ({ data }) => {
+    // Verify the share token is valid
+    const [family] = await db
+      .select()
+      .from(schema.families)
+      .where(eq(schema.families.shareToken, data.token))
+      .limit(1);
+
+    if (!family) {
+      throw new Error("Invalid share token");
+    }
+
+    try {
+      const prayerTimes = await mawaqitGetPrayerTimes(data.uuid);
+      return prayerTimes;
+    } catch (error) {
+      console.error("Public mosque prayer times error:", error);
+      throw new Error("Failed to fetch mosque prayer times.");
+    }
   });

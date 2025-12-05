@@ -19,9 +19,53 @@ import {
   type PrayerName,
 } from "../utils/prayerCalculations";
 import type { PrayerSettings, PrayerAdhanSettings } from "../db/schema/prayer";
+import {
+  formatMawaqitPrayerTimes,
+  type MawaqitPrayerTimesFormatted,
+} from "../utils/mawaqit";
+import {
+  getPrayerSettings,
+  getAdhanSettings,
+  getMosquePrayerTimes,
+  getPublicPrayerSettings,
+  getPublicAdhanSettings,
+  getPublicMosquePrayerTimes,
+} from "../server/prayer";
 
-// Check interval in milliseconds
-const CHECK_INTERVAL = 30000; // 30 seconds
+// Check interval in milliseconds - shorter interval for more reliable detection
+const CHECK_INTERVAL = 10000; // 10 seconds for reliable adhan triggering
+
+// Threshold for detecting prayer time (2 minutes window to avoid missing)
+const PRAYER_TIME_THRESHOLD_MS = 120000; // 2 minutes
+
+// SessionStorage key for persisting triggered adhans across page refreshes
+const TRIGGERED_ADHANS_KEY = "prayer_triggered_adhans";
+const TRIGGERED_REMINDERS_KEY = "prayer_triggered_reminders";
+
+// Helper to get triggered items from sessionStorage
+function getTriggeredFromStorage(key: string): Set<string> {
+  if (typeof window === "undefined") return new Set();
+  try {
+    const stored = sessionStorage.getItem(key);
+    if (stored) {
+      const parsed = JSON.parse(stored);
+      return new Set(parsed);
+    }
+  } catch {
+    // Ignore storage errors
+  }
+  return new Set();
+}
+
+// Helper to save triggered items to sessionStorage
+function saveTriggeredToStorage(key: string, set: Set<string>): void {
+  if (typeof window === "undefined") return;
+  try {
+    sessionStorage.setItem(key, JSON.stringify([...set]));
+  } catch {
+    // Ignore storage errors
+  }
+}
 
 interface PrayerTimesContextValue {
   // Settings
@@ -30,12 +74,20 @@ interface PrayerTimesContextValue {
   isEnabled: boolean;
   isLoading: boolean;
 
+  // Prayer source info
+  prayerSource: "calculated" | "mosque";
+  mosqueName: string | null;
+  mosqueUuid: string | null;
+
   // Calculated times
   prayerTimes: PrayerTimesResult | null;
   currentPrayer: PrayerName | null;
   nextPrayer: PrayerName | null;
   nextPrayerTime: Date | null;
   timeUntilNextPrayer: string;
+
+  // Mosque-based times (when using Mawaqit)
+  mosquePrayerTimes: MawaqitPrayerTimesFormatted | null;
 
   // Adhan state
   isAdhanPlaying: boolean;
@@ -67,20 +119,14 @@ const PrayerTimesContext = createContext<PrayerTimesContextValue | null>(null);
 
 interface PrayerTimesProviderProps {
   children: ReactNode;
-  // Function to fetch settings - allows different implementations for public vs authenticated
-  fetchSettings: () => Promise<PrayerSettings | null>;
-  fetchAdhanSettings: () => Promise<PrayerAdhanSettings[]>;
-  // Query keys for React Query
-  settingsQueryKey: string[];
-  adhanSettingsQueryKey: string[];
+  // Optional public token - if provided, uses public API endpoints
+  // If not provided, uses authenticated endpoints
+  publicToken?: string;
 }
 
 export function PrayerTimesProvider({
   children,
-  fetchSettings,
-  fetchAdhanSettings,
-  settingsQueryKey,
-  adhanSettingsQueryKey,
+  publicToken,
 }: PrayerTimesProviderProps) {
   // State
   const [isPanelOpen, setIsPanelOpen] = useState(false);
@@ -90,37 +136,132 @@ export function PrayerTimesProvider({
   const [activeReminder, setActiveReminder] = useState<PrayerName | null>(null);
   const [currentTime, setCurrentTime] = useState(new Date());
 
-  // Refs to track what we've already triggered
-  const triggeredAdhans = useRef<Set<string>>(new Set());
-  const triggeredReminders = useRef<Set<string>>(new Set());
+  // Refs to track what we've already triggered - initialized from sessionStorage for page refresh resilience
+  const triggeredAdhans = useRef<Set<string>>(getTriggeredFromStorage(TRIGGERED_ADHANS_KEY));
+  const triggeredReminders = useRef<Set<string>>(getTriggeredFromStorage(TRIGGERED_REMINDERS_KEY));
 
-  // Fetch prayer settings
+  // Ref for precise scheduling timeout
+  const nextPrayerTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Determine query keys based on mode
+  const isPublic = !!publicToken;
+  const settingsQueryKey = isPublic
+    ? ["public-prayer-settings", publicToken]
+    : ["prayer-settings"];
+  const adhanSettingsQueryKey = isPublic
+    ? ["public-adhan-settings", publicToken]
+    : ["adhan-settings"];
+
+  // Fetch prayer settings using React Query
   const {
     data: settings,
     isLoading: settingsLoading,
     refetch: refetchSettings,
   } = useQuery({
     queryKey: settingsQueryKey,
-    queryFn: fetchSettings,
+    queryFn: () =>
+      isPublic
+        ? getPublicPrayerSettings({ data: { token: publicToken! } })
+        : getPrayerSettings(),
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
 
-  // Fetch adhan settings
+  // Fetch adhan settings using React Query
   const { data: adhanSettings = [], isLoading: adhanLoading } = useQuery({
     queryKey: adhanSettingsQueryKey,
-    queryFn: fetchAdhanSettings,
+    queryFn: () =>
+      isPublic
+        ? getPublicAdhanSettings({ data: { token: publicToken! } })
+        : getAdhanSettings(),
     staleTime: 5 * 60 * 1000,
     enabled: !!settings,
   });
 
   const isEnabled = settings?.isEnabled ?? false;
   const isLoading = settingsLoading || adhanLoading;
+  const prayerSource = (settings?.prayerSource as "calculated" | "mosque") || "calculated";
+  const mosqueUuid = settings?.mosqueUuid || null;
+  const mosqueName = settings?.mosqueName || null;
 
-  // Calculate prayer times
+  // Fetch mosque prayer times using React Query (when in mosque mode)
+  const mosquePrayerTimesQueryKey = isPublic
+    ? ["public-mosque-prayer-times", publicToken, mosqueUuid]
+    : ["mosque-prayer-times", mosqueUuid];
+
+  const { data: mosquePrayerTimesData } = useQuery({
+    queryKey: mosquePrayerTimesQueryKey,
+    queryFn: () => {
+      if (!mosqueUuid) return null;
+      return isPublic
+        ? getPublicMosquePrayerTimes({ data: { token: publicToken!, uuid: mosqueUuid } })
+        : getMosquePrayerTimes({ data: { uuid: mosqueUuid } });
+    },
+    staleTime: 6 * 60 * 60 * 1000, // 6 hours (mosque times don't change often)
+    enabled: prayerSource === "mosque" && !!mosqueUuid,
+  });
+
+  // Format mosque prayer times
+  const mosquePrayerTimes = useMemo(() => {
+    if (!mosquePrayerTimesData || prayerSource !== "mosque") return null;
+    return formatMawaqitPrayerTimes(mosquePrayerTimesData, settings?.timezone);
+  }, [mosquePrayerTimesData, prayerSource, settings?.timezone]);
+
+  // Calculate prayer times - use mosque times if available, otherwise calculate
   const prayerTimes = useMemo(() => {
     if (!settings || !isEnabled) return null;
+
+    // If using mosque mode and we have mosque prayer times, convert them to PrayerTimesResult format
+    if (prayerSource === "mosque" && mosquePrayerTimes) {
+      // Determine current and next prayer based on mosque times
+      const now = currentTime;
+      const prayerOrder: PrayerName[] = ["fajr", "sunrise", "dhuhr", "asr", "maghrib", "isha"];
+      let currentPrayer: PrayerName | null = null;
+      let nextPrayer: PrayerName | null = null;
+      let nextPrayerTime: Date | null = null;
+
+      for (let i = 0; i < prayerOrder.length; i++) {
+        const prayer = prayerOrder[i];
+        const prayerTime = mosquePrayerTimes[prayer];
+        const nextIdx = i + 1;
+        const nextPrayerInOrder = nextIdx < prayerOrder.length ? mosquePrayerTimes[prayerOrder[nextIdx]] : null;
+
+        if (prayerTime <= now && (!nextPrayerInOrder || nextPrayerInOrder > now)) {
+          currentPrayer = prayer;
+        }
+
+        if (prayerTime > now && !nextPrayer) {
+          nextPrayer = prayer;
+          nextPrayerTime = prayerTime;
+        }
+      }
+
+      // If no next prayer today, next is fajr tomorrow
+      if (!nextPrayer) {
+        nextPrayer = "fajr";
+        const tomorrow = new Date(mosquePrayerTimes.fajr);
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        nextPrayerTime = tomorrow;
+      }
+
+      const timeUntilNext = nextPrayerTime ? nextPrayerTime.getTime() - now.getTime() : null;
+
+      return {
+        fajr: mosquePrayerTimes.fajr,
+        sunrise: mosquePrayerTimes.sunrise,
+        dhuhr: mosquePrayerTimes.dhuhr,
+        asr: mosquePrayerTimes.asr,
+        maghrib: mosquePrayerTimes.maghrib,
+        isha: mosquePrayerTimes.isha,
+        currentPrayer,
+        nextPrayer,
+        nextPrayerTime,
+        timeUntilNextPrayer: timeUntilNext,
+      } as PrayerTimesResult;
+    }
+
+    // Default: calculate from settings
     return calculatePrayerTimesFromSettings(settings, currentTime);
-  }, [settings, isEnabled, currentTime]);
+  }, [settings, isEnabled, currentTime, prayerSource, mosquePrayerTimes]);
 
   // Format countdown
   const timeUntilNextPrayer = useMemo(() => {
@@ -182,14 +323,81 @@ export function PrayerTimesProvider({
     setIsPanelOpen((prev) => !prev);
   }, []);
 
-  // Time update effect
+  // Time update effect with page visibility handling
   useEffect(() => {
     const interval = setInterval(() => {
       setCurrentTime(new Date());
     }, CHECK_INTERVAL);
 
-    return () => clearInterval(interval);
+    // Handle page visibility changes - check immediately when page becomes visible
+    // This catches prayers that might have been missed while tab was in background
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        setCurrentTime(new Date());
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
   }, []);
+
+  // Precise scheduling for next prayer - sets a timeout to trigger exactly at prayer time
+  useEffect(() => {
+    if (!prayerTimes || !settings || !isEnabled) return;
+
+    // Clear any existing timeout
+    if (nextPrayerTimeoutRef.current) {
+      clearTimeout(nextPrayerTimeoutRef.current);
+      nextPrayerTimeoutRef.current = null;
+    }
+
+    const now = new Date();
+    const dateKey = now.toISOString().split("T")[0];
+
+    // Find the next upcoming prayer that has adhan enabled and hasn't been triggered
+    let nextUpcomingPrayer: { prayer: PrayerName; time: Date } | null = null;
+
+    for (const prayer of getPrayersWithAdhan()) {
+      const prayerTime = prayerTimes[prayer];
+      const prayerAdhanSettings = getAdhanSettingsForPrayer(prayer);
+      const adhanKey = `${dateKey}-${prayer}-adhan`;
+
+      // Skip if already triggered or adhan not enabled
+      if (triggeredAdhans.current.has(adhanKey) || !prayerAdhanSettings?.adhanEnabled) {
+        continue;
+      }
+
+      // Check if this prayer is in the future
+      const timeUntil = prayerTime.getTime() - now.getTime();
+      if (timeUntil > 0) {
+        if (!nextUpcomingPrayer || prayerTime < nextUpcomingPrayer.time) {
+          nextUpcomingPrayer = { prayer, time: prayerTime };
+        }
+      }
+    }
+
+    // Schedule precise timeout for the next prayer
+    if (nextUpcomingPrayer) {
+      const timeUntil = nextUpcomingPrayer.time.getTime() - now.getTime();
+      // Only schedule if within 24 hours (avoid very long timeouts)
+      if (timeUntil > 0 && timeUntil < 24 * 60 * 60 * 1000) {
+        nextPrayerTimeoutRef.current = setTimeout(() => {
+          // Trigger immediate check when the scheduled time arrives
+          setCurrentTime(new Date());
+        }, timeUntil);
+      }
+    }
+
+    return () => {
+      if (nextPrayerTimeoutRef.current) {
+        clearTimeout(nextPrayerTimeoutRef.current);
+      }
+    };
+  }, [prayerTimes, settings, isEnabled, getAdhanSettingsForPrayer]);
 
   // Check for prayer times and reminders
   useEffect(() => {
@@ -203,13 +411,14 @@ export function PrayerTimesProvider({
       const prayerTime = prayerTimes[prayer];
       const prayerAdhanSettings = getAdhanSettingsForPrayer(prayer);
 
-      // Check if it's time for adhan
+      // Check if it's time for adhan (using wider threshold for reliability)
       const adhanKey = `${dateKey}-${prayer}-adhan`;
       if (
         !triggeredAdhans.current.has(adhanKey) &&
-        isPrayerTimeNow(prayerTime, now)
+        isPrayerTimeNow(prayerTime, now, PRAYER_TIME_THRESHOLD_MS)
       ) {
         triggeredAdhans.current.add(adhanKey);
+        saveTriggeredToStorage(TRIGGERED_ADHANS_KEY, triggeredAdhans.current);
         if (prayerAdhanSettings?.adhanEnabled) {
           triggerAdhan(prayer);
         }
@@ -227,6 +436,7 @@ export function PrayerTimesProvider({
           )
         ) {
           triggeredReminders.current.add(reminderKey);
+          saveTriggeredToStorage(TRIGGERED_REMINDERS_KEY, triggeredReminders.current);
           setActiveReminder(prayer);
         }
       }
@@ -239,6 +449,8 @@ export function PrayerTimesProvider({
     if (dateKey !== midnightKey) {
       triggeredAdhans.current.clear();
       triggeredReminders.current.clear();
+      saveTriggeredToStorage(TRIGGERED_ADHANS_KEY, triggeredAdhans.current);
+      saveTriggeredToStorage(TRIGGERED_REMINDERS_KEY, triggeredReminders.current);
     }
   }, [
     prayerTimes,
@@ -254,11 +466,19 @@ export function PrayerTimesProvider({
     adhanSettings,
     isEnabled,
     isLoading,
+    // Prayer source info
+    prayerSource,
+    mosqueName,
+    mosqueUuid,
+    // Prayer times
     prayerTimes,
     currentPrayer: prayerTimes?.currentPrayer ?? null,
     nextPrayer: prayerTimes?.nextPrayer ?? null,
     nextPrayerTime: prayerTimes?.nextPrayerTime ?? null,
     timeUntilNextPrayer,
+    // Mosque prayer times (with iqama)
+    mosquePrayerTimes,
+    // Adhan state
     isAdhanPlaying,
     adhanPrayer,
     triggerAdhan,

@@ -42,6 +42,10 @@ export const highLatitudeRuleEnum = [
 ] as const;
 export type HighLatitudeRuleType = (typeof highLatitudeRuleEnum)[number];
 
+// Prayer time source options
+export const prayerSourceEnum = ["calculated", "mosque"] as const;
+export type PrayerSourceType = (typeof prayerSourceEnum)[number];
+
 // Prayer names
 export const prayerNameEnum = ["fajr", "sunrise", "dhuhr", "asr", "maghrib", "isha"] as const;
 export type PrayerNameType = (typeof prayerNameEnum)[number];
@@ -88,6 +92,19 @@ export const prayerSettings = pgTable(
     isEnabled: boolean("is_enabled").default(true).notNull(),
     showFloatingButton: boolean("show_floating_button").default(true).notNull(),
     fullscreenAdhanEnabled: boolean("fullscreen_adhan_enabled").default(true).notNull(),
+
+    // Prayer source (calculated or mosque-based via Mawaqit)
+    prayerSource: varchar("prayer_source", { length: 20 })
+      .default("calculated")
+      .notNull()
+      .$type<PrayerSourceType>(),
+
+    // Mawaqit mosque settings (used when prayerSource = "mosque")
+    mosqueUuid: varchar("mosque_uuid", { length: 100 }),
+    mosqueName: varchar("mosque_name", { length: 255 }),
+    mosqueAddress: text("mosque_address"),
+    mawaqitCacheExpiry: timestamp("mawaqit_cache_expiry"),
+    mawaqitLastSync: timestamp("mawaqit_last_sync"),
 
     // Timestamps
     createdAt: timestamp("created_at").defaultNow().notNull(),
