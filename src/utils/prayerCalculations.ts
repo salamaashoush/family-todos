@@ -289,3 +289,54 @@ export function getPrayerOrder(): PrayerName[] {
 export function getPrayersWithAdhan(): PrayerName[] {
   return ["fajr", "dhuhr", "asr", "maghrib", "isha"];
 }
+
+// Fasting times calculation
+export interface FastingTimes {
+  suhoorEnd: Date; // Same as Fajr - time to stop eating
+  iftarStart: Date; // Same as Maghrib - time to break fast
+  fastDuration: string; // Duration in hours and minutes
+  fastDurationMinutes: number; // Total minutes
+}
+
+/**
+ * Calculate fasting times (Suhoor ends at Fajr, Iftar starts at Maghrib)
+ */
+export function calculateFastingTimes(prayerTimes: CalculatedPrayerTimes): FastingTimes {
+  const suhoorEnd = prayerTimes.fajr;
+  const iftarStart = prayerTimes.maghrib;
+
+  // Calculate duration
+  const durationMs = iftarStart.getTime() - suhoorEnd.getTime();
+  const totalMinutes = Math.floor(durationMs / (1000 * 60));
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+
+  return {
+    suhoorEnd,
+    iftarStart,
+    fastDuration: `${hours}h ${minutes}m`,
+    fastDurationMinutes: totalMinutes,
+  };
+}
+
+/**
+ * Get fasting times for Ramadan (entire month)
+ */
+export function getFastingTimesForMonth(
+  settings: PrayerSettings,
+  year: number,
+  month: number // 0-indexed (0 = January)
+): Map<string, FastingTimes> {
+  const results = new Map<string, FastingTimes>();
+  const endDate = new Date(year, month + 1, 0);
+  const days = endDate.getDate();
+
+  for (let day = 1; day <= days; day++) {
+    const date = new Date(year, month, day);
+    const dateKey = date.toISOString().split("T")[0];
+    const prayerTimes = calculatePrayerTimesFromSettings(settings, date);
+    results.set(dateKey, calculateFastingTimes(prayerTimes));
+  }
+
+  return results;
+}

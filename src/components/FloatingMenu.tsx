@@ -1,9 +1,11 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useMemo } from 'react'
 import { Link } from '@tanstack/react-router'
-import { Menu, X, Settings, BarChart3 } from 'lucide-react'
+import { Menu, X, Settings, BarChart3, Compass } from 'lucide-react'
 import { usePrayerTimesContext } from '../contexts/PrayerTimesContext'
-import { usePrayerTimes } from '../hooks/usePrayerTimes'
 import { PRAYER_NAMES } from '../utils/prayerCalculations'
+import { calculateQiblaDirection, getCardinalDirection } from '../utils/qiblaDirection'
+import { FloatingPanel } from './shared'
+import { QiblaCompass } from './prayer/QiblaCompass'
 
 interface FloatingMenuProps {
   token: string
@@ -11,23 +13,40 @@ interface FloatingMenuProps {
 
 export function FloatingMenu({ token }: FloatingMenuProps) {
   const [isOpen, setIsOpen] = useState(false)
+  const [showQibla, setShowQibla] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
 
-  // Prayer times context
+  // Prayer times context - get all prayer data from context
   const prayerContext = usePrayerTimesContext()
   const {
     isEnabled: prayerEnabled,
     settings: prayerSettings,
-    adhanSettings,
     isAdhanPlaying,
     togglePanel,
+    nextPrayer,
+    timeUntilNextPrayer,
   } = prayerContext || {}
 
-  const { nextPrayer, timeUntilNextPrayer, timeUntilNextPrayerMs } = usePrayerTimes({
-    settings: prayerSettings ?? null,
-    adhanSettings: adhanSettings ?? [],
-    enabled: prayerEnabled ?? false,
-  })
+  // Calculate Qibla direction
+  const qibla = useMemo(() => {
+    if (!prayerSettings) return null
+    return calculateQiblaDirection(
+      parseFloat(prayerSettings.latitude),
+      parseFloat(prayerSettings.longitude)
+    )
+  }, [prayerSettings])
+
+  // Calculate time until next prayer in ms for approaching/imminent checks
+  const timeUntilNextPrayerMs = useMemo(() => {
+    if (!timeUntilNextPrayer) return null
+    // Parse "10h 3m" or "45m" or "2m 30s" format
+    const match = timeUntilNextPrayer.match(/(?:(\d+)h\s*)?(?:(\d+)m)?(?:\s*(\d+)s)?/)
+    if (!match) return null
+    const hours = parseInt(match[1] || '0', 10)
+    const minutes = parseInt(match[2] || '0', 10)
+    const seconds = parseInt(match[3] || '0', 10)
+    return (hours * 60 * 60 + minutes * 60 + seconds) * 1000
+  }, [timeUntilNextPrayer])
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -73,6 +92,19 @@ export function FloatingMenu({ token }: FloatingMenuProps) {
           isOpen ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4 pointer-events-none'
         }`}
       >
+        {/* Qibla Direction Option */}
+        {prayerEnabled && prayerSettings && qibla && (
+          <button
+            onClick={() => {
+              setShowQibla(true)
+              setIsOpen(false)
+            }}
+            className="flex items-center gap-3 px-4 py-3 rounded-xl text-white shadow-lg transition-all transform hover:scale-105 active:scale-95 bg-gradient-to-r from-theme-primary to-theme-secondary hover:opacity-90"
+          >
+            <Compass className="w-5 h-5" />
+            <span className="font-semibold whitespace-nowrap">Qibla Direction</span>
+          </button>
+        )}
         {/* Prayer Times Option */}
         {prayerEnabled && prayerSettings && togglePanel && (
           <button
@@ -107,10 +139,20 @@ export function FloatingMenu({ token }: FloatingMenuProps) {
         </Link>
       </div>
 
-      {/* Main FAB button - shows prayer countdown when enabled */}
+      {/* Main FAB button - shows prayer info when enabled */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className={`${getFabClasses()} text-white p-4 sm:p-5 rounded-full shadow-2xl transition-all transform hover:scale-110 active:scale-95 min-w-[56px] min-h-[56px] sm:min-w-[64px] sm:min-h-[64px] flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-theme-primary/50 focus:ring-offset-2 relative`}
+        className={`
+          ${getFabClasses()} text-white shadow-2xl transition-all transform
+          hover:scale-105 active:scale-95
+          flex items-center justify-center
+          focus:outline-none focus:ring-2 focus:ring-theme-primary/50 focus:ring-offset-2
+          relative
+          ${showPrayerInFab && !isOpen
+            ? 'px-4 py-3 sm:px-5 sm:py-3.5 rounded-full gap-2 sm:gap-3'
+            : 'p-4 sm:p-5 rounded-full min-w-[56px] min-h-[56px] sm:min-w-[64px] sm:min-h-[64px]'
+          }
+        `}
         aria-label={showPrayerInFab ? `${nextPrayerName} in ${timeUntilNextPrayer}` : 'Menu'}
       >
         {/* Animated ring for approaching prayer */}
@@ -118,21 +160,52 @@ export function FloatingMenu({ token }: FloatingMenuProps) {
           <span className="absolute inset-0 rounded-full animate-ping bg-current opacity-20" />
         )}
 
-        <div className={`transition-transform duration-200 ${isOpen ? 'rotate-90' : ''}`}>
-          {isOpen ? (
-            <X className="w-6 h-6 sm:w-7 sm:h-7" />
-          ) : showPrayerInFab && !isOpen ? (
-            <div className="flex flex-col items-center">
-              <svg className={`w-5 h-5 sm:w-6 sm:h-6 ${isAdhanPlaying ? 'animate-bounce' : ''}`} viewBox="0 0 24 24" fill="currentColor">
-                <path d="M12 2C11.5 2 11 2.19 10.59 2.59L7.29 5.88C6.5 6.67 6 7.67 6 8.75V21H8V14C8 13.45 8.45 13 9 13H15C15.55 13 16 13.45 16 14V21H18V8.75C18 7.67 17.5 6.67 16.71 5.88L13.41 2.59C13 2.19 12.5 2 12 2M12 4.41L14.59 7H9.41L12 4.41M10 15V21H14V15H10Z" />
-              </svg>
-              <span className="text-[10px] font-bold mt-0.5">{timeUntilNextPrayer}</span>
-            </div>
-          ) : (
-            <Menu className="w-6 h-6 sm:w-7 sm:h-7" />
-          )}
-        </div>
+        {isOpen ? (
+          <X className="w-6 h-6 sm:w-7 sm:h-7" />
+        ) : showPrayerInFab ? (
+          <div className="flex items-center gap-2 sm:gap-3">
+            <svg className={`w-5 h-5 sm:w-6 sm:h-6 flex-shrink-0 ${isAdhanPlaying ? 'animate-bounce' : ''}`} viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 2C11.5 2 11 2.19 10.59 2.59L7.29 5.88C6.5 6.67 6 7.67 6 8.75V21H8V14C8 13.45 8.45 13 9 13H15C15.55 13 16 13.45 16 14V21H18V8.75C18 7.67 17.5 6.67 16.71 5.88L13.41 2.59C13 2.19 12.5 2 12 2M12 4.41L14.59 7H9.41L12 4.41M10 15V21H14V15H10Z" />
+            </svg>
+            <span className="text-sm sm:text-base font-semibold whitespace-nowrap">{nextPrayerName}</span>
+            <div className="w-px h-4 sm:h-5 bg-white/30" />
+            <span className="text-sm sm:text-base font-bold tabular-nums whitespace-nowrap">{timeUntilNextPrayer}</span>
+          </div>
+        ) : (
+          <Menu className="w-6 h-6 sm:w-7 sm:h-7" />
+        )}
       </button>
+
+      {/* Qibla Direction Panel */}
+      {showQibla && prayerSettings && qibla && (
+        <FloatingPanel
+          isOpen={showQibla}
+          onClose={() => setShowQibla(false)}
+          title="Qibla Direction"
+          subtitle={prayerSettings.city || "Your Location"}
+          headerGradient="from-theme-primary to-theme-secondary"
+          headerIcon={<Compass className="w-5 h-5" />}
+          width={288}
+          footer={
+            <div className="p-3 bg-theme-primary/10 rounded-lg text-center">
+              <p className="text-sm text-theme-primary">
+                Point towards{" "}
+                <span className="font-bold">{qibla.direction.toFixed(0)} {getCardinalDirection(qibla.direction)}</span>
+              </p>
+            </div>
+          }
+        >
+          {/* Compass with live sensor support */}
+          <div className="p-4">
+            <QiblaCompass
+              latitude={parseFloat(prayerSettings.latitude)}
+              longitude={parseFloat(prayerSettings.longitude)}
+              size="md"
+              showDistance={true}
+            />
+          </div>
+        </FloatingPanel>
+      )}
     </div>
   )
 }

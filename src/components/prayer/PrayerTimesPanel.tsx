@@ -1,6 +1,10 @@
-import { useEffect, useRef, useMemo } from "react";
+import { useMemo } from "react";
+import { Settings } from "lucide-react";
 import { usePrayerTimesContext } from "../../contexts/PrayerTimesContext";
-import { PRAYER_NAMES, getPrayerOrder, formatPrayerTime, type PrayerName } from "../../utils/prayerCalculations";
+import { PRAYER_NAMES, getPrayerOrder, formatPrayerTime, calculateFastingTimes, type PrayerName } from "../../utils/prayerCalculations";
+import { gregorianToHijri, formatHijriDate, isRamadan, getIslamicEvent } from "../../utils/hijriCalendar";
+import { calculateQiblaDirection, getCardinalDirection } from "../../utils/qiblaDirection";
+import { FloatingPanel, PanelInfoBar, PanelDateDisplay } from "../shared";
 
 interface PrayerTimesPanelProps {
   showSettingsLink?: boolean;
@@ -28,7 +32,7 @@ export function PrayerTimesPanel({
     mosqueName,
   } = usePrayerTimesContext();
 
-  const panelRef = useRef<HTMLDivElement>(null);
+  const today = new Date();
 
   // Build prayer list from context's prayerTimes (which handles both calculated and mosque-based)
   const prayerList = useMemo(() => {
@@ -56,39 +60,28 @@ export function PrayerTimesPanel({
     });
   }, [prayerTimes, settings]);
 
-  // Close panel on click outside
-  useEffect(() => {
-    if (!isPanelOpen) return;
+  // Hijri date - must be before early return
+  const hijriDate = useMemo(() => gregorianToHijri(today), [today]);
 
-    const handleClickOutside = (event: MouseEvent) => {
-      if (panelRef.current && !panelRef.current.contains(event.target as Node)) {
-        setIsPanelOpen(false);
-      }
-    };
+  // Qibla direction - must be before early return
+  const qibla = useMemo(
+    () => {
+      if (!settings) return { direction: 0, distance: 0 };
+      return calculateQiblaDirection(parseFloat(settings.latitude), parseFloat(settings.longitude));
+    },
+    [settings]
+  );
 
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [isPanelOpen, setIsPanelOpen]);
-
-  // Close panel on escape
-  useEffect(() => {
-    if (!isPanelOpen) return;
-
-    const handleEscape = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        setIsPanelOpen(false);
-      }
-    };
-
-    document.addEventListener("keydown", handleEscape);
-    return () => document.removeEventListener("keydown", handleEscape);
-  }, [isPanelOpen, setIsPanelOpen]);
+  // Fasting times - must be before early return
+  const fastingTimes = useMemo(() => {
+    if (!prayerTimes) return null;
+    return calculateFastingTimes(prayerTimes);
+  }, [prayerTimes]);
 
   if (!isEnabled || !settings || !isPanelOpen) {
     return null;
   }
 
-  const today = new Date();
   const dateStr = today.toLocaleDateString("en-US", {
     weekday: "long",
     year: "numeric",
@@ -97,67 +90,104 @@ export function PrayerTimesPanel({
     timeZone: settings.timezone,
   });
 
-  return (
-    <div
-      ref={panelRef}
-      className={`
-        fixed z-50
-        right-4 bottom-28 sm:right-6 sm:bottom-24
-        w-80 max-w-[calc(100vw-2rem)]
-        bg-white/95 backdrop-blur-md
-        rounded-2xl shadow-2xl
-        overflow-hidden
-        transform transition-all duration-300
-        ${isPanelOpen ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0 pointer-events-none"}
-        ${className}
-      `}
-    >
-      {/* Header */}
-      <div className="bg-gradient-to-r from-theme-primary to-theme-secondary p-4 text-white">
-        <div className="flex items-center justify-between">
-          <div>
-            <h3 className="font-bold text-lg">Prayer Times</h3>
-            <p className="text-sm opacity-90">
-              {prayerSource === "mosque" && mosqueName
-                ? mosqueName
-                : settings.city || "Your Location"}
-            </p>
-            {prayerSource === "mosque" && (
-              <span className="text-xs opacity-75">From Mosque</span>
-            )}
-          </div>
-          <button
-            onClick={() => setIsPanelOpen(false)}
-            className="p-1 rounded-full hover:bg-white/20 transition-colors"
-            aria-label="Close panel"
-          >
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
+  const hijriDateStr = formatHijriDate(hijriDate, "long");
+  const inRamadan = isRamadan(hijriDate);
+  const islamicEvent = getIslamicEvent(hijriDate);
+  const qiblaCardinal = getCardinalDirection(qibla.direction);
 
-        {/* Next Prayer Highlight */}
-        {nextPrayer && (
-          <div className="mt-3 p-3 bg-white/20 rounded-xl">
-            <div className="flex items-center justify-between">
-              <div>
-                <span className="text-xs opacity-75">Next Prayer</span>
-                <div className="font-bold text-lg">{PRAYER_NAMES[nextPrayer].english}</div>
-              </div>
-              <div className="text-right">
-                <span className="text-xs opacity-75">In</span>
-                <div className="font-bold text-2xl">{timeUntilNextPrayer}</div>
-              </div>
+  const subtitle = prayerSource === "mosque" && mosqueName
+    ? mosqueName
+    : settings.city || "Your Location";
+
+  const headerIcon = (
+    <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+      <path d="M12 2C11.5 2 11 2.19 10.59 2.59L7.29 5.88C6.5 6.67 6 7.67 6 8.75V21H8V14C8 13.45 8.45 13 9 13H15C15.55 13 16 13.45 16 14V21H18V8.75C18 7.67 17.5 6.67 16.71 5.88L13.41 2.59C13 2.19 12.5 2 12 2M12 4.41L14.59 7H9.41L12 4.41M10 15V21H14V15H10Z" />
+    </svg>
+  );
+
+  const footer = (
+    <div className="space-y-2">
+      {/* Test Adhan Button - Only in development */}
+      {import.meta.env.DEV && (
+        <button
+          onClick={() => {
+            const prayer = nextPrayer || "fajr";
+            testFullscreenAdhan(prayer);
+            setIsPanelOpen(false);
+          }}
+          className="w-full flex items-center justify-center gap-2 px-4 py-2 text-sm bg-amber-100 text-amber-700 hover:bg-amber-200 rounded-lg transition-colors font-medium border border-amber-300"
+        >
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          [DEV] Test Fullscreen Adhan
+        </button>
+      )}
+
+      {showSettingsLink && onSettingsClick && (
+        <button
+          onClick={onSettingsClick}
+          className="w-full flex items-center justify-center gap-2 px-4 py-2 text-sm text-gray-600 hover:text-theme-primary transition-colors"
+        >
+          <Settings className="w-4 h-4" />
+          Prayer Settings
+        </button>
+      )}
+    </div>
+  );
+
+  return (
+    <FloatingPanel
+      isOpen={isPanelOpen}
+      onClose={() => setIsPanelOpen(false)}
+      title="Prayer Times"
+      subtitle={subtitle}
+      headerGradient="from-theme-primary to-theme-secondary"
+      headerIcon={headerIcon}
+      footer={footer}
+      className={className}
+    >
+      {/* Next Prayer Highlight */}
+      {nextPrayer && (
+        <div className="mx-4 mt-4 p-3 bg-gradient-to-r from-theme-primary/10 to-theme-secondary/10 rounded-xl border border-theme-primary/20">
+          <div className="flex items-center justify-between">
+            <div>
+              <span className="text-xs text-gray-500">Next Prayer</span>
+              <div className="font-bold text-lg text-gray-800">{PRAYER_NAMES[nextPrayer].english}</div>
+            </div>
+            <div className="text-right">
+              <span className="text-xs text-gray-500">In</span>
+              <div className="font-bold text-2xl text-theme-primary">{timeUntilNextPrayer}</div>
             </div>
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* Date */}
-      <div className="px-4 py-2 bg-gray-50 border-b text-sm text-gray-600">
-        {dateStr}
-      </div>
+      <PanelDateDisplay
+        gregorianDate={dateStr}
+        hijriDate={hijriDateStr}
+        event={islamicEvent}
+        className="mt-4"
+      />
+
+      {/* Qibla & Fasting Info Bar */}
+      <PanelInfoBar gradient="from-emerald-50 to-teal-50">
+        <div className="flex items-center gap-2">
+          <svg className="w-4 h-4 text-emerald-600" viewBox="0 0 24 24" fill="currentColor" style={{ transform: `rotate(${qibla.direction}deg)` }}>
+            <path d="M12,2L4.5,20.29L5.21,21L12,18L18.79,21L19.5,20.29L12,2Z" />
+          </svg>
+          <span className="text-emerald-700">
+            Qibla: {qibla.direction.toFixed(0)} {qiblaCardinal}
+          </span>
+        </div>
+        {inRamadan && fastingTimes && (
+          <span className="text-emerald-700 font-medium">
+            Fast: {fastingTimes.fastDuration}
+          </span>
+        )}
+      </PanelInfoBar>
 
       {/* Prayer Times List */}
       <div className="divide-y divide-gray-100">
@@ -169,49 +199,7 @@ export function PrayerTimesPanel({
           />
         ))}
       </div>
-
-      {/* Footer */}
-      <div className="p-3 bg-gray-50 border-t space-y-2">
-        {/* Test Adhan Button */}
-        <button
-          onClick={() => {
-            const prayer = nextPrayer || "fajr";
-            testFullscreenAdhan(prayer);
-            setIsPanelOpen(false);
-          }}
-          className="w-full flex items-center justify-center gap-2 px-4 py-2 text-sm bg-emerald-100 text-emerald-700 hover:bg-emerald-200 rounded-lg transition-colors font-medium"
-        >
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-          Test Fullscreen Adhan
-        </button>
-
-        {showSettingsLink && onSettingsClick && (
-          <button
-            onClick={onSettingsClick}
-            className="w-full flex items-center justify-center gap-2 px-4 py-2 text-sm text-gray-600 hover:text-theme-primary transition-colors"
-          >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
-              />
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-              />
-            </svg>
-            Prayer Settings
-          </button>
-        )}
-      </div>
-    </div>
+    </FloatingPanel>
   );
 }
 

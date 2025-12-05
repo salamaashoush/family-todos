@@ -25,3 +25,6 @@ export { MemberAvatar } from './MemberAvatar'
 export { MemberHeader } from './MemberHeader'
 export { TodoCheckbox } from './TodoCheckbox'
 export { TimeslotHeader } from './TimeslotHeader'
+
+// Panel components
+export { FloatingPanel, PanelInfoBar, PanelDateDisplay, PanelSection } from './FloatingPanel'

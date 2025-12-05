@@ -42,13 +42,15 @@ interface MosquePrayerTimesPreviewProps {
 }
 
 export function MosquePrayerTimesPreview({ times, mosqueName }: MosquePrayerTimesPreviewProps) {
+  // iqama is a string array: [Fajr, Dhuhr, Asr, Maghrib, Isha]
+  const iqama = times.iqama || [];
   const prayers = [
-    { name: "Fajr", time: times.times[0], iqama: times.iqama?.fajr },
+    { name: "Fajr", time: times.times[0], iqama: iqama[0] },
     { name: "Sunrise", time: times.shuruq, iqama: null },
-    { name: "Dhuhr", time: times.times[1], iqama: times.iqama?.dhuhr },
-    { name: "Asr", time: times.times[2], iqama: times.iqama?.asr },
-    { name: "Maghrib", time: times.times[3], iqama: times.iqama?.maghrib },
-    { name: "Isha", time: times.times[4], iqama: times.iqama?.isha },
+    { name: "Dhuhr", time: times.times[1], iqama: iqama[1] },
+    { name: "Asr", time: times.times[2], iqama: iqama[2] },
+    { name: "Maghrib", time: times.times[3], iqama: iqama[3] },
+    { name: "Isha", time: times.times[4], iqama: iqama[4] },
   ];
 
   return (
