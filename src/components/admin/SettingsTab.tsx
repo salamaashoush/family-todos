@@ -4,6 +4,7 @@ import { useLayout } from '../../contexts/LayoutContext'
 import { layouts, LAYOUT_IDS, type LayoutId, type DeviceType } from '../../config/layouts'
 import { getShareToken, regenerateShareToken } from '../../server/publicBoard'
 import { Copy, RefreshCw, ExternalLink, Link as LinkIcon, Check } from 'lucide-react'
+import { ToggleSwitch } from '../shared'
 
 const deviceLabels: Record<DeviceType, { label: string; description: string }> = {
   phone: { label: 'Phone', description: 'Screens under 640px (iPhone)' },
@@ -179,64 +180,49 @@ export function SettingsTab() {
       <div className="bg-white border-2 border-gray-200 rounded-xl p-4 sm:p-6 space-y-6">
         <h3 className="text-lg font-bold text-gray-800">Auto-Switch Options</h3>
 
-        <div className="flex items-center justify-between">
-          <div>
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex-1 min-w-0">
             <h4 className="font-semibold text-gray-800">Auto-switch layout by device</h4>
             <p className="text-sm text-gray-600">Automatically select the best layout based on screen size</p>
           </div>
-          <button
-            onClick={handleToggleAutoSwitch}
-            disabled={isSaving}
-            className={`relative w-14 h-8 rounded-full transition-colors ${
-              settings.autoSwitchEnabled ? 'bg-theme-primary' : 'bg-gray-300'
-            }`}
-          >
-            <span
-              className={`absolute top-1 left-1 w-6 h-6 bg-white rounded-full shadow transition-transform ${
-                settings.autoSwitchEnabled ? 'translate-x-6' : 'translate-x-0'
-              }`}
+          <div className="flex-shrink-0 pt-0.5">
+            <ToggleSwitch
+              enabled={settings.autoSwitchEnabled}
+              onChange={handleToggleAutoSwitch}
+              disabled={isSaving}
+              size="lg"
             />
-          </button>
+          </div>
         </div>
 
-        <div className="flex items-center justify-between">
-          <div>
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex-1 min-w-0">
             <h4 className="font-semibold text-gray-800">Auto-expand current timeslot</h4>
             <p className="text-sm text-gray-600">Automatically expand the timeslot based on current time</p>
           </div>
-          <button
-            onClick={handleToggleTimeslotAutoExpand}
-            disabled={isSaving}
-            className={`relative w-14 h-8 rounded-full transition-colors ${
-              settings.timeslotAutoExpand ? 'bg-theme-primary' : 'bg-gray-300'
-            }`}
-          >
-            <span
-              className={`absolute top-1 left-1 w-6 h-6 bg-white rounded-full shadow transition-transform ${
-                settings.timeslotAutoExpand ? 'translate-x-6' : 'translate-x-0'
-              }`}
+          <div className="flex-shrink-0 pt-0.5">
+            <ToggleSwitch
+              enabled={settings.timeslotAutoExpand}
+              onChange={handleToggleTimeslotAutoExpand}
+              disabled={isSaving}
+              size="lg"
             />
-          </button>
+          </div>
         </div>
 
-        <div className="flex items-center justify-between">
-          <div>
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex-1 min-w-0">
             <h4 className="font-semibold text-gray-800">Show parents in layout</h4>
             <p className="text-sm text-gray-600">Display parent/adult members in the task view</p>
           </div>
-          <button
-            onClick={handleToggleShowParents}
-            disabled={isSaving}
-            className={`relative w-14 h-8 rounded-full transition-colors ${
-              settings.showParentsInLayout ? 'bg-theme-primary' : 'bg-gray-300'
-            }`}
-          >
-            <span
-              className={`absolute top-1 left-1 w-6 h-6 bg-white rounded-full shadow transition-transform ${
-                settings.showParentsInLayout ? 'translate-x-6' : 'translate-x-0'
-              }`}
+          <div className="flex-shrink-0 pt-0.5">
+            <ToggleSwitch
+              enabled={settings.showParentsInLayout}
+              onChange={handleToggleShowParents}
+              disabled={isSaving}
+              size="lg"
             />
-          </button>
+          </div>
         </div>
       </div>
 

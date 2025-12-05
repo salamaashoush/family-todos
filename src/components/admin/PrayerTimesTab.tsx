@@ -1,52 +1,40 @@
-import { useState, useCallback, useEffect, useMemo } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { MapPin, Calculator, Monitor, Volume2, Play, Square, Building2, Search, X, Loader2 } from "lucide-react";
+import { MapPin, Calculator, Monitor, Volume2, Building2 } from "lucide-react";
 import {
   getPrayerSettings,
   savePrayerSettings,
   getAdhanSettings,
-  saveAdhanSettings,
   getDefaultAdhanAudios,
-  searchMosques,
-  searchMosquesByLocation,
   getMosquePrayerTimes,
 } from "../../server/prayer";
 import { useGeolocation, useTimezone } from "../../hooks/usePrayerTimes";
 import {
   CALCULATION_METHOD_NAMES,
-  PRAYER_NAMES,
   getPrayersWithAdhan,
   calculatePrayerTimes,
-  formatPrayerTime,
-  type PrayerName,
 } from "../../utils/prayerCalculations";
 import {
   calculationMethodEnum,
   madhabEnum,
   highLatitudeRuleEnum,
-  prayerSourceEnum,
   type CalculationMethodType,
   type MadhabType,
   type HighLatitudeRuleType,
   type PrayerSourceType,
 } from "../../db/schema/prayer";
-import { DEFAULT_ADHAN_URLS } from "../../utils/audioManager";
-import { Button, Input, Select, Alert, SkeletonCard } from "../shared";
-import type { MawaqitMosque, MawaqitPrayerTimesResponse } from "../../utils/mawaqit";
+import { Button, Input, Select, Alert, SkeletonCard, ToggleSwitch } from "../shared";
+import { MosqueSearch, AdhanPrayerSettings, PrayerTimesPreview, MosquePrayerTimesPreview } from "./prayer";
+import type { MawaqitMosque } from "../../utils/mawaqit";
 
-// Available adhan sounds with display names
-const ADHAN_SOUNDS = [
-  { id: "makkah", name: "Makkah", url: DEFAULT_ADHAN_URLS.makkah },
-  { id: "madinah", name: "Madinah", url: DEFAULT_ADHAN_URLS.madinah },
-  { id: "alAqsa", name: "Al-Aqsa", url: DEFAULT_ADHAN_URLS.alAqsa },
-  { id: "egypt", name: "Egypt", url: DEFAULT_ADHAN_URLS.egypt },
-  { id: "abdulBaset", name: "Abdul Baset", url: DEFAULT_ADHAN_URLS.abdulBaset },
-] as const;
+type SectionId = "location" | "calculation" | "display" | "adhan";
 
-const FAJR_ADHAN_SOUNDS = [
-  { id: "fajrMakkah", name: "Makkah (Fajr)", url: DEFAULT_ADHAN_URLS.fajrMakkah },
-  { id: "fajrMadinah", name: "Madinah (Fajr)", url: DEFAULT_ADHAN_URLS.fajrMadinah },
-] as const;
+const SECTION_TABS: { id: SectionId; label: string; icon: typeof MapPin }[] = [
+  { id: "location", label: "Location", icon: MapPin },
+  { id: "calculation", label: "Calculation", icon: Calculator },
+  { id: "display", label: "Display", icon: Monitor },
+  { id: "adhan", label: "Adhan Audio", icon: Volume2 },
+];
 
 export function PrayerTimesTab() {
   const queryClient = useQueryClient();
@@ -65,7 +53,8 @@ export function PrayerTimesTab() {
     enabled: !!settings,
   });
 
-  const { data: _defaultAudios = [] } = useQuery({
+  // Prefetch default audios (may not be used but good to have)
+  useQuery({
     queryKey: ["default-adhan-audios"],
     queryFn: () => getDefaultAdhanAudios(),
   });
@@ -97,15 +86,15 @@ export function PrayerTimesTab() {
   const [mosqueName, setMosqueName] = useState<string | null>(null);
   const [mosqueAddress, setMosqueAddress] = useState<string | null>(null);
 
-  // Mosque search state
-  const [mosqueSearchQuery, setMosqueSearchQuery] = useState("");
-  const [mosqueSearchResults, setMosqueSearchResults] = useState<MawaqitMosque[]>([]);
-  const [isSearchingMosques, setIsSearchingMosques] = useState(false);
-  const [mosqueSearchError, setMosqueSearchError] = useState<string | null>(null);
-  const [selectedMosquePrayerTimes, setSelectedMosquePrayerTimes] = useState<MawaqitPrayerTimesResponse | null>(null);
-
   // Active section
-  const [activeSection, setActiveSection] = useState<"location" | "calculation" | "display" | "adhan">("location");
+  const [activeSection, setActiveSection] = useState<SectionId>("location");
+
+  // Fetch mosque prayer times when mosque is selected
+  const { data: mosquePrayerTimesData } = useQuery({
+    queryKey: ["mosque-prayer-times", mosqueUuid],
+    queryFn: () => getMosquePrayerTimes({ data: { uuid: mosqueUuid! } }),
+    enabled: !!mosqueUuid && prayerSource === "mosque",
+  });
 
   // Initialize form from settings
   useEffect(() => {
@@ -127,7 +116,6 @@ export function PrayerTimesTab() {
       setAsrAdjustment(settings.asrAdjustment || 0);
       setMaghribAdjustment(settings.maghribAdjustment || 0);
       setIshaAdjustment(settings.ishaAdjustment || 0);
-      // Mosque settings
       setPrayerSource((settings.prayerSource as PrayerSourceType) || "calculated");
       setMosqueUuid(settings.mosqueUuid || null);
       setMosqueName(settings.mosqueName || null);
@@ -137,29 +125,13 @@ export function PrayerTimesTab() {
     }
   }, [settings, detectedTimezone]);
 
-  // Load mosque prayer times when mosque is selected
-  useEffect(() => {
-    if (prayerSource === "mosque" && mosqueUuid) {
-      getMosquePrayerTimes({ data: { uuid: mosqueUuid } })
-        .then(setSelectedMosquePrayerTimes)
-        .catch((err) => console.error("Failed to load mosque prayer times:", err));
-    } else {
-      setSelectedMosquePrayerTimes(null);
-    }
-  }, [prayerSource, mosqueUuid]);
-
   // Apply geolocation when received
   useEffect(() => {
     if (location) {
       setLatitude(location.latitude.toFixed(7));
       setLongitude(location.longitude.toFixed(7));
-      // Also set city and country if available from reverse geocoding
-      if (location.city) {
-        setCity(location.city);
-      }
-      if (location.country) {
-        setCountry(location.country);
-      }
+      if (location.city) setCity(location.city);
+      if (location.country) setCountry(location.country);
     }
   }, [location]);
 
@@ -172,101 +144,24 @@ export function PrayerTimesTab() {
     },
   });
 
-  // Mosque search handler
-  const handleMosqueSearch = useCallback(async () => {
-    if (!mosqueSearchQuery || mosqueSearchQuery.length < 2) {
-      return;
-    }
-
-    setIsSearchingMosques(true);
-    setMosqueSearchError(null);
-
-    try {
-      const result = await searchMosques({ data: { query: mosqueSearchQuery } });
-      setMosqueSearchResults(result.mosques || []);
-    } catch (err) {
-      setMosqueSearchError("Failed to search mosques. Please try again.");
-      console.error("Mosque search error:", err);
-    } finally {
-      setIsSearchingMosques(false);
-    }
-  }, [mosqueSearchQuery]);
-
-  // Find nearby mosques using current location
-  const handleFindNearbyMosques = useCallback(async () => {
-    // First get current location
-    if (!navigator.geolocation) {
-      setMosqueSearchError("Geolocation is not supported by your browser.");
-      return;
-    }
-
-    setIsSearchingMosques(true);
-    setMosqueSearchError(null);
-
-    navigator.geolocation.getCurrentPosition(
-      async (position) => {
-        try {
-          const result = await searchMosquesByLocation({
-            data: {
-              latitude: position.coords.latitude,
-              longitude: position.coords.longitude,
-            },
-          });
-          setMosqueSearchResults(result.mosques || []);
-        } catch (err) {
-          setMosqueSearchError("Failed to find nearby mosques. Please try again.");
-          console.error("Nearby mosque search error:", err);
-        } finally {
-          setIsSearchingMosques(false);
-        }
-      },
-      (error) => {
-        setIsSearchingMosques(false);
-        switch (error.code) {
-          case error.PERMISSION_DENIED:
-            setMosqueSearchError("Location access denied. Please enable location or search by name.");
-            break;
-          case error.POSITION_UNAVAILABLE:
-            setMosqueSearchError("Location unavailable. Please search by name.");
-            break;
-          case error.TIMEOUT:
-            setMosqueSearchError("Location request timed out. Please try again.");
-            break;
-          default:
-            setMosqueSearchError("Failed to get location. Please search by name.");
-        }
-      },
-      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
-    );
-  }, []);
-
   // Handle mosque selection
   const handleSelectMosque = useCallback((mosque: MawaqitMosque) => {
     setMosqueUuid(mosque.uuid);
     setMosqueName(mosque.name);
     setMosqueAddress([mosque.address, mosque.city, mosque.country].filter(Boolean).join(", ") || null);
-    setMosqueSearchResults([]);
-    setMosqueSearchQuery("");
-
-    // If mosque has location, update coordinates
-    if (mosque.latitude && mosque.longitude) {
-      setLatitude(mosque.latitude.toFixed(7));
-      setLongitude(mosque.longitude.toFixed(7));
-    }
-    if (mosque.city) {
-      setCity(mosque.city);
-    }
-    if (mosque.country) {
-      setCountry(mosque.country);
-    }
   }, []);
 
-  // Clear selected mosque
   const handleClearMosque = useCallback(() => {
     setMosqueUuid(null);
     setMosqueName(null);
     setMosqueAddress(null);
-    setSelectedMosquePrayerTimes(null);
+  }, []);
+
+  const handleMosqueLocationUpdate = useCallback((lat: number, lng: number, mosqueCity?: string, mosqueCountry?: string) => {
+    setLatitude(lat.toFixed(7));
+    setLongitude(lng.toFixed(7));
+    if (mosqueCity) setCity(mosqueCity);
+    if (mosqueCountry) setCountry(mosqueCountry);
   }, []);
 
   // Save handler
@@ -290,7 +185,6 @@ export function PrayerTimesTab() {
         isEnabled,
         showFloatingButton,
         fullscreenAdhanEnabled,
-        // Mosque settings
         prayerSource,
         mosqueUuid,
         mosqueName,
@@ -307,15 +201,15 @@ export function PrayerTimesTab() {
     saveMutation,
   ]);
 
-  // Preview prayer times - calculate directly from form values (works without saved settings)
+  // Preview prayer times
   const previewTimes = latitude && longitude && !isNaN(parseFloat(latitude)) && !isNaN(parseFloat(longitude))
     ? calculatePrayerTimes({
         latitude: parseFloat(latitude),
         longitude: parseFloat(longitude),
         date: new Date(),
         method: calculationMethod,
-        madhab: madhab,
-        highLatitudeRule: highLatitudeRule,
+        madhab,
+        highLatitudeRule,
         adjustments: {
           fajr: fajrAdjustment,
           sunrise: sunriseAdjustment,
@@ -337,32 +231,13 @@ export function PrayerTimesTab() {
     );
   }
 
-  const sectionTabs = [
-    { id: "location" as const, label: "Location", icon: MapPin },
-    { id: "calculation" as const, label: "Calculation", icon: Calculator },
-    { id: "display" as const, label: "Display", icon: Monitor },
-    { id: "adhan" as const, label: "Adhan Audio", icon: Volume2 },
-  ];
-
   return (
     <div className="space-y-4">
       {/* Header */}
       <div className="flex flex-col gap-4">
         <div className="flex items-center justify-between">
           <h2 className="text-xl sm:text-2xl font-bold text-gray-800">Prayer Times</h2>
-          {/* Enable Toggle */}
-          <button
-            onClick={() => setIsEnabled(!isEnabled)}
-            className={`relative w-14 h-8 rounded-full transition-colors ${
-              isEnabled ? "bg-theme-primary" : "bg-gray-300"
-            }`}
-          >
-            <span
-              className={`absolute top-1 left-1 w-6 h-6 bg-white rounded-full shadow transition-transform ${
-                isEnabled ? "translate-x-6" : "translate-x-0"
-              }`}
-            />
-          </button>
+          <ToggleSwitch enabled={isEnabled} onChange={setIsEnabled} size="lg" />
         </div>
         <p className="text-sm text-gray-600">
           Configure Islamic prayer times for your family board
@@ -371,7 +246,7 @@ export function PrayerTimesTab() {
 
       {/* Section Tabs */}
       <div className="flex gap-2 overflow-x-auto pb-2">
-        {sectionTabs.map((section) => {
+        {SECTION_TABS.map((section) => {
           const Icon = section.icon;
           return (
             <button
@@ -392,455 +267,67 @@ export function PrayerTimesTab() {
 
       {/* Location Section */}
       {activeSection === "location" && (
-        <div className="bg-white border-2 border-gray-200 rounded-xl p-4 sm:p-6 space-y-6">
-          {/* Prayer Source Toggle */}
-          <div>
-            <h3 className="text-lg font-bold text-gray-800 mb-3">Prayer Times Source</h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <button
-                onClick={() => setPrayerSource("calculated")}
-                className={`p-4 rounded-xl border-2 text-left transition-all ${
-                  prayerSource === "calculated"
-                    ? "border-theme-primary bg-theme-primary/5"
-                    : "border-gray-200 hover:border-gray-300"
-                }`}
-              >
-                <div className="flex items-center gap-3">
-                  <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-                    prayerSource === "calculated" ? "bg-theme-primary text-white" : "bg-gray-100"
-                  }`}>
-                    <Calculator className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <div className="font-semibold text-gray-800">Calculated</div>
-                    <div className="text-sm text-gray-500">Based on coordinates</div>
-                  </div>
-                </div>
-              </button>
-              <button
-                onClick={() => setPrayerSource("mosque")}
-                className={`p-4 rounded-xl border-2 text-left transition-all ${
-                  prayerSource === "mosque"
-                    ? "border-theme-primary bg-theme-primary/5"
-                    : "border-gray-200 hover:border-gray-300"
-                }`}
-              >
-                <div className="flex items-center gap-3">
-                  <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-                    prayerSource === "mosque" ? "bg-theme-primary text-white" : "bg-gray-100"
-                  }`}>
-                    <Building2 className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <div className="font-semibold text-gray-800">Mosque (Mawaqit)</div>
-                    <div className="text-sm text-gray-500">From local mosque</div>
-                  </div>
-                </div>
-              </button>
-            </div>
-          </div>
-
-          {/* Mosque Search (shown when mosque source is selected) */}
-          {prayerSource === "mosque" && (
-            <div className="border-2 border-theme-primary/20 bg-theme-primary/5 rounded-xl p-4 space-y-4">
-              <h4 className="font-semibold text-gray-800">Search for a Mosque</h4>
-              <p className="text-sm text-gray-600">
-                Search by mosque name, city, or address to get prayer times from Mawaqit.
-              </p>
-
-              {/* Selected Mosque Display */}
-              {mosqueUuid && mosqueName && (
-                <div className="bg-white rounded-lg p-4 border border-gray-200">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex items-center gap-3">
-                      <div className="w-12 h-12 bg-theme-primary/10 rounded-lg flex items-center justify-center flex-shrink-0">
-                        <Building2 className="w-6 h-6 text-theme-primary" />
-                      </div>
-                      <div>
-                        <div className="font-semibold text-gray-800">{mosqueName}</div>
-                        {mosqueAddress && (
-                          <div className="text-sm text-gray-500">{mosqueAddress}</div>
-                        )}
-                      </div>
-                    </div>
-                    <button
-                      onClick={handleClearMosque}
-                      className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-                      title="Remove mosque"
-                    >
-                      <X className="w-4 h-4 text-gray-400" />
-                    </button>
-                  </div>
-
-                  {/* Show mosque prayer times preview */}
-                  {/* prayer-times endpoint returns times[5] = [Fajr, Dhuhr, Asr, Maghrib, Isha] */}
-                  {/* and shuruq as a separate field */}
-                  {selectedMosquePrayerTimes?.times && (
-                    <div className="mt-4 pt-4 border-t border-gray-100">
-                      <div className="text-xs text-gray-500 mb-2">Today's Prayer Times (from mosque)</div>
-                      <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
-                        {/* Fajr - times[0], iqama[0] */}
-                        <div className="text-center">
-                          <div className="text-xs text-gray-500">Fajr</div>
-                          <div className="font-semibold text-sm">{selectedMosquePrayerTimes.times[0] || "-"}</div>
-                          {selectedMosquePrayerTimes.iqama?.[0] && (
-                            <div className="text-xs text-theme-primary">Iqama: {selectedMosquePrayerTimes.iqama[0]}</div>
-                          )}
-                        </div>
-                        {/* Sunrise - shuruq field, no iqama */}
-                        <div className="text-center">
-                          <div className="text-xs text-gray-500">Sunrise</div>
-                          <div className="font-semibold text-sm">{selectedMosquePrayerTimes.shuruq || "-"}</div>
-                        </div>
-                        {/* Dhuhr - times[1], iqama[1] */}
-                        <div className="text-center">
-                          <div className="text-xs text-gray-500">Dhuhr</div>
-                          <div className="font-semibold text-sm">{selectedMosquePrayerTimes.times[1] || "-"}</div>
-                          {selectedMosquePrayerTimes.iqama?.[1] && (
-                            <div className="text-xs text-theme-primary">Iqama: {selectedMosquePrayerTimes.iqama[1]}</div>
-                          )}
-                        </div>
-                        {/* Asr - times[2], iqama[2] */}
-                        <div className="text-center">
-                          <div className="text-xs text-gray-500">Asr</div>
-                          <div className="font-semibold text-sm">{selectedMosquePrayerTimes.times[2] || "-"}</div>
-                          {selectedMosquePrayerTimes.iqama?.[2] && (
-                            <div className="text-xs text-theme-primary">Iqama: {selectedMosquePrayerTimes.iqama[2]}</div>
-                          )}
-                        </div>
-                        {/* Maghrib - times[3], iqama[3] */}
-                        <div className="text-center">
-                          <div className="text-xs text-gray-500">Maghrib</div>
-                          <div className="font-semibold text-sm">{selectedMosquePrayerTimes.times[3] || "-"}</div>
-                          {selectedMosquePrayerTimes.iqama?.[3] && (
-                            <div className="text-xs text-theme-primary">Iqama: {selectedMosquePrayerTimes.iqama[3]}</div>
-                          )}
-                        </div>
-                        {/* Isha - times[4], iqama[4] */}
-                        <div className="text-center">
-                          <div className="text-xs text-gray-500">Isha</div>
-                          <div className="font-semibold text-sm">{selectedMosquePrayerTimes.times[4] || "-"}</div>
-                          {selectedMosquePrayerTimes.iqama?.[4] && (
-                            <div className="text-xs text-theme-primary">Iqama: {selectedMosquePrayerTimes.iqama[4]}</div>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* Search Input */}
-              {!mosqueUuid && (
-                <>
-                  <div className="flex flex-col gap-3">
-                    {/* Find Nearby Button */}
-                    <Button
-                      variant="secondary"
-                      onClick={handleFindNearbyMosques}
-                      isLoading={isSearchingMosques}
-                      leftIcon={<MapPin className="w-4 h-4" />}
-                      fullWidth
-                    >
-                      Find Nearby Mosques
-                    </Button>
-
-                    {/* Or Divider */}
-                    <div className="flex items-center gap-3">
-                      <div className="flex-1 h-px bg-gray-200" />
-                      <span className="text-xs text-gray-400">or search by name</span>
-                      <div className="flex-1 h-px bg-gray-200" />
-                    </div>
-
-                    {/* Search Input */}
-                    <div className="flex gap-2">
-                      <div className="flex-1">
-                        <Input
-                          placeholder="Search mosques..."
-                          value={mosqueSearchQuery}
-                          onChange={(e) => setMosqueSearchQuery(e.target.value)}
-                          onKeyDown={(e) => e.key === "Enter" && handleMosqueSearch()}
-                        />
-                      </div>
-                      <Button
-                        onClick={handleMosqueSearch}
-                        disabled={isSearchingMosques || mosqueSearchQuery.length < 2}
-                        leftIcon={<Search className="w-4 h-4" />}
-                      >
-                        Search
-                      </Button>
-                    </div>
-                  </div>
-
-                  {mosqueSearchError && (
-                    <Alert variant="danger" message={mosqueSearchError} />
-                  )}
-
-                  {/* Search Results */}
-                  {mosqueSearchResults.length > 0 && (
-                    <div className="max-h-64 overflow-y-auto space-y-2">
-                      {mosqueSearchResults.map((mosque) => (
-                        <button
-                          key={mosque.uuid}
-                          onClick={() => handleSelectMosque(mosque)}
-                          className="w-full p-3 bg-white rounded-lg border border-gray-200 hover:border-theme-primary hover:bg-theme-primary/5 transition-all text-left"
-                        >
-                          <div className="flex items-start justify-between gap-2">
-                            <div className="font-semibold text-gray-800">{mosque.name}</div>
-                            {mosque.proximity !== undefined && (
-                              <span className="text-xs bg-theme-primary/10 text-theme-primary px-2 py-0.5 rounded-full whitespace-nowrap">
-                                {mosque.proximity >= 1000
-                                  ? `${(mosque.proximity / 1000).toFixed(1)} km`
-                                  : `${Math.round(mosque.proximity)} m`}
-                              </span>
-                            )}
-                          </div>
-                          <div className="text-sm text-gray-500">
-                            {[mosque.address, mosque.city, mosque.country].filter(Boolean).join(", ")}
-                          </div>
-                          {mosque.times && mosque.times.length > 0 && (
-                            <div className="text-xs text-gray-400 mt-1">
-                              Today: Fajr {mosque.times[0]} | Dhuhr {mosque.times[2]} | Asr {mosque.times[3]} | Maghrib {mosque.times[4]} | Isha {mosque.times[5]}
-                            </div>
-                          )}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-
-                  {mosqueSearchResults.length === 0 && mosqueSearchQuery && !isSearchingMosques && (
-                    <p className="text-sm text-gray-500 text-center py-4">
-                      No mosques found. Try a different search term.
-                    </p>
-                  )}
-                </>
-              )}
-            </div>
-          )}
-
-          {/* Location Settings (always shown for calculated, shown for reference in mosque mode) */}
-          <div className={prayerSource === "mosque" ? "opacity-75" : ""}>
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-bold text-gray-800">
-                {prayerSource === "mosque" ? "Mosque Location" : "Location Settings"}
-              </h3>
-              {geoSupported && prayerSource === "calculated" && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={requestLocation}
-                  isLoading={locationLoading}
-                  leftIcon={<MapPin className="w-4 h-4" />}
-                >
-                  Use My Location
-                </Button>
-              )}
-            </div>
-            {prayerSource === "mosque" && (
-              <p className="text-sm text-gray-500 mb-4">
-                Location is set automatically from the selected mosque.
-              </p>
-            )}
-          </div>
-
-          {locationError && (
-            <Alert variant="danger" title="Location Error" message={locationError} />
-          )}
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Input
-              label="Latitude"
-              type="number"
-              step="0.0000001"
-              value={latitude}
-              onChange={(e) => setLatitude(e.target.value)}
-              placeholder="e.g., 21.4225"
-            />
-            <Input
-              label="Longitude"
-              type="number"
-              step="0.0000001"
-              value={longitude}
-              onChange={(e) => setLongitude(e.target.value)}
-              placeholder="e.g., 39.8262"
-            />
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Input
-              label="City (Optional)"
-              type="text"
-              value={city}
-              onChange={(e) => setCity(e.target.value)}
-              placeholder="e.g., Makkah"
-            />
-            <Input
-              label="Country (Optional)"
-              type="text"
-              value={country}
-              onChange={(e) => setCountry(e.target.value)}
-              placeholder="e.g., Saudi Arabia"
-            />
-          </div>
-
-          <div>
-            <Input
-              label="Timezone"
-              type="text"
-              value={timezone}
-              onChange={(e) => setTimezone(e.target.value)}
-              placeholder="e.g., Asia/Riyadh"
-            />
-            <p className="mt-2 text-xs text-gray-500">
-              Detected timezone: {detectedTimezone}
-            </p>
-          </div>
-        </div>
+        <LocationSection
+          prayerSource={prayerSource}
+          setPrayerSource={setPrayerSource}
+          selectedMosque={{ uuid: mosqueUuid, name: mosqueName, address: mosqueAddress }}
+          onSelectMosque={handleSelectMosque}
+          onClearMosque={handleClearMosque}
+          onMosqueLocationUpdate={handleMosqueLocationUpdate}
+          latitude={latitude}
+          setLatitude={setLatitude}
+          longitude={longitude}
+          setLongitude={setLongitude}
+          city={city}
+          setCity={setCity}
+          country={country}
+          setCountry={setCountry}
+          timezone={timezone}
+          setTimezone={setTimezone}
+          detectedTimezone={detectedTimezone}
+          geoSupported={geoSupported}
+          locationLoading={locationLoading}
+          locationError={locationError}
+          requestLocation={requestLocation}
+        />
       )}
 
       {/* Calculation Section */}
       {activeSection === "calculation" && (
-        <div className="bg-white border-2 border-gray-200 rounded-xl p-4 sm:p-6 space-y-6">
-          <h3 className="text-lg font-bold text-gray-800">Calculation Settings</h3>
-
-          <Select
-            label="Calculation Method"
-            value={calculationMethod}
-            onChange={(e) => setCalculationMethod(e.target.value as CalculationMethodType)}
-            fullWidth
-          >
-            {calculationMethodEnum.map((method) => (
-              <option key={method} value={method}>
-                {CALCULATION_METHOD_NAMES[method]}
-              </option>
-            ))}
-          </Select>
-
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-3">
-              Madhab (for Asr calculation)
-            </label>
-            <div className="flex gap-4">
-              {madhabEnum.map((m) => (
-                <label key={m} className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="radio"
-                    name="madhab"
-                    value={m}
-                    checked={madhab === m}
-                    onChange={() => setMadhab(m)}
-                    className="w-5 h-5 text-theme-primary focus:ring-theme-primary"
-                  />
-                  <span className="text-sm font-medium text-gray-700">{m}</span>
-                </label>
-              ))}
-            </div>
-            <p className="mt-2 text-xs text-gray-500">
-              Shafi: Shadow equals object length. Hanafi: Shadow equals twice the length.
-            </p>
-          </div>
-
-          <Select
-            label="High Latitude Rule"
-            value={highLatitudeRule}
-            onChange={(e) => setHighLatitudeRule(e.target.value as HighLatitudeRuleType)}
-            fullWidth
-          >
-            {highLatitudeRuleEnum.map((rule) => (
-              <option key={rule} value={rule}>
-                {rule.replace(/([A-Z])/g, " $1").trim()}
-              </option>
-            ))}
-          </Select>
-          <p className="-mt-4 text-xs text-gray-500">
-            For locations above 48 latitude where twilight may not occur.
-          </p>
-
-          {/* Manual Adjustments */}
-          <div>
-            <h4 className="text-sm font-semibold text-gray-700 mb-3">
-              Manual Adjustments (minutes)
-            </h4>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-              {[
-                { label: "Fajr", value: fajrAdjustment, setter: setFajrAdjustment },
-                { label: "Sunrise", value: sunriseAdjustment, setter: setSunriseAdjustment },
-                { label: "Dhuhr", value: dhuhrAdjustment, setter: setDhuhrAdjustment },
-                { label: "Asr", value: asrAdjustment, setter: setAsrAdjustment },
-                { label: "Maghrib", value: maghribAdjustment, setter: setMaghribAdjustment },
-                { label: "Isha", value: ishaAdjustment, setter: setIshaAdjustment },
-              ].map((adj) => (
-                <Input
-                  key={adj.label}
-                  label={adj.label}
-                  type="number"
-                  value={adj.value}
-                  onChange={(e) => adj.setter(parseInt(e.target.value) || 0)}
-                  min={-60}
-                  max={60}
-                />
-              ))}
-            </div>
-          </div>
-        </div>
+        <CalculationSection
+          calculationMethod={calculationMethod}
+          setCalculationMethod={setCalculationMethod}
+          madhab={madhab}
+          setMadhab={setMadhab}
+          highLatitudeRule={highLatitudeRule}
+          setHighLatitudeRule={setHighLatitudeRule}
+          adjustments={{
+            fajr: fajrAdjustment,
+            sunrise: sunriseAdjustment,
+            dhuhr: dhuhrAdjustment,
+            asr: asrAdjustment,
+            maghrib: maghribAdjustment,
+            isha: ishaAdjustment,
+          }}
+          setAdjustments={{
+            fajr: setFajrAdjustment,
+            sunrise: setSunriseAdjustment,
+            dhuhr: setDhuhrAdjustment,
+            asr: setAsrAdjustment,
+            maghrib: setMaghribAdjustment,
+            isha: setIshaAdjustment,
+          }}
+        />
       )}
 
       {/* Display Section */}
       {activeSection === "display" && (
-        <div className="bg-white border-2 border-gray-200 rounded-xl p-4 sm:p-6 space-y-6">
-          <h3 className="text-lg font-bold text-gray-800">Display Settings</h3>
-
-          <div className="flex items-center justify-between">
-            <div>
-              <h4 className="font-semibold text-gray-800">Show Floating Button</h4>
-              <p className="text-sm text-gray-600">Display prayer countdown button on the family board</p>
-            </div>
-            <button
-              onClick={() => setShowFloatingButton(!showFloatingButton)}
-              className={`relative w-14 h-8 rounded-full transition-colors ${
-                showFloatingButton ? "bg-theme-primary" : "bg-gray-300"
-              }`}
-            >
-              <span
-                className={`absolute top-1 left-1 w-6 h-6 bg-white rounded-full shadow transition-transform ${
-                  showFloatingButton ? "translate-x-6" : "translate-x-0"
-                }`}
-              />
-            </button>
-          </div>
-
-          <div className="flex items-center justify-between">
-            <div>
-              <h4 className="font-semibold text-gray-800">Fullscreen Adhan</h4>
-              <p className="text-sm text-gray-600">Take over the board with fullscreen adhan view at prayer time</p>
-            </div>
-            <button
-              onClick={() => setFullscreenAdhanEnabled(!fullscreenAdhanEnabled)}
-              className={`relative w-14 h-8 rounded-full transition-colors ${
-                fullscreenAdhanEnabled ? "bg-theme-primary" : "bg-gray-300"
-              }`}
-            >
-              <span
-                className={`absolute top-1 left-1 w-6 h-6 bg-white rounded-full shadow transition-transform ${
-                  fullscreenAdhanEnabled ? "translate-x-6" : "translate-x-0"
-                }`}
-              />
-            </button>
-          </div>
-
-          {/* Test Fullscreen Button */}
-          <div className="pt-4 border-t-2 border-gray-100">
-            <h4 className="font-semibold text-gray-800 mb-2">Test Fullscreen Adhan</h4>
-            <p className="text-sm text-gray-600 mb-3">
-              Open the family board and click this button to test the fullscreen adhan view.
-            </p>
-            <Alert
-              variant="info"
-              title="How to test"
-              message="1. Open your family board in another tab. 2. Come back here and click 'Test Now'. 3. The fullscreen adhan will appear on the family board."
-            />
-          </div>
-        </div>
+        <DisplaySection
+          showFloatingButton={showFloatingButton}
+          setShowFloatingButton={setShowFloatingButton}
+          fullscreenAdhanEnabled={fullscreenAdhanEnabled}
+          setFullscreenAdhanEnabled={setFullscreenAdhanEnabled}
+        />
       )}
 
       {/* Adhan Audio Section */}
@@ -850,7 +337,6 @@ export function PrayerTimesTab() {
           <p className="text-sm text-gray-600">
             Configure adhan audio for each prayer. Settings are saved automatically.
           </p>
-
           <div className="space-y-4">
             {getPrayersWithAdhan().map((prayer) => (
               <AdhanPrayerSettings
@@ -863,22 +349,12 @@ export function PrayerTimesTab() {
         </div>
       )}
 
-      {/* Prayer Times Preview - only show for calculated mode (mosque mode shows preview in the mosque section) */}
-      {prayerSource === "calculated" && latitude && longitude && (
-        <div className="bg-gradient-to-r from-theme-primary/10 to-theme-secondary/10 border-2 border-theme-primary/30 rounded-xl p-4 sm:p-6">
-          <h3 className="text-lg font-bold text-gray-800 mb-4">Prayer Times Preview</h3>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-4">
-            {previewTimes &&
-              (["fajr", "sunrise", "dhuhr", "asr", "maghrib", "isha"] as const).map((prayer) => (
-                <div key={prayer} className="text-center bg-white rounded-xl p-3 shadow-sm">
-                  <div className="text-xs text-gray-500 mb-1">{PRAYER_NAMES[prayer].english}</div>
-                  <div className="font-bold text-gray-800">
-                    {formatPrayerTime(previewTimes[prayer], timezone)}
-                  </div>
-                </div>
-              ))}
-          </div>
-        </div>
+      {/* Prayer Times Preview */}
+      {prayerSource === "calculated" && previewTimes && (
+        <PrayerTimesPreview times={previewTimes} timezone={timezone} />
+      )}
+      {prayerSource === "mosque" && mosquePrayerTimesData && (
+        <MosquePrayerTimesPreview times={mosquePrayerTimesData} mosqueName={mosqueName} />
       )}
 
       {/* Save Button */}
@@ -903,264 +379,354 @@ export function PrayerTimesTab() {
   );
 }
 
-// Individual prayer adhan settings component
-interface AdhanPrayerSettingsProps {
-  prayer: PrayerName;
-  settings?: {
-    id: number;
-    adhanEnabled: boolean;
-    adhanAudioUrl: string | null;
-    adhanAudioName: string | null;
-    adhanVolume: string | null;
-    useFajrAdhan: boolean | null;
-    reminderEnabled: boolean;
-    reminderMinutesBefore: number | null;
-    reminderSoundEnabled: boolean;
-  };
+// Location Section Component
+interface LocationSectionProps {
+  prayerSource: PrayerSourceType;
+  setPrayerSource: (source: PrayerSourceType) => void;
+  selectedMosque: { uuid: string | null; name: string | null; address: string | null };
+  onSelectMosque: (mosque: MawaqitMosque) => void;
+  onClearMosque: () => void;
+  onMosqueLocationUpdate: (lat: number, lng: number, city?: string, country?: string) => void;
+  latitude: string;
+  setLatitude: (val: string) => void;
+  longitude: string;
+  setLongitude: (val: string) => void;
+  city: string;
+  setCity: (val: string) => void;
+  country: string;
+  setCountry: (val: string) => void;
+  timezone: string;
+  setTimezone: (val: string) => void;
+  detectedTimezone: string | null;
+  geoSupported: boolean;
+  locationLoading: boolean;
+  locationError: string | null;
+  requestLocation: () => void;
 }
 
-function AdhanPrayerSettings({ prayer, settings }: AdhanPrayerSettingsProps) {
-  const queryClient = useQueryClient();
-  const [isExpanded, setIsExpanded] = useState(false);
-  const [adhanEnabled, setAdhanEnabled] = useState(settings?.adhanEnabled ?? true);
-  const [reminderEnabled, setReminderEnabled] = useState(settings?.reminderEnabled ?? false);
-  const [reminderMinutes, setReminderMinutes] = useState(settings?.reminderMinutesBefore ?? 15);
-  const [volume, setVolume] = useState(parseFloat(settings?.adhanVolume || "1"));
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [audioElement, setAudioElement] = useState<HTMLAudioElement | null>(null);
-
-  // Get sound ID from stored URL or default
-  const getDefaultSoundId = () => {
-    if (prayer === "fajr") {
-      const match = FAJR_ADHAN_SOUNDS.find(s => s.url === settings?.adhanAudioUrl);
-      return match?.id ?? "fajrMakkah";
-    }
-    const match = ADHAN_SOUNDS.find(s => s.url === settings?.adhanAudioUrl);
-    return match?.id ?? "makkah";
-  };
-
-  const [selectedSound, setSelectedSound] = useState<string>(getDefaultSoundId());
-
-  // Compute URL and name based on selected sound
-  const selectedSoundUrl = useMemo(() => {
-    if (prayer === "fajr") {
-      const fajrSound = FAJR_ADHAN_SOUNDS.find(s => s.id === selectedSound);
-      if (fajrSound) return fajrSound.url;
-    }
-    const sound = ADHAN_SOUNDS.find(s => s.id === selectedSound);
-    return sound?.url ?? DEFAULT_ADHAN_URLS.makkah;
-  }, [prayer, selectedSound]);
-
-  const selectedSoundName = useMemo(() => {
-    if (prayer === "fajr") {
-      const fajrSound = FAJR_ADHAN_SOUNDS.find(s => s.id === selectedSound);
-      if (fajrSound) return fajrSound.name;
-    }
-    const sound = ADHAN_SOUNDS.find(s => s.id === selectedSound);
-    return sound?.name ?? "Makkah";
-  }, [prayer, selectedSound]);
-
-  const saveMutation = useMutation({
-    mutationFn: saveAdhanSettings,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["adhan-settings"] });
-    },
-  });
-
-  const handleSave = useCallback(() => {
-    saveMutation.mutate({
-      data: {
-        prayerName: prayer,
-        adhanEnabled,
-        adhanAudioUrl: selectedSoundUrl,
-        adhanAudioName: selectedSoundName,
-        adhanVolume: volume,
-        useFajrAdhan: prayer === "fajr",
-        reminderEnabled,
-        reminderMinutesBefore: reminderMinutes,
-        reminderSoundEnabled: true,
-      },
-    });
-  }, [prayer, adhanEnabled, selectedSoundUrl, selectedSoundName, volume, reminderEnabled, reminderMinutes, saveMutation]);
-
-  // Play/Stop test audio
-  const handleTestPlay = useCallback(() => {
-    if (isPlaying && audioElement) {
-      audioElement.pause();
-      audioElement.currentTime = 0;
-      setIsPlaying(false);
-      setAudioElement(null);
-      return;
-    }
-
-    const audio = new Audio(selectedSoundUrl);
-    audio.volume = volume;
-    audio.play().catch(console.error);
-    setIsPlaying(true);
-    setAudioElement(audio);
-
-    // Stop after 10 seconds
-    const timeout = setTimeout(() => {
-      audio.pause();
-      audio.currentTime = 0;
-      setIsPlaying(false);
-      setAudioElement(null);
-    }, 10000);
-
-    audio.onended = () => {
-      clearTimeout(timeout);
-      setIsPlaying(false);
-      setAudioElement(null);
-    };
-  }, [selectedSoundUrl, volume, isPlaying, audioElement]);
-
-  const prayerName = PRAYER_NAMES[prayer];
-
+function LocationSection({
+  prayerSource,
+  setPrayerSource,
+  selectedMosque,
+  onSelectMosque,
+  onClearMosque,
+  onMosqueLocationUpdate,
+  latitude,
+  setLatitude,
+  longitude,
+  setLongitude,
+  city,
+  setCity,
+  country,
+  setCountry,
+  timezone,
+  setTimezone,
+  detectedTimezone,
+  geoSupported,
+  locationLoading,
+  locationError,
+  requestLocation,
+}: LocationSectionProps) {
   return (
-    <div className="border-2 border-gray-200 rounded-xl overflow-hidden">
-      <button
-        onClick={() => setIsExpanded(!isExpanded)}
-        className="w-full flex items-center justify-between p-4 hover:bg-gray-50 transition-colors"
-      >
-        <div className="flex items-center gap-3">
-          <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${adhanEnabled ? "bg-theme-primary/10 text-theme-primary" : "bg-gray-100 text-gray-400"}`}>
-            <Volume2 className="w-6 h-6" />
-          </div>
-          <div className="text-left">
-            <div className="font-bold text-gray-800">{prayerName.english}</div>
-            <div className="text-sm text-gray-500">
-              {adhanEnabled ? "Adhan enabled" : "Adhan disabled"}
-              {reminderEnabled && ` - Reminder ${reminderMinutes}m before`}
-            </div>
-          </div>
+    <div className="bg-white border-2 border-gray-200 rounded-xl p-4 sm:p-6 space-y-6">
+      {/* Prayer Source Toggle */}
+      <div>
+        <h3 className="text-lg font-bold text-gray-800 mb-3">Prayer Times Source</h3>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <SourceOptionButton
+            selected={prayerSource === "calculated"}
+            onClick={() => setPrayerSource("calculated")}
+            icon={<Calculator className="w-5 h-5" />}
+            title="Calculated"
+            subtitle="Based on coordinates"
+          />
+          <SourceOptionButton
+            selected={prayerSource === "mosque"}
+            onClick={() => setPrayerSource("mosque")}
+            icon={<Building2 className="w-5 h-5" />}
+            title="Mosque (Mawaqit)"
+            subtitle="From local mosque"
+          />
         </div>
-        <svg
-          className={`w-5 h-5 text-gray-400 transition-transform ${isExpanded ? "rotate-180" : ""}`}
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-        >
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-        </svg>
-      </button>
+      </div>
 
-      {isExpanded && (
-        <div className="p-4 border-t-2 border-gray-100 bg-gray-50 space-y-4">
-          {/* Adhan Toggle */}
-          <div className="flex items-center justify-between">
-            <span className="text-sm font-semibold text-gray-700">Enable Adhan</span>
-            <button
-              onClick={() => setAdhanEnabled(!adhanEnabled)}
-              className={`relative w-12 h-6 rounded-full transition-colors ${
-                adhanEnabled ? "bg-theme-primary" : "bg-gray-300"
-              }`}
-            >
-              <span
-                className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${
-                  adhanEnabled ? "translate-x-6" : "translate-x-0"
-                }`}
-              />
-            </button>
-          </div>
-
-          {/* Adhan Sound Selection */}
-          <Select
-            label="Adhan Sound"
-            value={selectedSound}
-            onChange={(e) => setSelectedSound(e.target.value)}
-            fullWidth
-          >
-            {prayer === "fajr" ? (
-              <>
-                {FAJR_ADHAN_SOUNDS.map((sound) => (
-                  <option key={sound.id} value={sound.id}>
-                    {sound.name}
-                  </option>
-                ))}
-                <optgroup label="Regular Adhan">
-                  {ADHAN_SOUNDS.map((sound) => (
-                    <option key={sound.id} value={sound.id}>
-                      {sound.name}
-                    </option>
-                  ))}
-                </optgroup>
-              </>
-            ) : (
-              ADHAN_SOUNDS.map((sound) => (
-                <option key={sound.id} value={sound.id}>
-                  {sound.name}
-                </option>
-              ))
-            )}
-          </Select>
-
-          {/* Volume */}
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">
-              Volume: {Math.round(volume * 100)}%
-            </label>
-            <input
-              type="range"
-              min="0"
-              max="1"
-              step="0.1"
-              value={volume}
-              onChange={(e) => setVolume(parseFloat(e.target.value))}
-              className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-theme-primary"
-            />
-          </div>
-
-          {/* Test Play */}
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={handleTestPlay}
-            leftIcon={isPlaying ? <Square className="w-4 h-4" /> : <Play className="w-4 h-4" />}
-          >
-            {isPlaying ? "Stop" : "Test Play (10 sec)"}
-          </Button>
-
-          {/* Reminder Toggle */}
-          <div className="flex items-center justify-between">
-            <span className="text-sm font-semibold text-gray-700">Enable Reminder</span>
-            <button
-              onClick={() => setReminderEnabled(!reminderEnabled)}
-              className={`relative w-12 h-6 rounded-full transition-colors ${
-                reminderEnabled ? "bg-theme-primary" : "bg-gray-300"
-              }`}
-            >
-              <span
-                className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${
-                  reminderEnabled ? "translate-x-6" : "translate-x-0"
-                }`}
-              />
-            </button>
-          </div>
-
-          {reminderEnabled && (
-            <Select
-              label="Remind before"
-              value={reminderMinutes}
-              onChange={(e) => setReminderMinutes(parseInt(e.target.value))}
-              fullWidth
-            >
-              <option value={5}>5 minutes</option>
-              <option value={10}>10 minutes</option>
-              <option value={15}>15 minutes</option>
-              <option value={30}>30 minutes</option>
-            </Select>
-          )}
-
-          {/* Save Button */}
-          <Button
-            onClick={handleSave}
-            isLoading={saveMutation.isPending}
-            fullWidth
-          >
-            Save
-          </Button>
-        </div>
+      {/* Mosque Search */}
+      {prayerSource === "mosque" && (
+        <MosqueSearch
+          selectedMosque={selectedMosque}
+          onSelectMosque={onSelectMosque}
+          onClearMosque={onClearMosque}
+          onLocationUpdate={onMosqueLocationUpdate}
+        />
       )}
+
+      {/* Location Settings */}
+      <div className={prayerSource === "mosque" ? "opacity-75" : ""}>
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-bold text-gray-800">
+            {prayerSource === "mosque" ? "Mosque Location" : "Location Settings"}
+          </h3>
+          {geoSupported && prayerSource === "calculated" && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={requestLocation}
+              isLoading={locationLoading}
+              leftIcon={<MapPin className="w-4 h-4" />}
+            >
+              Use My Location
+            </Button>
+          )}
+        </div>
+        {prayerSource === "mosque" && (
+          <p className="text-sm text-gray-500 mb-4">
+            Location is set automatically from the selected mosque.
+          </p>
+        )}
+      </div>
+
+      {locationError && (
+        <Alert variant="danger" title="Location Error" message={locationError} />
+      )}
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <Input
+          label="Latitude"
+          type="number"
+          step="0.0000001"
+          value={latitude}
+          onChange={(e) => setLatitude(e.target.value)}
+          placeholder="e.g., 21.4225"
+        />
+        <Input
+          label="Longitude"
+          type="number"
+          step="0.0000001"
+          value={longitude}
+          onChange={(e) => setLongitude(e.target.value)}
+          placeholder="e.g., 39.8262"
+        />
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <Input
+          label="City (Optional)"
+          type="text"
+          value={city}
+          onChange={(e) => setCity(e.target.value)}
+          placeholder="e.g., Makkah"
+        />
+        <Input
+          label="Country (Optional)"
+          type="text"
+          value={country}
+          onChange={(e) => setCountry(e.target.value)}
+          placeholder="e.g., Saudi Arabia"
+        />
+      </div>
+
+      <div>
+        <Input
+          label="Timezone"
+          type="text"
+          value={timezone}
+          onChange={(e) => setTimezone(e.target.value)}
+          placeholder="e.g., Asia/Riyadh"
+        />
+        <p className="mt-2 text-xs text-gray-500">
+          Detected timezone: {detectedTimezone}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+// Source Option Button
+interface SourceOptionButtonProps {
+  selected: boolean;
+  onClick: () => void;
+  icon: React.ReactNode;
+  title: string;
+  subtitle: string;
+}
+
+function SourceOptionButton({ selected, onClick, icon, title, subtitle }: SourceOptionButtonProps) {
+  return (
+    <button
+      onClick={onClick}
+      className={`p-4 rounded-xl border-2 text-left transition-all ${
+        selected
+          ? "border-theme-primary bg-theme-primary/5"
+          : "border-gray-200 hover:border-gray-300"
+      }`}
+    >
+      <div className="flex items-center gap-3">
+        <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+          selected ? "bg-theme-primary text-white" : "bg-gray-100"
+        }`}>
+          {icon}
+        </div>
+        <div>
+          <div className="font-semibold text-gray-800">{title}</div>
+          <div className="text-sm text-gray-500">{subtitle}</div>
+        </div>
+      </div>
+    </button>
+  );
+}
+
+// Calculation Section Component
+interface CalculationSectionProps {
+  calculationMethod: CalculationMethodType;
+  setCalculationMethod: (method: CalculationMethodType) => void;
+  madhab: MadhabType;
+  setMadhab: (madhab: MadhabType) => void;
+  highLatitudeRule: HighLatitudeRuleType;
+  setHighLatitudeRule: (rule: HighLatitudeRuleType) => void;
+  adjustments: Record<string, number>;
+  setAdjustments: Record<string, (val: number) => void>;
+}
+
+function CalculationSection({
+  calculationMethod,
+  setCalculationMethod,
+  madhab,
+  setMadhab,
+  highLatitudeRule,
+  setHighLatitudeRule,
+  adjustments,
+  setAdjustments,
+}: CalculationSectionProps) {
+  return (
+    <div className="bg-white border-2 border-gray-200 rounded-xl p-4 sm:p-6 space-y-6">
+      <h3 className="text-lg font-bold text-gray-800">Calculation Settings</h3>
+
+      <Select
+        label="Calculation Method"
+        value={calculationMethod}
+        onChange={(e) => setCalculationMethod(e.target.value as CalculationMethodType)}
+        fullWidth
+      >
+        {calculationMethodEnum.map((method) => (
+          <option key={method} value={method}>
+            {CALCULATION_METHOD_NAMES[method]}
+          </option>
+        ))}
+      </Select>
+
+      <div>
+        <label className="block text-sm font-semibold text-gray-700 mb-3">
+          Madhab (for Asr calculation)
+        </label>
+        <div className="flex gap-4">
+          {madhabEnum.map((m) => (
+            <label key={m} className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="radio"
+                name="madhab"
+                value={m}
+                checked={madhab === m}
+                onChange={() => setMadhab(m)}
+                className="w-5 h-5 text-theme-primary focus:ring-theme-primary"
+              />
+              <span className="text-sm font-medium text-gray-700">{m}</span>
+            </label>
+          ))}
+        </div>
+        <p className="mt-2 text-xs text-gray-500">
+          Shafi: Shadow equals object length. Hanafi: Shadow equals twice the length.
+        </p>
+      </div>
+
+      <Select
+        label="High Latitude Rule"
+        value={highLatitudeRule}
+        onChange={(e) => setHighLatitudeRule(e.target.value as HighLatitudeRuleType)}
+        fullWidth
+      >
+        {highLatitudeRuleEnum.map((rule) => (
+          <option key={rule} value={rule}>
+            {rule.replace(/([A-Z])/g, " $1").trim()}
+          </option>
+        ))}
+      </Select>
+      <p className="-mt-4 text-xs text-gray-500">
+        For locations above 48 latitude where twilight may not occur.
+      </p>
+
+      {/* Manual Adjustments */}
+      <div>
+        <h4 className="text-sm font-semibold text-gray-700 mb-3">
+          Manual Adjustments (minutes)
+        </h4>
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+          {["fajr", "sunrise", "dhuhr", "asr", "maghrib", "isha"].map((prayer) => (
+            <Input
+              key={prayer}
+              label={prayer.charAt(0).toUpperCase() + prayer.slice(1)}
+              type="number"
+              value={adjustments[prayer]}
+              onChange={(e) => setAdjustments[prayer](parseInt(e.target.value) || 0)}
+              min={-60}
+              max={60}
+            />
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Display Section Component
+interface DisplaySectionProps {
+  showFloatingButton: boolean;
+  setShowFloatingButton: (val: boolean) => void;
+  fullscreenAdhanEnabled: boolean;
+  setFullscreenAdhanEnabled: (val: boolean) => void;
+}
+
+function DisplaySection({
+  showFloatingButton,
+  setShowFloatingButton,
+  fullscreenAdhanEnabled,
+  setFullscreenAdhanEnabled,
+}: DisplaySectionProps) {
+  return (
+    <div className="bg-white border-2 border-gray-200 rounded-xl p-4 sm:p-6 space-y-6">
+      <h3 className="text-lg font-bold text-gray-800">Display Settings</h3>
+
+      <div className="flex items-start justify-between gap-4">
+        <div className="flex-1 min-w-0">
+          <h4 className="font-semibold text-gray-800">Show Floating Button</h4>
+          <p className="text-sm text-gray-600">Display prayer countdown button on the family board</p>
+        </div>
+        <div className="flex-shrink-0 pt-0.5">
+          <ToggleSwitch enabled={showFloatingButton} onChange={setShowFloatingButton} size="lg" />
+        </div>
+      </div>
+
+      <div className="flex items-start justify-between gap-4">
+        <div className="flex-1 min-w-0">
+          <h4 className="font-semibold text-gray-800">Fullscreen Adhan</h4>
+          <p className="text-sm text-gray-600">Take over the board with fullscreen adhan view at prayer time</p>
+        </div>
+        <div className="flex-shrink-0 pt-0.5">
+          <ToggleSwitch enabled={fullscreenAdhanEnabled} onChange={setFullscreenAdhanEnabled} size="lg" />
+        </div>
+      </div>
+
+      {/* Test Fullscreen Info */}
+      <div className="pt-4 border-t-2 border-gray-100">
+        <h4 className="font-semibold text-gray-800 mb-2">Test Fullscreen Adhan</h4>
+        <p className="text-sm text-gray-600 mb-3">
+          Open the family board and click the test button in the prayer panel to test the fullscreen adhan view.
+        </p>
+        <Alert
+          variant="info"
+          title="How to test"
+          message="1. Open your family board in another tab. 2. Click on the prayer times floating button. 3. Click 'Test Fullscreen Adhan' in the panel."
+        />
+      </div>
     </div>
   );
 }

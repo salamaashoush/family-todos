@@ -5,7 +5,7 @@ import { useImageUpload } from '../../hooks/useImageUpload'
 import { UPLOAD_CONFIG } from '../../constants'
 import { getErrorMessage } from '../../utils/form'
 import { showToast } from '../Toast'
-import { Button, Input, FileInput } from '../shared'
+import { Button, Input, FileInput, ToggleSwitch } from '../shared'
 import type { Member } from '../../types'
 
 const memberSchema = z.object({
@@ -118,22 +118,11 @@ export function MemberForm({ member, onSubmit, onCancel }: MemberFormProps) {
                 Parents can be hidden from the main task view
               </p>
             </div>
-            <button
-              type="button"
-              id="isParent"
-              role="switch"
-              aria-checked={field.state.value}
-              onClick={() => field.handleChange(!field.state.value)}
-              className={`relative w-14 h-8 rounded-full transition-colors ${
-                field.state.value ? 'bg-theme-primary' : 'bg-gray-300'
-              }`}
-            >
-              <span
-                className={`absolute top-1 left-1 w-6 h-6 bg-white rounded-full shadow transition-transform ${
-                  field.state.value ? 'translate-x-6' : 'translate-x-0'
-                }`}
-              />
-            </button>
+            <ToggleSwitch
+              enabled={field.state.value}
+              onChange={() => field.handleChange(!field.state.value)}
+              size="lg"
+            />
           </div>
         )}
       />

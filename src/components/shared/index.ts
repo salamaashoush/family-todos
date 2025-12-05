@@ -7,6 +7,7 @@ export { Select } from './Select'
 export { MultiSelect } from './MultiSelect'
 export { FileInput } from './FileInput'
 export { EmojiInput } from './EmojiInput'
+export { ToggleSwitch } from './ToggleSwitch'
 
 // Feedback components
 export { Alert } from './Alert'

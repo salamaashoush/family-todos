@@ -69,6 +69,18 @@
   --color-theme-bg-to: oklch(0.86 0.12 290);
 }
 
+/* ============================================
+   TOUCH DEVICE OPTIMIZATIONS
+   ============================================ */
+
+/* Prevent text selection on interactive elements for touch devices */
+html {
+  /* Enable smooth scrolling */
+  scroll-behavior: smooth;
+  /* Prevent pull-to-refresh on mobile */
+  overscroll-behavior-y: contain;
+}
+
 body {
   @apply m-0;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen",
@@ -76,6 +88,121 @@ body {
     sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  /* Prevent text selection while scrolling on touch devices */
+  -webkit-touch-callout: none;
+  /* Enable momentum scrolling on iOS */
+  -webkit-overflow-scrolling: touch;
+  /* Prevent overscroll bounce on body */
+  overscroll-behavior: none;
+}
+
+/* Disable text selection on interactive elements */
+button,
+a,
+[role="button"],
+[role="tab"],
+[role="menuitem"],
+[role="option"],
+.select-none,
+label,
+nav,
+header,
+footer,
+aside {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
+/* Allow text selection in inputs, textareas, and content areas */
+input,
+textarea,
+[contenteditable="true"],
+.select-text,
+p,
+article,
+.prose {
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+/* Optimize touch scrolling for scrollable containers */
+.overflow-auto,
+.overflow-y-auto,
+.overflow-x-auto,
+.overflow-scroll,
+.overflow-y-scroll,
+.overflow-x-scroll,
+[class*="overflow-"] {
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y pan-x;
+  overscroll-behavior: contain;
+}
+
+/* Touch action optimization for specific elements */
+button,
+a,
+[role="button"] {
+  touch-action: manipulation;
+}
+
+/* Remove tap highlight on mobile (iOS/Android) */
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Active state feedback for touch devices */
+@media (hover: none) and (pointer: coarse) {
+  button:active,
+  a:active,
+  [role="button"]:active {
+    opacity: 0.8;
+    transform: scale(0.98);
+    transition: transform 0.1s ease, opacity 0.1s ease;
+  }
+}
+
+/* Prevent zoom on double-tap for inputs on iOS */
+input,
+select,
+textarea {
+  font-size: 16px; /* Prevents iOS zoom on focus */
+}
+
+/* Touch-friendly scrollable lists */
+.touch-scroll {
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
+  overscroll-behavior-y: contain;
+  scroll-snap-type: y proximity;
+}
+
+.touch-scroll-x {
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-x;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x proximity;
+}
+
+/* Disable dragging on images and links */
+img,
+a {
+  -webkit-user-drag: none;
+  user-drag: none;
+}
+
+/* Card/Item touch interaction styles */
+.touch-card {
+  -webkit-user-select: none;
+  user-select: none;
+  touch-action: manipulation;
+}
+
+@media (hover: none) and (pointer: coarse) {
+  .touch-card:active {
+    transform: scale(0.98);
+    transition: transform 0.15s ease;
+  }
 }
 
 code {
