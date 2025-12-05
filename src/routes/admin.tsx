@@ -19,8 +19,9 @@ import { StatisticsTab } from '../components/admin/StatisticsTab'
 import { SettingsTab } from '../components/admin/SettingsTab'
 import { SecurityTab } from '../components/admin/SecurityTab'
 import { RewardsTab } from '../components/admin/RewardsTab'
+import { PrayerTimesTab } from '../components/admin/PrayerTimesTab'
 
-const tabIds = ['todos', 'timeslots', 'members', 'rewards', 'stats', 'security', 'settings'] as const
+const tabIds = ['todos', 'timeslots', 'members', 'rewards', 'stats', 'prayer', 'security', 'settings'] as const
 type TabId = (typeof tabIds)[number]
 
 const searchSchema = z.object({
@@ -134,6 +135,16 @@ const tabs: { id: TabId; label: string; shortLabel: string; icon: ReactNode }[] 
     icon: (
       <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+      </svg>
+    ),
+  },
+  {
+    id: 'prayer',
+    label: 'Prayer Times',
+    shortLabel: 'Prayer',
+    icon: (
+      <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+        <path d="M12 2C11.5 2 11 2.19 10.59 2.59L7.29 5.88C6.5 6.67 6 7.67 6 8.75V21H8V14C8 13.45 8.45 13 9 13H15C15.55 13 16 13.45 16 14V21H18V8.75C18 7.67 17.5 6.67 16.71 5.88L13.41 2.59C13 2.19 12.5 2 12 2M12 4.41L14.59 7H9.41L12 4.41M10 15V21H14V15H10Z" />
       </svg>
     ),
   },
@@ -278,6 +289,7 @@ function AdminPanel() {
             {activeTab === 'todos' && <TodosTab />}
             {activeTab === 'rewards' && <RewardsTab />}
             {activeTab === 'stats' && <StatisticsTab />}
+            {activeTab === 'prayer' && <PrayerTimesTab />}
             {activeTab === 'security' && <SecurityTab />}
             {activeTab === 'settings' && <SettingsTab />}
           </div>

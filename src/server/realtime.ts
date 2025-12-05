@@ -83,7 +83,7 @@ export type DataRefreshEvent = {
   sourceClientId?: string;
   timestamp: number;
   data: {
-    entity: "members" | "todos" | "timeslots" | "rewards" | "completions";
+    entity: "members" | "todos" | "timeslots" | "rewards" | "completions" | "settings";
     action: "created" | "updated" | "deleted";
     entityId?: number;
   };

@@ -9,6 +9,7 @@ export * from "./rewards";
 export * from "./auth";
 export * from "./settings";
 export * from "./audit";
+export * from "./prayer";
 
 // Re-export relations
 export * from "./relations";

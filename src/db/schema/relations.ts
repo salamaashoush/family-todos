@@ -8,9 +8,10 @@ import { memberStats, achievements, memberAchievements } from "./statistics";
 import { rewards, pointTransactions, rewardRedemptions } from "./rewards";
 import { adminUsers, userFamilies } from "./auth";
 import { layoutSettings } from "./settings";
+import { prayerSettings, prayerAdhanSettings } from "./prayer";
 
 // Family relations
-export const familiesRelations = relations(families, ({ many }) => ({
+export const familiesRelations = relations(families, ({ one, many }) => ({
   members: many(members),
   timeslots: many(timeslots),
   todos: many(todos),
@@ -18,6 +19,11 @@ export const familiesRelations = relations(families, ({ many }) => ({
   achievements: many(achievements),
   userFamilies: many(userFamilies),
   layoutSettings: many(layoutSettings),
+  prayerSettings: one(prayerSettings, {
+    fields: [families.id],
+    references: [prayerSettings.familyId],
+  }),
+  prayerAdhanSettings: many(prayerAdhanSettings),
 }));
 
 // Member relations
@@ -193,6 +199,21 @@ export const userFamiliesRelations = relations(userFamilies, ({ one }) => ({
 export const layoutSettingsRelations = relations(layoutSettings, ({ one }) => ({
   family: one(families, {
     fields: [layoutSettings.familyId],
+    references: [families.id],
+  }),
+}));
+
+// Prayer relations
+export const prayerSettingsRelations = relations(prayerSettings, ({ one }) => ({
+  family: one(families, {
+    fields: [prayerSettings.familyId],
+    references: [families.id],
+  }),
+}));
+
+export const prayerAdhanSettingsRelations = relations(prayerAdhanSettings, ({ one }) => ({
+  family: one(families, {
+    fields: [prayerAdhanSettings.familyId],
     references: [families.id],
   }),
 }));

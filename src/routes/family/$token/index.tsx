@@ -27,6 +27,14 @@ import {
   getPublicMemberPoints,
   togglePublicTodo,
 } from "../../../server/publicBoard";
+import { getPublicPrayerSettings, getPublicAdhanSettings } from "../../../server/prayer";
+import { PrayerTimesProvider } from "../../../contexts/PrayerTimesContext";
+import {
+  PrayerTimesPanel,
+  AdhanFullscreenView,
+  PrayerReminderToast,
+} from "../../../components/prayer";
+import type { PrayerName } from "../../../utils/prayerCalculations";
 
 // Helper to get date string in local timezone
 function getLocalDateString(date: Date): string {
@@ -53,7 +61,7 @@ export const Route = createFileRoute("/family/$token/")({
         queryFn: () => getFamilyByShareToken({ data: { token } }),
       });
 
-      // If family exists, preload all other data in parallel
+      // If family exists, preload all other data in parallel (including prayer times)
       if (family) {
         await Promise.all([
           queryClient.ensureQueryData({
@@ -79,6 +87,15 @@ export const Route = createFileRoute("/family/$token/")({
           queryClient.ensureQueryData({
             queryKey: ["public-member-points", token],
             queryFn: () => getPublicMemberPoints({ data: { token } }),
+          }),
+          // Prayer times prefetching
+          queryClient.ensureQueryData({
+            queryKey: ["public-prayer-settings", token],
+            queryFn: () => getPublicPrayerSettings({ data: { token } }),
+          }),
+          queryClient.ensureQueryData({
+            queryKey: ["public-adhan-settings", token],
+            queryFn: () => getPublicAdhanSettings({ data: { token } }),
           }),
         ]);
       }
@@ -124,6 +141,22 @@ function PublicFamilyBoard() {
   const { initialDate } = Route.useLoaderData();
   const queryClient = useQueryClient();
   const [selectedDate, setSelectedDate] = useState(initialDate);
+
+  // Prayer times fetch functions for this token - must be before any early returns (React hooks rule)
+  const fetchPrayerSettings = useCallback(
+    () => getPublicPrayerSettings({ data: { token } }),
+    [token]
+  );
+  const fetchAdhanSettings = useCallback(
+    () => getPublicAdhanSettings({ data: { token } }),
+    [token]
+  );
+
+  // Prayer reminder state - must be before any early returns (React hooks rule)
+  const [activeReminder, setActiveReminder] = useState<{
+    prayer: PrayerName;
+    minutes: number;
+  } | null>(null);
 
   // Layout context for multiple layouts and settings
   const { layout, settings, currentTimeslotId, isHydrated } = useLayout();
@@ -475,14 +508,33 @@ function PublicFamilyBoard() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-theme-bg-from via-theme-bg-via to-theme-bg-to">
-      <Toast />
-      <AchievementUnlockModal
-        achievement={currentAchievement}
-        onClose={dismissAchievement}
-      />
+    <PrayerTimesProvider
+      fetchSettings={fetchPrayerSettings}
+      fetchAdhanSettings={fetchAdhanSettings}
+      settingsQueryKey={["public-prayer-settings", token]}
+      adhanSettingsQueryKey={["public-adhan-settings", token]}
+    >
+      <div className="min-h-screen bg-gradient-to-br from-theme-bg-from via-theme-bg-via to-theme-bg-to">
+        <Toast />
+        <AchievementUnlockModal
+          achievement={currentAchievement}
+          onClose={dismissAchievement}
+        />
 
-      {/* Header for public view */}
+        {/* Prayer Times Components */}
+        <AdhanFullscreenView />
+        <PrayerTimesPanel />
+
+        {/* Prayer Reminder Toast */}
+        {activeReminder && (
+          <PrayerReminderToast
+            prayer={activeReminder.prayer}
+            minutesBefore={activeReminder.minutes}
+            onDismiss={() => setActiveReminder(null)}
+          />
+        )}
+
+        {/* Header for public view */}
       <header className="bg-white/95 backdrop-blur-md shadow-lg sticky top-0 z-40 border-b-2 border-theme-primary/20">
         <div className="max-w-[1920px] mx-auto px-3 sm:px-4 lg:px-6">
           <div className="flex items-center justify-between h-14 sm:h-16">
@@ -545,6 +597,7 @@ function PublicFamilyBoard() {
       </div>
 
       <FloatingMenu token={token} />
-    </div>
+      </div>
+    </PrayerTimesProvider>
   );
 }
