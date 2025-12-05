@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useMemo } from 'react'
 import { Link } from '@tanstack/react-router'
-import { Menu, X, Settings, BarChart3, Compass } from 'lucide-react'
+import { Menu, X, Settings, BarChart3, Compass, RefreshCw } from 'lucide-react'
 import { usePrayerTimesContext } from '../contexts/PrayerTimesContext'
 import { PRAYER_NAMES } from '../utils/prayerCalculations'
 import { calculateQiblaDirection, getCardinalDirection } from '../utils/qiblaDirection'
@@ -137,6 +137,15 @@ export function FloatingMenu({ token }: FloatingMenuProps) {
           <BarChart3 className="w-5 h-5" />
           <span className="font-semibold whitespace-nowrap">Stats & Rewards</span>
         </Link>
+        <button
+          onClick={() => {
+            window.location.reload()
+          }}
+          className="flex items-center gap-3 px-4 py-3 rounded-xl text-white shadow-lg transition-all transform hover:scale-105 active:scale-95 bg-gradient-to-r from-gray-600 to-gray-700 hover:from-gray-700 hover:to-gray-800"
+        >
+          <RefreshCw className="w-5 h-5" />
+          <span className="font-semibold whitespace-nowrap">Reload Page</span>
+        </button>
       </div>
 
       {/* Main FAB button - shows prayer info when enabled */}
