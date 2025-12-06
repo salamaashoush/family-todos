@@ -28,13 +28,13 @@ import {
   togglePublicTodo,
 } from "../../../server/publicBoard";
 import { getPublicPrayerSettings, getPublicAdhanSettings } from "../../../server/prayer";
-import { PrayerTimesProvider } from "../../../contexts/PrayerTimesContext";
+import { usePrayerTimesInit } from "../../../stores/usePrayerTimesInit";
+import { usePrayerTimesStore, selectActiveReminder, selectDismissReminder } from "../../../stores/prayerTimesStore";
 import {
   PrayerTimesPanel,
   AdhanFullscreenView,
   PrayerReminderToast,
 } from "../../../components/prayer";
-import type { PrayerName } from "../../../utils/prayerCalculations";
 
 // Helper to get date string in local timezone
 function getLocalDateString(date: Date): string {
@@ -142,11 +142,12 @@ function PublicFamilyBoard() {
   const queryClient = useQueryClient();
   const [selectedDate, setSelectedDate] = useState(initialDate);
 
-  // Prayer reminder state - must be before any early returns (React hooks rule)
-  const [activeReminder, setActiveReminder] = useState<{
-    prayer: PrayerName;
-    minutes: number;
-  } | null>(null);
+  // Initialize prayer times with Zustand store (handles data fetching and sync)
+  usePrayerTimesInit({ publicToken: token });
+
+  // Prayer reminder state from Zustand store
+  const activeReminder = usePrayerTimesStore(selectActiveReminder);
+  const dismissReminder = usePrayerTimesStore(selectDismissReminder);
 
   // Layout context for multiple layouts and settings
   const { layout, settings, currentTimeslotId, isHydrated } = useLayout();
@@ -498,26 +499,25 @@ function PublicFamilyBoard() {
   };
 
   return (
-    <PrayerTimesProvider publicToken={token}>
-      <div className="min-h-screen bg-gradient-to-br from-theme-bg-from via-theme-bg-via to-theme-bg-to">
-        <Toast />
-        <AchievementUnlockModal
-          achievement={currentAchievement}
-          onClose={dismissAchievement}
+    <div className="min-h-screen bg-gradient-to-br from-theme-bg-from via-theme-bg-via to-theme-bg-to">
+      <Toast />
+      <AchievementUnlockModal
+        achievement={currentAchievement}
+        onClose={dismissAchievement}
+      />
+
+      {/* Prayer Times Components */}
+      <AdhanFullscreenView />
+      <PrayerTimesPanel />
+
+      {/* Prayer Reminder Toast */}
+      {activeReminder && (
+        <PrayerReminderToast
+          prayer={activeReminder}
+          minutesBefore={15}
+          onDismiss={dismissReminder}
         />
-
-        {/* Prayer Times Components */}
-        <AdhanFullscreenView />
-        <PrayerTimesPanel />
-
-        {/* Prayer Reminder Toast */}
-        {activeReminder && (
-          <PrayerReminderToast
-            prayer={activeReminder.prayer}
-            minutesBefore={activeReminder.minutes}
-            onDismiss={() => setActiveReminder(null)}
-          />
-        )}
+      )}
 
         {/* Header for public view */}
       <header className="bg-white/95 backdrop-blur-md shadow-lg sticky top-0 z-40 border-b-2 border-theme-primary/20">
@@ -582,7 +582,6 @@ function PublicFamilyBoard() {
       </div>
 
       <FloatingMenu token={token} />
-      </div>
-    </PrayerTimesProvider>
+    </div>
   );
 }

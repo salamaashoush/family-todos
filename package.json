@@ -7,7 +7,7 @@
     "dev": "bun --bun vite dev",
     "build": "bun --bun vite build",
     "serve": "bun --bun vite preview",
-    "test": "bun --bun vitest run",
+    "test": "bun test",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
     "db:start": "docker compose up -d db",
@@ -50,7 +50,8 @@
     "resend": "^6.5.2",
     "tailwindcss": "^4.1.17",
     "vite-tsconfig-paths": "^5.1.4",
-    "zod": "^4.1.13"
+    "zod": "^4.1.13",
+    "zustand": "^5.0.9"
   },
   "devDependencies": {
     "@playwright/test": "^1.57.0",
@@ -68,7 +69,6 @@
     "playwright": "^1.57.0",
     "typescript": "^5.9.3",
     "vite": "^7.2.6",
-    "vitest": "^4.0.15",
     "web-vitals": "^5.1.0"
   }
 }

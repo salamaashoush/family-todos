@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { Settings } from "lucide-react";
-import { usePrayerTimesContext } from "../../contexts/PrayerTimesContext";
+import { usePrayerTimesStore } from "../../stores/prayerTimesStore";
 import { PRAYER_NAMES, getPrayerOrder, formatPrayerTime, calculateFastingTimes, type PrayerName } from "../../utils/prayerCalculations";
 import { gregorianToHijri, formatHijriDate, isRamadan, getIslamicEvent } from "../../utils/hijriCalendar";
 import { calculateQiblaDirection, getCardinalDirection } from "../../utils/qiblaDirection";
@@ -17,20 +17,19 @@ export function PrayerTimesPanel({
   onSettingsClick,
   className = "",
 }: PrayerTimesPanelProps) {
-  const {
-    isEnabled,
-    settings,
-    prayerTimes,
-    isPanelOpen,
-    setIsPanelOpen,
-    isAdhanPlaying,
-    adhanPrayer,
-    testFullscreenAdhan,
-    nextPrayer,
-    timeUntilNextPrayer,
-    prayerSource,
-    mosqueName,
-  } = usePrayerTimesContext();
+  // Use Zustand store with selectors for optimal re-renders
+  const isEnabled = usePrayerTimesStore((s) => s.isEnabled);
+  const settings = usePrayerTimesStore((s) => s.settings);
+  const prayerTimes = usePrayerTimesStore((s) => s.prayerTimes);
+  const isPanelOpen = usePrayerTimesStore((s) => s.isPanelOpen);
+  const setIsPanelOpen = usePrayerTimesStore((s) => s.setIsPanelOpen);
+  const isAdhanPlaying = usePrayerTimesStore((s) => s.isAdhanPlaying);
+  const adhanPrayer = usePrayerTimesStore((s) => s.adhanPrayer);
+  const testFullscreenAdhan = usePrayerTimesStore((s) => s.testFullscreenAdhan);
+  const nextPrayer = usePrayerTimesStore((s) => s.prayerTimes?.nextPrayer ?? null);
+  const timeUntilNextPrayer = usePrayerTimesStore((s) => s.timeUntilNextPrayer);
+  const prayerSource = usePrayerTimesStore((s) => s.prayerSource);
+  const mosqueName = usePrayerTimesStore((s) => s.mosqueName);
 
   const today = new Date();
 
@@ -290,8 +289,11 @@ function PrayerTimeRow({ prayer, isAdhanPlaying }: PrayerTimeRowProps) {
 
 // Compact inline version for header
 export function PrayerTimesInline({ className = "" }: { className?: string }) {
-  const { isEnabled, settings, nextPrayer, timeUntilNextPrayer, togglePanel } =
-    usePrayerTimesContext();
+  const isEnabled = usePrayerTimesStore((s) => s.isEnabled);
+  const settings = usePrayerTimesStore((s) => s.settings);
+  const nextPrayer = usePrayerTimesStore((s) => s.prayerTimes?.nextPrayer ?? null);
+  const timeUntilNextPrayer = usePrayerTimesStore((s) => s.timeUntilNextPrayer);
+  const togglePanel = usePrayerTimesStore((s) => s.togglePanel);
 
   if (!isEnabled || !settings || !nextPrayer) {
     return null;

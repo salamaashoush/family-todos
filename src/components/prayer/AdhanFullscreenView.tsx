@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useCallback, useMemo } from "react";
-import { usePrayerTimesContext } from "../../contexts/PrayerTimesContext";
+import { usePrayerTimesStore } from "../../stores/prayerTimesStore";
 import { PRAYER_NAMES, formatPrayerTime, type PrayerName } from "../../utils/prayerCalculations";
 import {
   AdhanAudioManager,
@@ -11,26 +11,25 @@ interface AdhanFullscreenViewProps {
 }
 
 export function AdhanFullscreenView({ className = "" }: AdhanFullscreenViewProps) {
-  const {
-    isFullscreenAdhan,
-    dismissFullscreenAdhan,
-    adhanPrayer,
-    adhanSettings,
-    stopAdhan,
-    settings,
-    prayerSource,
-    mosqueName,
-    mosquePrayerTimes,
-    prayerTimes,
-  } = usePrayerTimesContext();
+  // Use Zustand store with selectors for optimal re-renders
+  const isFullscreenAdhan = usePrayerTimesStore((s) => s.isFullscreenAdhan);
+  const dismissFullscreenAdhan = usePrayerTimesStore((s) => s.dismissFullscreenAdhan);
+  const adhanPrayer = usePrayerTimesStore((s) => s.adhanPrayer);
+  const adhanSettings = usePrayerTimesStore((s) => s.adhanSettings);
+  const stopAdhan = usePrayerTimesStore((s) => s.stopAdhan);
+  const settings = usePrayerTimesStore((s) => s.settings);
+  const prayerSource = usePrayerTimesStore((s) => s.prayerSource);
+  const mosqueName = usePrayerTimesStore((s) => s.mosqueName);
+  const mosquePrayerTimes = usePrayerTimesStore((s) => s.mosquePrayerTimes);
+  const prayerTimes = usePrayerTimesStore((s) => s.prayerTimes);
 
   const audioManagerRef = useRef<AdhanAudioManager | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const [progress, setProgress] = useState(0);
   const [duration, setDuration] = useState(0);
-  // Start with hasInteracted true - the user clicked a button to get here
-  const [hasInteracted, setHasInteracted] = useState(true);
+  // Track if we've already started playing this adhan session
+  const hasStartedPlayingRef = useRef(false);
 
   // Get adhan settings for current prayer
   const currentAdhanSettings = adhanPrayer
@@ -91,15 +90,30 @@ export function AdhanFullscreenView({ className = "" }: AdhanFullscreenViewProps
     };
   }, [stopAdhan]);
 
-  // Play adhan when fullscreen opens
+  // Reset the hasStartedPlaying flag when fullscreen closes
+  useEffect(() => {
+    if (!isFullscreenAdhan) {
+      hasStartedPlayingRef.current = false;
+    }
+  }, [isFullscreenAdhan]);
+
+  // Play adhan when fullscreen opens - ONLY ONCE per session
   useEffect(() => {
     if (!isFullscreenAdhan || !adhanPrayer || !audioManagerRef.current) {
+      return;
+    }
+
+    // Prevent re-playing if already started
+    if (hasStartedPlayingRef.current) {
       return;
     }
 
     const playAdhan = async () => {
       const manager = audioManagerRef.current;
       if (!manager) return;
+
+      // Mark as started BEFORE playing to prevent race conditions
+      hasStartedPlayingRef.current = true;
 
       // Determine which audio URL to use
       let audioUrl: string;
@@ -115,7 +129,7 @@ export function AdhanFullscreenView({ className = "" }: AdhanFullscreenViewProps
         audioUrl = DEFAULT_ADHAN_URLS.makkah;
       }
 
-      // Get volume
+      // Get volume (apply mute state)
       const volume = currentAdhanSettings?.adhanVolume
         ? parseFloat(currentAdhanSettings.adhanVolume)
         : 1.0;
@@ -129,11 +143,8 @@ export function AdhanFullscreenView({ className = "" }: AdhanFullscreenViewProps
       }
     };
 
-    // Only auto-play if user has interacted with the page
-    if (hasInteracted) {
-      playAdhan();
-    }
-  }, [isFullscreenAdhan, adhanPrayer, currentAdhanSettings, hasInteracted, isMuted]);
+    playAdhan();
+  }, [isFullscreenAdhan, adhanPrayer, currentAdhanSettings]); // Removed isMuted from deps - mute is handled separately
 
   // Stop audio when dismissed
   const handleDismiss = useCallback(() => {

@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useMemo } from 'react'
 import { Link } from '@tanstack/react-router'
 import { Menu, X, Settings, BarChart3, Compass, RefreshCw } from 'lucide-react'
-import { usePrayerTimesContext } from '../contexts/PrayerTimesContext'
+import { usePrayerTimesStore } from '../stores/prayerTimesStore'
 import { PRAYER_NAMES } from '../utils/prayerCalculations'
 import { calculateQiblaDirection, getCardinalDirection } from '../utils/qiblaDirection'
 import { FloatingPanel } from './shared'
@@ -16,16 +16,13 @@ export function FloatingMenu({ token }: FloatingMenuProps) {
   const [showQibla, setShowQibla] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
 
-  // Prayer times context - get all prayer data from context
-  const prayerContext = usePrayerTimesContext()
-  const {
-    isEnabled: prayerEnabled,
-    settings: prayerSettings,
-    isAdhanPlaying,
-    togglePanel,
-    nextPrayer,
-    timeUntilNextPrayer,
-  } = prayerContext || {}
+  // Prayer times from Zustand store with selectors for optimal re-renders
+  const prayerEnabled = usePrayerTimesStore((s) => s.isEnabled)
+  const prayerSettings = usePrayerTimesStore((s) => s.settings)
+  const isAdhanPlaying = usePrayerTimesStore((s) => s.isAdhanPlaying)
+  const togglePanel = usePrayerTimesStore((s) => s.togglePanel)
+  const nextPrayer = usePrayerTimesStore((s) => s.prayerTimes?.nextPrayer ?? null)
+  const timeUntilNextPrayer = usePrayerTimesStore((s) => s.timeUntilNextPrayer)
 
   // Calculate Qibla direction
   const qibla = useMemo(() => {
