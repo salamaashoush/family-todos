@@ -16,6 +16,28 @@ interface FloatingPanelProps {
   className?: string;
 }
 
+// Check if device is in landscape with limited height
+function useIsLandscapeConstrained() {
+  const [isConstrained, setIsConstrained] = useState(false);
+
+  useEffect(() => {
+    const check = () => {
+      const isLandscape = window.innerWidth > window.innerHeight;
+      const isShortHeight = window.innerHeight < 500;
+      setIsConstrained(isLandscape && isShortHeight);
+    };
+    check();
+    window.addEventListener("resize", check);
+    window.addEventListener("orientationchange", check);
+    return () => {
+      window.removeEventListener("resize", check);
+      window.removeEventListener("orientationchange", check);
+    };
+  }, []);
+
+  return isConstrained;
+}
+
 export function FloatingPanel({
   isOpen,
   onClose,
@@ -31,6 +53,7 @@ export function FloatingPanel({
 }: FloatingPanelProps) {
   const panelRef = useRef<HTMLDivElement>(null);
   const [isMobile, setIsMobile] = useState(false);
+  const isLandscapeConstrained = useIsLandscapeConstrained();
 
   // Check if mobile on mount and resize
   useEffect(() => {
@@ -40,17 +63,17 @@ export function FloatingPanel({
     return () => window.removeEventListener("resize", checkMobile);
   }, []);
 
-  // Prevent body scroll when panel is open on mobile
+  // Prevent body scroll when panel is open on mobile or landscape constrained
   useEffect(() => {
     if (!isOpen) return;
 
-    if (isMobile) {
+    if (isMobile || isLandscapeConstrained) {
       document.body.style.overflow = "hidden";
       return () => {
         document.body.style.overflow = "";
       };
     }
-  }, [isOpen, isMobile]);
+  }, [isOpen, isMobile, isLandscapeConstrained]);
 
   // Close panel on escape
   useEffect(() => {
@@ -73,6 +96,9 @@ export function FloatingPanel({
     "bottom-left": { left: 24, bottom: 96 },
   };
 
+  // Use full screen mode on mobile OR when in landscape with constrained height
+  const useFullScreen = isMobile || isLandscapeConstrained;
+
   return (
     <>
       {/* Backdrop */}
@@ -89,13 +115,14 @@ export function FloatingPanel({
           bg-white
           overflow-hidden
           flex flex-col
-          ${isMobile ? "inset-0" : "rounded-2xl shadow-2xl bg-white/95 backdrop-blur-md animate-slide-up"}
+          ${useFullScreen ? "inset-0" : "rounded-2xl shadow-2xl bg-white/95 backdrop-blur-md animate-slide-up"}
           ${className}
         `}
-        style={isMobile ? undefined : {
+        style={useFullScreen ? undefined : {
           ...positionStyles[position],
           width: width,
           maxWidth: "calc(100vw - 2rem)",
+          maxHeight: "calc(100vh - 8rem)",
         }}
       >
         {/* Header */}
@@ -117,7 +144,7 @@ export function FloatingPanel({
               className="p-2 rounded-full hover:bg-white/20 transition-colors"
               aria-label="Close panel"
             >
-              <X className={isMobile ? "w-6 h-6" : "w-5 h-5"} />
+              <X className={useFullScreen ? "w-6 h-6" : "w-5 h-5"} />
             </button>
           </div>
         </div>
