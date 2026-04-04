@@ -1,0 +1,6 @@
+health:
+  path: /api/health
+  status: 200
+  interval: 30
+  timeout: 10
+  retries: 3
