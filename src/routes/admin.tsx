@@ -5,12 +5,14 @@ import { z } from 'zod'
 import { useRealtime } from '../hooks/useRealtime'
 import { getAccountStatus } from '../server/auth'
 import { getOnboardingStatus } from '../server/onboarding'
-import { getMembers } from '../server/members'
-import { getTimeslots } from '../server/timeslots'
-import { getTodos } from '../server/todos'
 import { getAllAchievements } from '../server/statistics'
 import { getShareToken } from '../server/publicBoard'
-import { getRewards } from '../server/rewards'
+import {
+  membersCollection,
+  todosCollection,
+  timeslotsCollection,
+  rewardsCollection,
+} from '../collections'
 import { AdminHeader } from '../components/admin/AdminHeader'
 import { MembersTab } from '../components/admin/MembersTab'
 import { TimeslotsTab } from '../components/admin/TimeslotsTab'
@@ -30,6 +32,7 @@ const searchSchema = z.object({
 
 export const Route = createFileRoute('/admin')({
   validateSearch: searchSchema,
+  ssr: false,
   beforeLoad: async () => {
     // Check authentication and account status
     const auth = await getAccountStatus()
@@ -58,18 +61,10 @@ export const Route = createFileRoute('/admin')({
   },
   loader: async ({ context: { queryClient } }) => {
     await Promise.all([
-      queryClient.ensureQueryData({
-        queryKey: ['members'],
-        queryFn: () => getMembers(),
-      }),
-      queryClient.ensureQueryData({
-        queryKey: ['timeslots'],
-        queryFn: () => getTimeslots({ data: {} }),
-      }),
-      queryClient.ensureQueryData({
-        queryKey: ['todos'],
-        queryFn: () => getTodos({ data: {} }),
-      }),
+      membersCollection.preload(),
+      todosCollection.preload(),
+      timeslotsCollection.preload(),
+      rewardsCollection.preload(),
       queryClient.ensureQueryData({
         queryKey: ['achievements'],
         queryFn: () => getAllAchievements(),
@@ -77,10 +72,6 @@ export const Route = createFileRoute('/admin')({
       queryClient.ensureQueryData({
         queryKey: ['share-token'],
         queryFn: () => getShareToken(),
-      }),
-      queryClient.ensureQueryData({
-        queryKey: ['rewards'],
-        queryFn: () => getRewards(),
       }),
     ])
   },

@@ -15,8 +15,8 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable'
 import { Plus, GripHorizontal, Trash2, Clock } from 'lucide-react'
-import { useTimeslots, useMembers } from '../../hooks/useQueries'
-import { useTimeslotMutations, useTodoMutations } from '../../hooks/useAdminMutations'
+import { useTimeslots, useMembers } from '../../hooks/useCollections'
+import { timeslotsCollection, todosCollection } from '../../collections'
 import { formatRecurrenceDays } from '../../utils/timeslots'
 import { showToast } from '../Toast'
 import { Modal } from '../shared/Modal'
@@ -42,8 +42,6 @@ interface TimeslotFormData {
 export function TimeslotsTab() {
   const { data: timeslots, isLoading: timeslotsLoading } = useTimeslots()
   const { data: members } = useMembers()
-  const { create, update, remove } = useTimeslotMutations()
-  const { create: createTodo } = useTodoMutations()
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingTimeslot, setEditingTimeslot] = useState<Timeslot | null>(null)
   const [deletingTimeslot, setDeletingTimeslot] = useState<Timeslot | null>(null)
@@ -81,27 +79,52 @@ export function TimeslotsTab() {
   }, [timeslots, localTimeslots, isReordering, searchQuery, filterMember])
 
   const handleAdd = async (data: TimeslotFormData) => {
-    create.mutate({ data })
+    timeslotsCollection.insert({
+      id: Date.now(),
+      familyId: 0,
+      name: data.name,
+      description: data.description || null,
+      startTime: data.startTime,
+      endTime: data.endTime,
+      recurrenceType: data.recurrenceType || 'daily',
+      recurrenceDays: data.recurrenceDays || null,
+      isActive: true,
+      memberIds: data.memberIds,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    }).isPersisted.promise
+      .then(() => showToast('Time slot created successfully', 'success'))
+      .catch(() => showToast('Failed to create time slot', 'error'))
     setIsModalOpen(false)
   }
 
   const handleUpdate = async (data: TimeslotFormData) => {
     if (!editingTimeslot) return
-    update.mutate({ data: { id: editingTimeslot.id, ...data } })
+    timeslotsCollection.update(editingTimeslot.id, (draft) => {
+      draft.name = data.name
+      draft.description = data.description || null
+      draft.startTime = data.startTime
+      draft.endTime = data.endTime
+      draft.recurrenceType = data.recurrenceType || 'daily'
+      draft.recurrenceDays = data.recurrenceDays || null
+      draft.memberIds = data.memberIds
+    }).isPersisted.promise
+      .then(() => showToast('Time slot updated successfully', 'success'))
+      .catch(() => showToast('Failed to update time slot', 'error'))
     setIsModalOpen(false)
     setEditingTimeslot(null)
   }
 
   const handleDelete = () => {
     if (!deletingTimeslot) return
-    remove.mutate({ data: { id: deletingTimeslot.id } })
+    timeslotsCollection.delete(deletingTimeslot.id).isPersisted.promise
+      .then(() => showToast('Time slot deleted successfully', 'success'))
+      .catch(() => showToast('Failed to delete time slot', 'error'))
     setDeletingTimeslot(null)
   }
 
   const handleBulkDelete = () => {
-    selectedIds.forEach((id) => {
-      remove.mutate({ data: { id } })
-    })
+    timeslotsCollection.delete([...selectedIds])
     setSelectedIds(new Set())
     setShowBulkDelete(false)
   }
@@ -139,20 +162,7 @@ export function TimeslotsTab() {
   }
 
   const saveReordering = () => {
-    localTimeslots.forEach((timeslot) => {
-      update.mutate({
-        data: {
-          id: timeslot.id,
-          name: timeslot.name,
-          description: timeslot.description || '',
-          startTime: timeslot.startTime || '',
-          endTime: timeslot.endTime || '',
-          recurrenceType: timeslot.recurrenceType || 'daily',
-          recurrenceDays: timeslot.recurrenceDays || '',
-          memberIds: timeslot.memberIds || [],
-        },
-      })
-    })
+    // Timeslots don't have a position field, so we just save the current order
     setIsReordering(false)
     setLocalTimeslots([])
   }
@@ -497,15 +507,24 @@ export function TimeslotsTab() {
             timeslotId={quickTaskTimeslot.id}
             timeslotName={quickTaskTimeslot.name}
             onSubmit={(data) => {
-              createTodo.mutate(
-                { data },
-                {
-                  onSuccess: () => {
-                    setQuickTaskTimeslot(null)
-                    showToast('Task created', 'success')
-                  },
-                }
-              )
+              todosCollection.insert({
+                id: Date.now(),
+                familyId: 0,
+                title: data.title,
+                description: data.description || null,
+                imageUrl: null,
+                symbol: data.symbol || null,
+                position: 0,
+                points: data.points ?? 5,
+                timeslotIds: data.timeslotIds,
+                createdAt: new Date(),
+                updatedAt: new Date(),
+              }).isPersisted.promise
+                .then(() => {
+                  setQuickTaskTimeslot(null)
+                  showToast('Task created', 'success')
+                })
+                .catch(() => showToast('Failed to create task', 'error'))
             }}
             onCancel={() => setQuickTaskTimeslot(null)}
           />

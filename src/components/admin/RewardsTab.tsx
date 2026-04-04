@@ -1,8 +1,11 @@
 import { useState, useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Plus, Trash2, Gift, Star, Search, CheckCircle, PlusCircle } from 'lucide-react'
-import { useRewardMutations, useRedemptionMutations } from '../../hooks/useAdminMutations'
-import { getRewards, getPendingRedemptions } from '../../server/rewards'
+import { useRedemptionMutations } from '../../hooks/useAdminMutations'
+import { useRewards } from '../../hooks/useCollections'
+import { rewardsCollection } from '../../collections'
+import { getPendingRedemptions } from '../../server/rewards'
+import { showToast } from '../Toast'
 import { Modal, ConfirmDialog, Button, Input, Select, SkeletonCard, EmptyState, Badge } from '../shared'
 import { AdminCard } from './AdminCard'
 import { RewardForm } from './RewardForm'
@@ -22,16 +25,12 @@ type PendingRedemptionWithDetails = RewardRedemption & {
 }
 
 export function RewardsTab() {
-  const { data: rewards, isLoading: rewardsLoading } = useQuery({
-    queryKey: ['rewards'],
-    queryFn: () => getRewards(),
-  })
+  const { data: rewards, isLoading: rewardsLoading } = useRewards()
   const { data: pendingRedemptions } = useQuery({
     queryKey: ['pendingRedemptions'],
     queryFn: () => getPendingRedemptions(),
   })
 
-  const { create, update, remove } = useRewardMutations()
   const { process: processRedemption } = useRedemptionMutations()
 
   const [isModalOpen, setIsModalOpen] = useState(false)
@@ -59,43 +58,47 @@ export function RewardsTab() {
   }, [rewards, searchQuery, filterStatus])
 
   const handleAdd = async (data: RewardFormData) => {
-    create.mutate({
-      data: {
-        name: data.name,
-        description: data.description || undefined,
-        icon: data.icon || undefined,
-        pointCost: data.pointCost,
-      },
-    })
+    rewardsCollection.insert({
+      id: Date.now(),
+      familyId: 0,
+      name: data.name,
+      description: data.description || null,
+      icon: data.icon || null,
+      pointCost: data.pointCost,
+      isActive: true,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    }).isPersisted.promise
+      .then(() => showToast('Reward created successfully', 'success'))
+      .catch(() => showToast('Failed to create reward', 'error'))
     setIsModalOpen(false)
   }
 
   const handleUpdate = async (data: RewardFormData) => {
     if (!editingReward) return
-    update.mutate({
-      data: {
-        id: editingReward.id,
-        name: data.name,
-        description: data.description || undefined,
-        icon: data.icon || undefined,
-        pointCost: data.pointCost,
-        isActive: data.isActive,
-      },
-    })
+    rewardsCollection.update(editingReward.id, (draft) => {
+      draft.name = data.name
+      draft.description = data.description || null
+      draft.icon = data.icon || null
+      draft.pointCost = data.pointCost
+      draft.isActive = data.isActive
+    }).isPersisted.promise
+      .then(() => showToast('Reward updated successfully', 'success'))
+      .catch(() => showToast('Failed to update reward', 'error'))
     setIsModalOpen(false)
     setEditingReward(null)
   }
 
   const handleDelete = () => {
     if (!deletingReward) return
-    remove.mutate({ data: { id: deletingReward.id } })
+    rewardsCollection.delete(deletingReward.id).isPersisted.promise
+      .then(() => showToast('Reward deleted successfully', 'success'))
+      .catch(() => showToast('Failed to delete reward', 'error'))
     setDeletingReward(null)
   }
 
   const handleBulkDelete = () => {
-    selectedIds.forEach((id) => {
-      remove.mutate({ data: { id } })
-    })
+    rewardsCollection.delete([...selectedIds])
     setSelectedIds(new Set())
     setShowBulkDelete(false)
   }

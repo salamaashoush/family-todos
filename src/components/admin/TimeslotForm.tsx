@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useForm } from '@tanstack/react-form'
 import { z } from 'zod'
-import { useMembers } from '../../hooks/useQueries'
-import { useMemberMutations } from '../../hooks/useAdminMutations'
+import { useMembers } from '../../hooks/useCollections'
+import { membersCollection } from '../../collections'
 import { getErrorMessage } from '../../utils/form'
 import { showToast } from '../Toast'
 import { Button, Input, Textarea, Select, MultiSelect, Alert } from '../shared'
@@ -50,7 +50,6 @@ interface TimeslotFormProps {
 
 export function TimeslotForm({ timeslot, onSubmit, onCancel }: TimeslotFormProps) {
   const { data: members, isLoading: membersLoading } = useMembers()
-  const { create: createMember } = useMemberMutations()
   const [showMemberModal, setShowMemberModal] = useState(false)
 
   const form = useForm({
@@ -102,15 +101,21 @@ export function TimeslotForm({ timeslot, onSubmit, onCancel }: TimeslotFormProps
 
   // Handler for creating a new member inline
   const handleCreateMember = async (data: { name: string; avatar: string }) => {
-    createMember.mutate(
-      { data },
-      {
-        onSuccess: () => {
-          setShowMemberModal(false)
-          showToast('Member created', 'success')
-        },
-      }
-    )
+    membersCollection.insert({
+      id: Date.now(),
+      familyId: 0,
+      name: data.name,
+      avatar: data.avatar || null,
+      isParent: false,
+      linkedUserId: null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    }).isPersisted.promise
+      .then(() => {
+        setShowMemberModal(false)
+        showToast('Member created', 'success')
+      })
+      .catch(() => showToast('Failed to create member', 'error'))
   }
 
   const hasNoMembers = !membersLoading && (!members || members.length === 0)

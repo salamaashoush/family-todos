@@ -1,8 +1,9 @@
 import { useState, useMemo } from 'react'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { Plus, Trash2, Users, Mail, Pencil, UserCheck, Search, CheckCircle, PlusCircle } from 'lucide-react'
-import { useMembers } from '../../hooks/useQueries'
-import { useMemberMutations } from '../../hooks/useAdminMutations'
+import { useMembers } from '../../hooks/useCollections'
+import { membersCollection } from '../../collections'
+import { showToast } from '../Toast'
 import { Modal, ConfirmDialog, Button, SkeletonCard, EmptyState, Input } from '../shared'
 import { MemberForm } from './MemberForm'
 import { AdminCard } from './AdminCard'
@@ -11,7 +12,6 @@ import type { Member } from '../../types'
 
 export function MembersTab() {
   const { data: members, isLoading } = useMembers()
-  const { create, update, remove } = useMemberMutations()
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingMember, setEditingMember] = useState<Member | null>(null)
   const [deletingMember, setDeletingMember] = useState<Member | null>(null)
@@ -72,27 +72,44 @@ export function MembersTab() {
   }, [members, searchQuery])
 
   const handleAdd = async (data: { name: string; avatar: string }) => {
-    create.mutate({ data })
+    const tx = membersCollection.insert({
+      id: Date.now(),
+      familyId: 0,
+      name: data.name,
+      avatar: data.avatar || null,
+      isParent: false,
+      linkedUserId: null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    })
+    tx.isPersisted.promise
+      .then(() => showToast('Member created successfully', 'success'))
+      .catch(() => showToast('Failed to create member', 'error'))
     setIsModalOpen(false)
   }
 
   const handleUpdate = async (data: { name: string; avatar: string }) => {
     if (!editingMember) return
-    update.mutate({ data: { id: editingMember.id, ...data } })
+    membersCollection.update(editingMember.id, (draft) => {
+      draft.name = data.name
+      draft.avatar = data.avatar || null
+    }).isPersisted.promise
+      .then(() => showToast('Member updated successfully', 'success'))
+      .catch(() => showToast('Failed to update member', 'error'))
     setIsModalOpen(false)
     setEditingMember(null)
   }
 
   const handleDelete = () => {
     if (!deletingMember) return
-    remove.mutate({ data: { id: deletingMember.id } })
+    membersCollection.delete(deletingMember.id).isPersisted.promise
+      .then(() => showToast('Member deleted successfully', 'success'))
+      .catch(() => showToast('Failed to delete member', 'error'))
     setDeletingMember(null)
   }
 
   const handleBulkDelete = () => {
-    selectedIds.forEach((id) => {
-      remove.mutate({ data: { id } })
-    })
+    membersCollection.delete([...selectedIds])
     setSelectedIds(new Set())
     setShowBulkDelete(false)
   }

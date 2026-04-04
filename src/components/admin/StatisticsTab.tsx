@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { ChevronDown, Star, Flame, CheckCircle, Trophy, Users, Clock } from 'lucide-react'
-import { useMembers, useAllAchievements } from '../../hooks/useQueries'
+import { useMembers } from '../../hooks/useCollections'
+import { useAllAchievements } from '../../hooks/useQueries'
 import { MemberStatsCard } from './MemberStatsCard'
 import { useMemberStats, useMemberAchievements } from '../../hooks/useQueries'
 import type { Member, Achievement, MemberStats } from '../../types'

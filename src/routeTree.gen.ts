@@ -128,9 +128,9 @@ export interface FileRoutesByFullPath {
   '/api/health': typeof ApiHealthRoute
   '/api/sse': typeof ApiSseRoute
   '/uploads/$': typeof UploadsSplatRoute
-  '/onboarding': typeof OnboardingIndexRoute
+  '/onboarding/': typeof OnboardingIndexRoute
   '/family/$token/stats': typeof FamilyTokenStatsRoute
-  '/family/$token': typeof FamilyTokenIndexRoute
+  '/family/$token/': typeof FamilyTokenIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -188,9 +188,9 @@ export interface FileRouteTypes {
     | '/api/health'
     | '/api/sse'
     | '/uploads/$'
-    | '/onboarding'
+    | '/onboarding/'
     | '/family/$token/stats'
-    | '/family/$token'
+    | '/family/$token/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -333,7 +333,7 @@ declare module '@tanstack/react-router' {
     '/onboarding/': {
       id: '/onboarding/'
       path: '/onboarding'
-      fullPath: '/onboarding'
+      fullPath: '/onboarding/'
       preLoaderRoute: typeof OnboardingIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
@@ -361,7 +361,7 @@ declare module '@tanstack/react-router' {
     '/family/$token/': {
       id: '/family/$token/'
       path: '/family/$token'
-      fullPath: '/family/$token'
+      fullPath: '/family/$token/'
       preLoaderRoute: typeof FamilyTokenIndexRouteImport
       parentRoute: typeof rootRouteImport
     }

@@ -15,8 +15,9 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable'
 import { Plus, GripHorizontal, Trash2, ClipboardList, ArrowUpDown, Search, CheckCircle, PlusCircle } from 'lucide-react'
-import { useTodos, useTimeslots } from '../../hooks/useQueries'
-import { useTodoMutations } from '../../hooks/useAdminMutations'
+import { useTodos, useTimeslots } from '../../hooks/useCollections'
+import { todosCollection } from '../../collections'
+import { showToast } from '../Toast'
 import { Modal, ConfirmDialog, Button, Select, SkeletonCard, EmptyState, Badge } from '../shared'
 import { TodoForm } from './TodoForm'
 import { AdminCard } from './AdminCard'
@@ -36,7 +37,6 @@ interface TodoFormData {
 export function TodosTab() {
   const { data: todos, isLoading: todosLoading } = useTodos()
   const { data: timeslots } = useTimeslots()
-  const { create, update, remove } = useTodoMutations()
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingTodo, setEditingTodo] = useState<Todo | null>(null)
   const [deletingTodo, setDeletingTodo] = useState<Todo | null>(null)
@@ -73,27 +73,51 @@ export function TodosTab() {
   }, [todos, localTodos, isReordering, searchQuery, filterTimeslot])
 
   const handleAdd = async (data: TodoFormData) => {
-    create.mutate({ data })
+    todosCollection.insert({
+      id: Date.now(),
+      familyId: 0,
+      title: data.title,
+      description: data.description || null,
+      imageUrl: data.imageUrl || null,
+      symbol: data.symbol || null,
+      position: data.position || 0,
+      points: (data as TodoFormData & { points?: number }).points ?? 5,
+      timeslotIds: data.timeslotIds,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    }).isPersisted.promise
+      .then(() => showToast('Task created successfully', 'success'))
+      .catch(() => showToast('Failed to create task', 'error'))
     setIsModalOpen(false)
   }
 
   const handleUpdate = async (data: TodoFormData) => {
     if (!editingTodo) return
-    update.mutate({ data: { id: editingTodo.id, ...data } })
+    todosCollection.update(editingTodo.id, (draft) => {
+      draft.title = data.title
+      draft.description = data.description || null
+      draft.imageUrl = data.imageUrl || null
+      draft.symbol = data.symbol || null
+      draft.position = data.position
+      if ('points' in data) draft.points = (data as TodoFormData & { points: number }).points
+      draft.timeslotIds = data.timeslotIds
+    }).isPersisted.promise
+      .then(() => showToast('Task updated successfully', 'success'))
+      .catch(() => showToast('Failed to update task', 'error'))
     setIsModalOpen(false)
     setEditingTodo(null)
   }
 
   const handleDelete = () => {
     if (!deletingTodo) return
-    remove.mutate({ data: { id: deletingTodo.id } })
+    todosCollection.delete(deletingTodo.id).isPersisted.promise
+      .then(() => showToast('Task deleted successfully', 'success'))
+      .catch(() => showToast('Failed to delete task', 'error'))
     setDeletingTodo(null)
   }
 
   const handleBulkDelete = () => {
-    selectedIds.forEach((id) => {
-      remove.mutate({ data: { id } })
-    })
+    todosCollection.delete([...selectedIds])
     setSelectedIds(new Set())
     setShowBulkDelete(false)
   }
@@ -133,16 +157,8 @@ export function TodosTab() {
   const saveReordering = () => {
     localTodos.forEach((todo, index) => {
       if (todo.position !== index) {
-        update.mutate({
-          data: {
-            id: todo.id,
-            title: todo.title,
-            description: todo.description || '',
-            symbol: todo.symbol || '',
-            imageUrl: todo.imageUrl || '',
-            position: index,
-            timeslotIds: todo.timeslotIds || [],
-          },
+        todosCollection.update(todo.id, (draft) => {
+          draft.position = index
         })
       }
     })

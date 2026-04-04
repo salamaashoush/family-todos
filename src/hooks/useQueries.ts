@@ -3,9 +3,6 @@ import {
   useMutation,
   useQueryClient,
 } from "@tanstack/react-query";
-import { getMembers } from "../server/members";
-import { getTimeslots } from "../server/timeslots";
-import { getTodos } from "../server/todos";
 import {
   getTodoCompletions,
   completeTodo,
@@ -27,33 +24,6 @@ function getClientId(): string | null {
     return (window as { __sseClientId?: string }).__sseClientId || null;
   }
   return null;
-}
-
-export function useMembers() {
-  const familyId = useCurrentFamilyId();
-  return useQuery({
-    queryKey: ["members", familyId],
-    queryFn: () => getMembers(),
-    enabled: familyId !== undefined,
-  });
-}
-
-export function useTimeslots(date?: string) {
-  const familyId = useCurrentFamilyId();
-  return useQuery({
-    queryKey: ["timeslots", familyId, date],
-    queryFn: () => getTimeslots({ data: { date } }),
-    enabled: familyId !== undefined,
-  });
-}
-
-export function useTodos() {
-  const familyId = useCurrentFamilyId();
-  return useQuery({
-    queryKey: ["todos", familyId],
-    queryFn: () => getTodos({ data: {} }),
-    enabled: familyId !== undefined,
-  });
 }
 
 export function useCompletions(selectedDate: string) {

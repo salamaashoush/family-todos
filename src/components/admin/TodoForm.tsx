@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useForm } from '@tanstack/react-form'
 import { z } from 'zod'
-import { useTimeslots, useMembers } from '../../hooks/useQueries'
-import { useTimeslotMutations, useMemberMutations } from '../../hooks/useAdminMutations'
+import { useTimeslots, useMembers } from '../../hooks/useCollections'
+import { timeslotsCollection, membersCollection } from '../../collections'
 import { useImageUpload } from '../../hooks/useImageUpload'
 import { UPLOAD_CONFIG } from '../../constants'
 import { getErrorMessage } from '../../utils/form'
@@ -35,8 +35,6 @@ interface TodoFormProps {
 export function TodoForm({ todo, onSubmit, onCancel }: TodoFormProps) {
   const { data: timeslots, isLoading: timeslotsLoading } = useTimeslots()
   const { data: members, isLoading: membersLoading } = useMembers()
-  const { create: createTimeslot } = useTimeslotMutations()
-  const { create: createMember } = useMemberMutations()
   const [showTimeslotModal, setShowTimeslotModal] = useState(false)
   const [showMemberModal, setShowMemberModal] = useState(false)
   const {
@@ -119,28 +117,44 @@ export function TodoForm({ todo, onSubmit, onCancel }: TodoFormProps) {
     recurrenceDays: string
     memberIds: number[]
   }) => {
-    createTimeslot.mutate(
-      { data },
-      {
-        onSuccess: () => {
-          setShowTimeslotModal(false)
-          showToast('Time slot created', 'success')
-        },
-      }
-    )
+    timeslotsCollection.insert({
+      id: Date.now(),
+      familyId: 0,
+      name: data.name,
+      description: data.description || null,
+      startTime: data.startTime,
+      endTime: data.endTime,
+      recurrenceType: data.recurrenceType || 'daily',
+      recurrenceDays: data.recurrenceDays || null,
+      isActive: true,
+      memberIds: data.memberIds,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    }).isPersisted.promise
+      .then(() => {
+        setShowTimeslotModal(false)
+        showToast('Time slot created', 'success')
+      })
+      .catch(() => showToast('Failed to create time slot', 'error'))
   }
 
   // Handler for creating a new member (for timeslot form)
   const handleCreateMember = async (data: { name: string; avatar: string }) => {
-    createMember.mutate(
-      { data },
-      {
-        onSuccess: () => {
-          setShowMemberModal(false)
-          showToast('Member created', 'success')
-        },
-      }
-    )
+    membersCollection.insert({
+      id: Date.now(),
+      familyId: 0,
+      name: data.name,
+      avatar: data.avatar || null,
+      isParent: false,
+      linkedUserId: null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    }).isPersisted.promise
+      .then(() => {
+        setShowMemberModal(false)
+        showToast('Member created', 'success')
+      })
+      .catch(() => showToast('Failed to create member', 'error'))
   }
 
   // Check if we have prerequisites
