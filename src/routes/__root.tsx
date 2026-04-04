@@ -12,6 +12,7 @@ import type { QueryClient } from '@tanstack/react-query'
 import appCss from '../styles.css?url'
 import { ThemeProvider } from 'next-themes'
 import { LayoutProvider } from '../contexts/LayoutContext'
+import { TempsProviders } from '../components/TempsIntegration'
 
 export const Route = createRootRouteWithContext<{
   queryClient: QueryClient
@@ -261,16 +262,18 @@ function RootDocument({ children }: { children: React.ReactNode }) {
         <HeadContent />
       </head>
       <body>
-        <ThemeProvider
-          attribute="data-theme"
-          defaultTheme="default"
-          themes={['default', 'ocean', 'sunset', 'forest', 'candy']}
-          disableTransitionOnChange
-        >
-          <LayoutProvider>
-            {children}
-          </LayoutProvider>
-        </ThemeProvider>
+        <TempsProviders>
+          <ThemeProvider
+            attribute="data-theme"
+            defaultTheme="default"
+            themes={['default', 'ocean', 'sunset', 'forest', 'candy']}
+            disableTransitionOnChange
+          >
+            <LayoutProvider>
+              {children}
+            </LayoutProvider>
+          </ThemeProvider>
+        </TempsProviders>
         <TanStackRouterDevtools position="bottom-right" />
         <ReactQueryDevtools buttonPosition="bottom-left" />
         <Scripts />

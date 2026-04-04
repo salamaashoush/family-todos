@@ -3,6 +3,7 @@ import { createFileRoute } from "@tanstack/react-router";
 const dataDir = process.env.DATA_DIR || process.cwd();
 const uploadDir = `${dataDir}/uploads`;
 
+// Serves locally-stored uploads (used when Temps Blob is not available)
 export const Route = createFileRoute("/uploads/$")({
   component: () => null,
   server: {
