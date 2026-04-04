@@ -13,20 +13,24 @@ import appCss from '../styles.css?url'
 import { ThemeProvider } from 'next-themes'
 import { LayoutProvider } from '../contexts/LayoutContext'
 import { TempsProviders } from '../components/TempsIntegration'
+import { createServerFn } from '@tanstack/react-start'
+
+const getSentryDsn = createServerFn({ method: 'GET' }).handler(async () => {
+  return process.env.SENTRY_DSN || null
+})
 
 export const Route = createRootRouteWithContext<{
   queryClient: QueryClient
 }>()({
+  loader: async () => {
+    const sentryDsn = await getSentryDsn()
+    return { sentryDsn }
+  },
   head: () => ({
     meta: [
       {
         charSet: 'utf-8',
       },
-      // Sentry DSN — injected by Temps via SENTRY_DSN env var, read client-side from meta tag
-      ...(process.env.SENTRY_DSN ? [{
-        name: 'sentry-dsn',
-        content: process.env.SENTRY_DSN,
-      }] : []),
       {
         name: 'viewport',
         content: 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover',
@@ -132,8 +136,9 @@ export const Route = createRootRouteWithContext<{
 })
 
 function RootComponent() {
+  const { sentryDsn } = Route.useLoaderData()
   return (
-    <RootDocument>
+    <RootDocument sentryDsn={sentryDsn}>
       <Outlet />
     </RootDocument>
   )
@@ -260,14 +265,14 @@ function ErrorComponent({ error }: { error: Error }) {
   )
 }
 
-function RootDocument({ children }: { children: React.ReactNode }) {
+function RootDocument({ children, sentryDsn }: { children: React.ReactNode; sentryDsn?: string | null }) {
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
         <HeadContent />
       </head>
       <body>
-        <TempsProviders>
+        <TempsProviders sentryDsn={sentryDsn}>
           <ThemeProvider
             attribute="data-theme"
             defaultTheme="default"

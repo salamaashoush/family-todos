@@ -2,7 +2,6 @@ import { type ReactNode, useEffect, useRef } from 'react'
 import { TempsAnalyticsProvider } from '@temps-sdk/react-analytics'
 import * as Sentry from '@sentry/react'
 
-// Client-side Sentry init — runs once
 let sentryInitialized = false
 
 function initSentry(dsn: string) {
@@ -19,25 +18,19 @@ function initSentry(dsn: string) {
   })
 }
 
-function SentryInit() {
+function SentryInit({ dsn }: { dsn: string | null }) {
   const initialized = useRef(false)
 
   useEffect(() => {
-    if (initialized.current) return
+    if (initialized.current || !dsn) return
     initialized.current = true
-
-    // Read DSN from meta tag injected by server, or use auto-injected env var
-    const meta = document.querySelector('meta[name="sentry-dsn"]')
-    const dsn = meta?.getAttribute('content')
-    if (dsn) {
-      initSentry(dsn)
-    }
-  }, [])
+    initSentry(dsn)
+  }, [dsn])
 
   return null
 }
 
-export function TempsProviders({ children }: { children: ReactNode }) {
+export function TempsProviders({ sentryDsn, children }: { sentryDsn?: string | null; children: ReactNode }) {
   return (
     <TempsAnalyticsProvider
       basePath="/api/_temps"
@@ -48,7 +41,7 @@ export function TempsProviders({ children }: { children: ReactNode }) {
         engagement: true,
       }}
     >
-      <SentryInit />
+      <SentryInit dsn={sentryDsn ?? null} />
       {children}
     </TempsAnalyticsProvider>
   )
