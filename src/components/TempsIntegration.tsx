@@ -11,7 +11,11 @@ function initSentry(dsn: string) {
   Sentry.init({
     dsn,
     environment: 'production',
-    tracesSampleRate: 0.1,
+    // Temps error tracking only supports error events — no traces, no replays
+    tracesSampleRate: 0,
+    defaultIntegrations: Sentry.getDefaultIntegrations({}).filter(
+      (i) => !['BrowserTracing', 'BrowserSession'].includes(i.name)
+    ),
   })
 }
 
