@@ -22,6 +22,11 @@ export const Route = createRootRouteWithContext<{
       {
         charSet: 'utf-8',
       },
+      // Sentry DSN — injected by Temps via SENTRY_DSN env var, read client-side from meta tag
+      ...(process.env.SENTRY_DSN ? [{
+        name: 'sentry-dsn',
+        content: process.env.SENTRY_DSN,
+      }] : []),
       {
         name: 'viewport',
         content: 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover',

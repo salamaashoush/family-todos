@@ -28,7 +28,6 @@
     "@dnd-kit/utilities": "^3.2.2",
     "@emoji-mart/data": "^1.2.1",
     "@emoji-mart/react": "^1.1.1",
-    "@sentry/bun": "^10.47.0",
     "@sentry/react": "^10.47.0",
     "@tailwindcss/vite": "^4.2.2",
     "@tanstack/db": "^0.6.2",
