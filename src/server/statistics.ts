@@ -52,6 +52,36 @@ export const getMemberStats = createServerFn({ method: "GET" })
     return stats;
   });
 
+/**
+ * Get stats for ALL members in the current family (for collection)
+ */
+export const getAllMemberStats = createServerFn({ method: "GET" }).handler(
+  async () => {
+    const { familyId } = await getTenantContext();
+
+    const familyMembers = await db
+      .select({ id: schema.members.id })
+      .from(schema.members)
+      .where(eq(schema.members.familyId, familyId));
+
+    const memberIds = familyMembers.map((m) => m.id);
+
+    if (memberIds.length === 0) return [];
+
+    const stats = await db
+      .select()
+      .from(schema.memberStats)
+      .where(
+        sql`${schema.memberStats.memberId} IN (${sql.join(
+          memberIds.map((id) => sql`${id}`),
+          sql`, `
+        )})`
+      );
+
+    return stats;
+  }
+);
+
 export const getAllAchievements = createServerFn({ method: "GET" }).handler(
   async () => {
     const { familyId } = await getTenantContext();

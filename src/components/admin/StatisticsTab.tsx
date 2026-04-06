@@ -1,12 +1,8 @@
 import { useMemo, useState } from 'react'
 import { ChevronDown, Star, Flame, CheckCircle, Trophy, Users, Clock } from 'lucide-react'
-import { useMembers } from '../../hooks/useCollections'
-import { useAllAchievements } from '../../hooks/useQueries'
+import { useMembers, useMemberStats, useAchievements } from '../../hooks/useCollections'
 import { MemberStatsCard } from './MemberStatsCard'
 import type { Member, Achievement, MemberStats } from '../../types'
-import { useQueries } from '@tanstack/react-query'
-import { getMemberStats, getMemberAchievements } from '../../server/statistics'
-import { useCurrentFamilyId } from '../../hooks/useFamilyContext'
 
 // Aggregate stats component
 interface AggregateStatsProps {
@@ -14,28 +10,13 @@ interface AggregateStatsProps {
 }
 
 function AggregateStatsSection({ members }: AggregateStatsProps) {
-  const familyId = useCurrentFamilyId()
+  const { data: allStats, isLoading: statsLoading } = useMemberStats()
+  const { data: allAchievements, isLoading: achievementsLoading } = useAchievements()
 
-  const statsQueries = useQueries({
-    queries: members.map((member) => ({
-      queryKey: ['memberStats', familyId, member.id],
-      queryFn: () => getMemberStats({ data: { memberId: member.id } }),
-      enabled: familyId !== undefined,
-    })),
-  })
-
-  const achievementsQueries = useQueries({
-    queries: members.map((member) => ({
-      queryKey: ['memberAchievements', familyId, member.id],
-      queryFn: () => getMemberAchievements({ data: { memberId: member.id } }),
-      enabled: familyId !== undefined,
-    })),
-  })
-
-  const isLoading = statsQueries.some((q) => q.isLoading) || achievementsQueries.some((q) => q.isLoading)
+  const isLoading = statsLoading || achievementsLoading
 
   const aggregateData = useMemo(() => {
-    if (isLoading) return null
+    if (isLoading || !allStats) return null
 
     let totalStars = 0
     let totalTasks = 0
@@ -45,28 +26,27 @@ function AggregateStatsSection({ members }: AggregateStatsProps) {
     let highestLevel = 0
     let topPerformer: { name: string; stars: number } | null = null
 
-    statsQueries.forEach((query, index) => {
-      const stats = query.data as MemberStats | undefined
-      const achievements = achievementsQueries[index]?.data as { earnedAt: string | null }[] | undefined
+    const memberIds = new Set(members.map((m) => m.id))
 
-      if (stats) {
-        totalStars += stats.totalStars
-        totalTasks += stats.totalTasksCompleted
-        totalTimeslots += stats.totalTimeslotsCompleted
-        if (stats.longestStreak > highestStreak) highestStreak = stats.longestStreak
-        if (stats.level > highestLevel) highestLevel = stats.level
-        if (!topPerformer || stats.totalStars > topPerformer.stars) {
-          topPerformer = { name: members[index].name, stars: stats.totalStars }
-        }
+    for (const stats of allStats) {
+      if (!memberIds.has(stats.memberId)) continue
+      totalStars += stats.totalStars
+      totalTasks += stats.totalTasksCompleted
+      totalTimeslots += stats.totalTimeslotsCompleted
+      if (stats.longestStreak > highestStreak) highestStreak = stats.longestStreak
+      if (stats.level > highestLevel) highestLevel = stats.level
+      const member = members.find((m) => m.id === stats.memberId)
+      if (member && (!topPerformer || stats.totalStars > topPerformer.stars)) {
+        topPerformer = { name: member.name, stars: stats.totalStars }
       }
+    }
 
-      if (achievements) {
-        totalAchievements += achievements.filter((a) => a.earnedAt).length
-      }
-    })
+    if (allAchievements) {
+      totalAchievements = allAchievements.filter((a) => a.earnedAt).length
+    }
 
     return { totalStars, totalTasks, totalTimeslots, totalAchievements, highestStreak, highestLevel, topPerformer }
-  }, [isLoading, statsQueries, achievementsQueries, members])
+  }, [isLoading, allStats, allAchievements, members])
 
   if (isLoading) {
     return (
@@ -236,7 +216,7 @@ function CollapsibleSection({ title, count, defaultOpen = true, children }: Coll
 
 export function StatisticsTab() {
   const { data: members, isLoading: membersLoading } = useMembers()
-  const { data: achievements, isLoading: achievementsLoading } = useAllAchievements()
+  const { data: achievements, isLoading: achievementsLoading } = useAchievements()
 
   const groupedAchievements = useMemo(() => {
     if (!achievements) return {}

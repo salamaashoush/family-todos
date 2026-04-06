@@ -1,5 +1,6 @@
 import { Star, Flame, Check, Clock, Trophy, Coins, Target } from 'lucide-react'
-import { useMemberStats, useMemberAchievements, useMemberPoints } from '../../hooks/useQueries'
+import { useMemberStats, useAchievements } from '../../hooks/useCollections'
+import { useMemberPoints } from '../../hooks/useQueries'
 import { LEVEL_PROGRESS } from '../../constants'
 import type { MemberStatsCardProps } from '../../types'
 
@@ -24,11 +25,12 @@ function StatRow({ icon, label, value, color, bgColor }: StatRowProps) {
 }
 
 export function MemberStatsCard({ member }: MemberStatsCardProps) {
-  const { data: stats, isLoading: statsLoading } = useMemberStats(member.id)
-  const { data: achievements, isLoading: achievementsLoading } = useMemberAchievements(member.id)
+  const { data: allStats, isLoading: statsLoading } = useMemberStats()
+  const { data: allAchievements, isLoading: achievementsLoading } = useAchievements()
   const { data: points, isLoading: pointsLoading } = useMemberPoints(member.id)
 
-  const earnedCount = achievements?.filter((a: { earnedAt: Date | null }) => a.earnedAt).length || 0
+  const stats = allStats?.find((s) => s.memberId === member.id) ?? null
+  const earnedCount = allAchievements?.filter((a: { earnedAt: Date | null }) => a.earnedAt).length || 0
   const isLoading = statsLoading || achievementsLoading || pointsLoading
 
   const level = stats?.level || 1

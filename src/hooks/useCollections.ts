@@ -4,6 +4,9 @@ import {
   todosCollection,
   timeslotsCollection,
   rewardsCollection,
+  completionsCollection,
+  memberStatsCollection,
+  achievementsCollection,
 } from '../collections'
 
 export function useMembers() {
@@ -20,4 +23,16 @@ export function useTimeslots() {
 
 export function useRewards() {
   return useLiveQuery((q) => q.from({ r: rewardsCollection }))
+}
+
+export function useCompletions() {
+  return useLiveQuery((q) => q.from({ c: completionsCollection }))
+}
+
+export function useMemberStats() {
+  return useLiveQuery((q) => q.from({ s: memberStatsCollection }))
+}
+
+export function useAchievements() {
+  return useLiveQuery((q) => q.from({ a: achievementsCollection }))
 }
