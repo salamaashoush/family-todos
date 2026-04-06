@@ -262,9 +262,8 @@ export async function getMosquePrayerTimes(uuid: string): Promise<MawaqitPrayerT
  */
 export function parseTimeToDate(timeStr: string, timezone?: string): Date {
   const [hours, minutes] = timeStr.split(":").map(Number);
-  const date = new Date();
+  const now = new Date();
 
-  // If timezone provided, create date in that timezone
   if (timezone) {
     const options: Intl.DateTimeFormatOptions = {
       timeZone: timezone,
@@ -272,16 +271,31 @@ export function parseTimeToDate(timeStr: string, timezone?: string): Date {
       month: "2-digit",
       day: "2-digit",
     };
-    const dateStr = new Intl.DateTimeFormat("en-CA", options).format(date);
+    const dateStr = new Intl.DateTimeFormat("en-CA", options).format(now);
     const [year, month, day] = dateStr.split("-").map(Number);
 
-    // Create a date in the target timezone
-    const tzDate = new Date(year, month - 1, day, hours, minutes, 0, 0);
-    return tzDate;
+    // Build a UTC guess, then compute the offset to the target timezone
+    const utcGuess = new Date(Date.UTC(year, month - 1, day, hours, minutes, 0, 0));
+
+    const guessInTz = new Intl.DateTimeFormat("en-CA", {
+      timeZone: timezone,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    }).format(utcGuess);
+
+    const timePart = guessInTz.split(", ")[1];
+    const [tzHours, tzMinutes] = (timePart || "00:00").split(":").map(Number);
+    const offsetMinutes = (tzHours * 60 + tzMinutes) - (hours * 60 + minutes);
+
+    return new Date(utcGuess.getTime() - offsetMinutes * 60 * 1000);
   }
 
-  date.setHours(hours, minutes, 0, 0);
-  return date;
+  now.setHours(hours, minutes, 0, 0);
+  return now;
 }
 
 /**

@@ -156,25 +156,22 @@ export const updateStats = createServerFn({ method: "POST" })
         .returning();
     }
 
-    // Calculate streak
+    // Calculate streak using date strings (YYYY-MM-DD) to avoid timezone issues
     const lastDate = stats.lastCompletionDate;
     let newStreak = 1;
 
     if (lastDate) {
-      const last = new Date(lastDate);
-      const current = new Date(completionDate);
-      const diffDays = Math.floor(
-        (current.getTime() - last.getTime()) / (1000 * 60 * 60 * 24)
-      );
+      const [ly, lm, ld] = lastDate.split("-").map(Number);
+      const [cy, cm, cd] = completionDate.split("-").map(Number);
+      const last = Date.UTC(ly, lm - 1, ld);
+      const current = Date.UTC(cy, cm - 1, cd);
+      const diffDays = Math.round((current - last) / (1000 * 60 * 60 * 24));
 
       if (diffDays === 1) {
-        // Consecutive day
         newStreak = stats.currentStreak + 1;
       } else if (diffDays === 0) {
-        // Same day, keep current streak
         newStreak = stats.currentStreak;
       } else {
-        // Streak broken
         newStreak = 1;
       }
     }
@@ -264,13 +261,13 @@ export const checkAndResetStreak = createServerFn({ method: "POST" })
       return { streakReset: false, currentStreak: 0 };
     }
 
-    const lastDate = new Date(stats.lastCompletionDate);
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    lastDate.setHours(0, 0, 0, 0);
+    const [ly, lm, ld] = stats.lastCompletionDate.split("-").map(Number);
+    const lastMs = Date.UTC(ly, lm - 1, ld);
+    const now = new Date();
+    const todayMs = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
 
-    const diffDays = Math.floor(
-      (today.getTime() - lastDate.getTime()) / (1000 * 60 * 60 * 24)
+    const diffDays = Math.round(
+      (todayMs - lastMs) / (1000 * 60 * 60 * 24)
     );
 
     // If more than 1 day has passed since last completion, reset streak

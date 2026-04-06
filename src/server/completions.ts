@@ -304,8 +304,12 @@ export const completeTodo = createServerFn({ method: "POST" })
       }
 
       return completion;
-    } catch {
-      throw new Error("Completion already exists or invalid data");
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      if (message.includes("unique") || message.includes("duplicate") || message.includes("23505")) {
+        throw new Error("Completion already exists");
+      }
+      throw error;
     }
   });
 
@@ -528,8 +532,11 @@ async function checkAndCompleteTimeslot(
           });
         }
       }
-    } catch {
-      // Ignore duplicate errors (timeslot already completed)
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      if (!message.includes("unique") && !message.includes("duplicate") && !message.includes("23505")) {
+        throw error;
+      }
     }
   }
 }

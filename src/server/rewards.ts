@@ -260,22 +260,19 @@ export const getAllMemberPoints = createServerFn({ method: "GET" }).handler(
       return [];
     }
 
-    // Only get transactions for family members
     const results = await db
       .select({
         memberId: schema.pointTransactions.memberId,
         total: sql<number>`COALESCE(SUM(${schema.pointTransactions.amount}), 0)`,
       })
       .from(schema.pointTransactions)
+      .where(sql`${schema.pointTransactions.memberId} IN (${sql.join(memberIds.map(id => sql`${id}`), sql`, `)})`)
       .groupBy(schema.pointTransactions.memberId);
 
-    // Filter to only family members
-    return results
-      .filter((r) => memberIds.includes(r.memberId))
-      .map((r) => ({
-        member_id: r.memberId,
-        total: r.total,
-      }));
+    return results.map((r) => ({
+      member_id: r.memberId,
+      total: r.total,
+    }));
   }
 );
 
@@ -316,7 +313,7 @@ export const getMemberTransactions = createServerFn({ method: "GET" })
       .limit(limit);
   });
 
-// Award points (when task is completed)
+// Award points (when task is completed) - REQUIRES tenant context
 const AwardPointsSchema = z.object({
   memberId: z.number(),
   amount: z.number(),
@@ -327,6 +324,16 @@ const AwardPointsSchema = z.object({
 export const awardPoints = createServerFn({ method: "POST" })
   .inputValidator(AwardPointsSchema)
   .handler(async ({ data }) => {
+    const { familyId } = await getTenantContext();
+
+    const [member] = await db
+      .select({ id: schema.members.id })
+      .from(schema.members)
+      .where(and(eq(schema.members.id, data.memberId), eq(schema.members.familyId, familyId)))
+      .limit(1);
+
+    if (!member) throw new Error("Member not found or access denied");
+
     const [transaction] = await db
       .insert(schema.pointTransactions)
       .values({
@@ -341,7 +348,7 @@ export const awardPoints = createServerFn({ method: "POST" })
     return transaction;
   });
 
-// Deduct points (for redemption - internal use)
+// Deduct points (for redemption) - REQUIRES tenant context
 const DeductPointsSchema = z.object({
   memberId: z.number(),
   amount: z.number(),
@@ -352,7 +359,16 @@ const DeductPointsSchema = z.object({
 export const deductPoints = createServerFn({ method: "POST" })
   .inputValidator(DeductPointsSchema)
   .handler(async ({ data }) => {
-    // Amount should be negative for deductions
+    const { familyId } = await getTenantContext();
+
+    const [member] = await db
+      .select({ id: schema.members.id })
+      .from(schema.members)
+      .where(and(eq(schema.members.id, data.memberId), eq(schema.members.familyId, familyId)))
+      .limit(1);
+
+    if (!member) throw new Error("Member not found or access denied");
+
     const [transaction] = await db
       .insert(schema.pointTransactions)
       .values({
@@ -367,7 +383,7 @@ export const deductPoints = createServerFn({ method: "POST" })
     return transaction;
   });
 
-// Request reward redemption
+// Request reward redemption - REQUIRES tenant context
 const RequestRedemptionSchema = z.object({
   memberId: z.number(),
   rewardId: z.number(),
@@ -376,31 +392,32 @@ const RequestRedemptionSchema = z.object({
 export const requestRedemption = createServerFn({ method: "POST" })
   .inputValidator(RequestRedemptionSchema)
   .handler(async ({ data }) => {
-    // Get reward details
+    const { familyId } = await getTenantContext();
+
+    const [member] = await db
+      .select({ id: schema.members.id })
+      .from(schema.members)
+      .where(and(eq(schema.members.id, data.memberId), eq(schema.members.familyId, familyId)))
+      .limit(1);
+
+    if (!member) throw new Error("Member not found or access denied");
+
     const [reward] = await db
       .select()
       .from(schema.rewards)
-      .where(eq(schema.rewards.id, data.rewardId))
+      .where(and(eq(schema.rewards.id, data.rewardId), eq(schema.rewards.familyId, familyId)))
       .limit(1);
 
-    if (!reward) {
-      throw new Error("Reward not found");
-    }
-    if (!reward.isActive) {
-      throw new Error("Reward is not available");
-    }
+    if (!reward) throw new Error("Reward not found");
+    if (!reward.isActive) throw new Error("Reward is not available");
 
-    // Check member has enough points
     const [balance] = await db
       .select({ total: sql<number>`COALESCE(SUM(${schema.pointTransactions.amount}), 0)` })
       .from(schema.pointTransactions)
       .where(eq(schema.pointTransactions.memberId, data.memberId));
 
-    if ((balance?.total || 0) < reward.pointCost) {
-      throw new Error("Insufficient points");
-    }
+    if ((balance?.total || 0) < reward.pointCost) throw new Error("Insufficient points");
 
-    // Create redemption request
     const [redemption] = await db
       .insert(schema.rewardRedemptions)
       .values({
@@ -410,6 +427,15 @@ export const requestRedemption = createServerFn({ method: "POST" })
         status: "pending" as RedemptionStatus,
       })
       .returning();
+
+    // Deduct points immediately to prevent race conditions
+    await db.insert(schema.pointTransactions).values({
+      memberId: data.memberId,
+      amount: -reward.pointCost,
+      type: "redeemed" as TransactionType,
+      description: `Requested: ${reward.name}`,
+      rewardId: data.rewardId,
+    });
 
     return redemption;
   });
@@ -552,22 +578,8 @@ export const processRedemption = createServerFn({ method: "POST" })
       .where(eq(schema.rewards.id, redemption.rewardId))
       .limit(1);
 
-    // If approving or fulfilling, deduct points
-    if (
-      (data.status === "approved" || data.status === "fulfilled") &&
-      redemption.status === "pending"
-    ) {
-      await db.insert(schema.pointTransactions).values({
-        memberId: redemption.memberId,
-        amount: -redemption.pointsSpent,
-        type: "redeemed" as TransactionType,
-        description: `Redeemed: ${reward?.name || "Unknown reward"}`,
-        rewardId: redemption.rewardId,
-      });
-    }
-
-    // If rejecting after approval, refund points
-    if (data.status === "rejected" && redemption.status === "approved") {
+    // Points are deducted at request time, so we only need to handle refunds on rejection
+    if (data.status === "rejected") {
       await db.insert(schema.pointTransactions).values({
         memberId: redemption.memberId,
         amount: redemption.pointsSpent,

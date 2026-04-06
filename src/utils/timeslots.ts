@@ -5,9 +5,10 @@ export const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] as co
 
 /**
  * Get the numeric day of week for a given date (0=Sunday, 6=Saturday)
+ * Uses UTC to match server-side filtering behavior
  */
 export function getDayOfWeek(date: Date): number {
-  return date.getDay()
+  return date.getUTCDay()
 }
 
 /**
@@ -67,6 +68,7 @@ export function filterTimeslotsByDate(timeslots: Timeslot[], date: Date): Timesl
  * Filter timeslots for a specific date string (YYYY-MM-DD format)
  */
 export function filterTimeslotsByDateString(timeslots: Timeslot[], dateString: string): Timeslot[] {
-  const date = new Date(dateString + 'T00:00:00')
+  const [year, month, day] = dateString.split('-').map(Number)
+  const date = new Date(Date.UTC(year, month - 1, day))
   return filterTimeslotsByDate(timeslots, date)
 }

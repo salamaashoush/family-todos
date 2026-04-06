@@ -89,6 +89,14 @@ export async function checkAchievements(memberId: number) {
               totalStars: sql`${schema.memberStats.totalStars} + ${achievement.starReward}`,
             })
             .where(eq(schema.memberStats.memberId, memberId));
+
+          // Record bonus stars in point ledger to keep it in sync with stats
+          await db.insert(schema.pointTransactions).values({
+            memberId,
+            amount: achievement.starReward,
+            type: "bonus" as const,
+            description: `Achievement bonus: ${achievement.name}`,
+          });
         }
 
         // Broadcast achievement unlocked event
@@ -112,8 +120,11 @@ export async function checkAchievements(memberId: number) {
             },
           });
         }
-      } catch {
-        // Achievement already exists
+      } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : String(error);
+        if (!message.includes("unique") && !message.includes("duplicate") && !message.includes("23505")) {
+          throw error;
+        }
       }
     }
   }

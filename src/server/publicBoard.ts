@@ -106,7 +106,10 @@ export const getPublicTimeslots = createServerFn({ method: "GET" })
     const timeslotIds = timeslots.map((t) => t.id);
     const allAssignments =
       timeslotIds.length > 0
-        ? await db.select().from(schema.timeslotMembers)
+        ? await db
+            .select()
+            .from(schema.timeslotMembers)
+            .where(sql`${schema.timeslotMembers.timeslotId} IN (${sql.join(timeslotIds.map(id => sql`${id}`), sql`, `)})`)
         : [];
 
     const assignmentsByTimeslot = allAssignments.reduce(
@@ -152,7 +155,12 @@ export const getPublicTodos = createServerFn({ method: "GET" })
     // Get timeslot assignments
     const todoIds = todos.map((t) => t.id);
     const allAssignments =
-      todoIds.length > 0 ? await db.select().from(schema.todoTimeslots) : [];
+      todoIds.length > 0
+        ? await db
+            .select()
+            .from(schema.todoTimeslots)
+            .where(sql`${schema.todoTimeslots.todoId} IN (${sql.join(todoIds.map(id => sql`${id}`), sql`, `)})`)
+        : [];
 
     const assignmentsByTodo = allAssignments.reduce(
       (acc, assignment) => {
@@ -209,10 +217,14 @@ export const getPublicCompletions = createServerFn({ method: "GET" })
     const completions = await db
       .select()
       .from(schema.todoCompletions)
-      .where(eq(schema.todoCompletions.completionDate, data.date));
+      .where(
+        and(
+          eq(schema.todoCompletions.completionDate, data.date),
+          sql`${schema.todoCompletions.memberId} IN (${sql.join(memberIds.map(id => sql`${id}`), sql`, `)})`
+        )
+      );
 
-    // Filter to only this family's members
-    return completions.filter((c) => memberIds.includes(c.memberId));
+    return completions;
   });
 
 /**
@@ -487,13 +499,13 @@ export const getPublicMemberStats = createServerFn({ method: "GET" })
       return [];
     }
 
-    // Get stats for all members
+    // Get stats for only this family's members
     const stats = await db
       .select()
-      .from(schema.memberStats);
+      .from(schema.memberStats)
+      .where(sql`${schema.memberStats.memberId} IN (${sql.join(memberIds.map(id => sql`${id}`), sql`, `)})`);
 
-    // Filter to only this family's members
-    return stats.filter((s) => memberIds.includes(s.memberId));
+    return stats;
   });
 
 /**
@@ -578,28 +590,19 @@ export const getPublicMemberPoints = createServerFn({ method: "GET" })
       return [];
     }
 
-    // Get point transactions and sum them by member
-    const transactions = await db
+    // Get point totals for only this family's members
+    const results = await db
       .select({
         memberId: schema.pointTransactions.memberId,
-        amount: schema.pointTransactions.amount,
+        total: sql<number>`COALESCE(SUM(${schema.pointTransactions.amount}), 0)`,
       })
-      .from(schema.pointTransactions);
+      .from(schema.pointTransactions)
+      .where(sql`${schema.pointTransactions.memberId} IN (${sql.join(memberIds.map(id => sql`${id}`), sql`, `)})`)
+      .groupBy(schema.pointTransactions.memberId);
 
-    // Filter to only this family's members and aggregate
-    const pointsByMember = new Map<number, number>();
-    for (const t of transactions) {
-      if (memberIds.includes(t.memberId)) {
-        pointsByMember.set(
-          t.memberId,
-          (pointsByMember.get(t.memberId) || 0) + t.amount
-        );
-      }
-    }
-
-    return Array.from(pointsByMember.entries()).map(([member_id, total]) => ({
-      member_id,
-      total,
+    return results.map((r) => ({
+      member_id: r.memberId,
+      total: r.total,
     }));
   });
 

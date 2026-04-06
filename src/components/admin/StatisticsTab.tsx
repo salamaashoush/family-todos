@@ -3,8 +3,10 @@ import { ChevronDown, Star, Flame, CheckCircle, Trophy, Users, Clock } from 'luc
 import { useMembers } from '../../hooks/useCollections'
 import { useAllAchievements } from '../../hooks/useQueries'
 import { MemberStatsCard } from './MemberStatsCard'
-import { useMemberStats, useMemberAchievements } from '../../hooks/useQueries'
+import { useMemberAchievements } from '../../hooks/useQueries'
 import type { Member, Achievement, MemberStats } from '../../types'
+import { useQueries } from '@tanstack/react-query'
+import { getMemberStats, getMemberAchievements } from '../../server/statistics'
 
 // Aggregate stats component
 interface AggregateStatsProps {
@@ -12,16 +14,21 @@ interface AggregateStatsProps {
 }
 
 function AggregateStatsSection({ members }: AggregateStatsProps) {
-  // Fetch stats for all members
-  const memberStatsQueries = members.map((member) => ({
-    memberId: member.id,
-    // eslint-disable-next-line react-hooks/rules-of-hooks
-    stats: useMemberStats(member.id),
-    // eslint-disable-next-line react-hooks/rules-of-hooks
-    achievements: useMemberAchievements(member.id),
-  }))
+  const statsQueries = useQueries({
+    queries: members.map((member) => ({
+      queryKey: ['memberStats', member.id],
+      queryFn: () => getMemberStats({ data: { memberId: member.id } }),
+    })),
+  })
 
-  const isLoading = memberStatsQueries.some((q) => q.stats.isLoading || q.achievements.isLoading)
+  const achievementsQueries = useQueries({
+    queries: members.map((member) => ({
+      queryKey: ['memberAchievements', member.id],
+      queryFn: () => getMemberAchievements({ data: { memberId: member.id } }),
+    })),
+  })
+
+  const isLoading = statsQueries.some((q) => q.isLoading) || achievementsQueries.some((q) => q.isLoading)
 
   const aggregateData = useMemo(() => {
     if (isLoading) return null
@@ -34,9 +41,9 @@ function AggregateStatsSection({ members }: AggregateStatsProps) {
     let highestLevel = 0
     let topPerformer: { name: string; stars: number } | null = null
 
-    memberStatsQueries.forEach((query, index) => {
-      const stats = query.stats.data as MemberStats | undefined
-      const achievements = query.achievements.data as { earned_at: string | null }[] | undefined
+    statsQueries.forEach((query, index) => {
+      const stats = query.data as MemberStats | undefined
+      const achievements = achievementsQueries[index]?.data as { earnedAt: string | null }[] | undefined
 
       if (stats) {
         totalStars += stats.totalStars
@@ -50,12 +57,12 @@ function AggregateStatsSection({ members }: AggregateStatsProps) {
       }
 
       if (achievements) {
-        totalAchievements += achievements.filter((a) => a.earned_at).length
+        totalAchievements += achievements.filter((a) => a.earnedAt).length
       }
     })
 
     return { totalStars, totalTasks, totalTimeslots, totalAchievements, highestStreak, highestLevel, topPerformer }
-  }, [isLoading, memberStatsQueries, members])
+  }, [isLoading, statsQueries, achievementsQueries, members])
 
   if (isLoading) {
     return (
