@@ -3,10 +3,10 @@ import { ChevronDown, Star, Flame, CheckCircle, Trophy, Users, Clock } from 'luc
 import { useMembers } from '../../hooks/useCollections'
 import { useAllAchievements } from '../../hooks/useQueries'
 import { MemberStatsCard } from './MemberStatsCard'
-import { useMemberAchievements } from '../../hooks/useQueries'
 import type { Member, Achievement, MemberStats } from '../../types'
 import { useQueries } from '@tanstack/react-query'
 import { getMemberStats, getMemberAchievements } from '../../server/statistics'
+import { useCurrentFamilyId } from '../../hooks/useFamilyContext'
 
 // Aggregate stats component
 interface AggregateStatsProps {
@@ -14,17 +14,21 @@ interface AggregateStatsProps {
 }
 
 function AggregateStatsSection({ members }: AggregateStatsProps) {
+  const familyId = useCurrentFamilyId()
+
   const statsQueries = useQueries({
     queries: members.map((member) => ({
-      queryKey: ['memberStats', member.id],
+      queryKey: ['memberStats', familyId, member.id],
       queryFn: () => getMemberStats({ data: { memberId: member.id } }),
+      enabled: familyId !== undefined,
     })),
   })
 
   const achievementsQueries = useQueries({
     queries: members.map((member) => ({
-      queryKey: ['memberAchievements', member.id],
+      queryKey: ['memberAchievements', familyId, member.id],
       queryFn: () => getMemberAchievements({ data: { memberId: member.id } }),
+      enabled: familyId !== undefined,
     })),
   })
 
